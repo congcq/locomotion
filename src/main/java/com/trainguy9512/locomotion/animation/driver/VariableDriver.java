@@ -1,7 +1,6 @@
 package com.trainguy9512.locomotion.animation.driver;
 
 import com.trainguy9512.locomotion.util.Interpolator;
-import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import java.util.function.Supplier;
@@ -10,21 +9,21 @@ import java.util.function.Supplier;
  * Driver that acts as a variable that can be updated each tick and then is interpolated.
  * @param <D>
  */
-public final class VariableDriver<D> implements Driver<D>{
+public class VariableDriver<D> implements Driver<D>{
 
-    private final Supplier<D> defaultValue;
-    private final Interpolator<D> interpolator;
+    protected final Supplier<D> initialValue;
+    protected final Interpolator<D> interpolator;
 
-    private D valueCurrent;
-    private D valuePrevious;
+    protected D currentValue;
+    protected D previousValue;
 
 
-    private VariableDriver(Supplier<D> defaultValue, Interpolator<D> interpolator){
-        this.defaultValue = defaultValue;
+    protected VariableDriver(Supplier<D> initialValue, Interpolator<D> interpolator){
+        this.initialValue = initialValue;
         this.interpolator = interpolator;
 
-        this.valueCurrent = defaultValue.get();
-        this.valuePrevious = defaultValue.get();
+        this.currentValue = initialValue.get();
+        this.previousValue = initialValue.get();
     }
 
     @Override
@@ -34,25 +33,25 @@ public final class VariableDriver<D> implements Driver<D>{
 
     @Override
     public D getValueInterpolated(float partialTicks){
-        boolean valueHasNotChanged = this.valueCurrent.equals(this.valuePrevious);
+        boolean valueHasNotChanged = this.currentValue.equals(this.previousValue);
         boolean gettingValueFromCurrentTick = partialTicks == 1;
         boolean gettingValueFromPreviousTick = partialTicks == 0;
 
         if(valueHasNotChanged || gettingValueFromCurrentTick){
-            return this.valueCurrent;
+            return this.currentValue;
         }
         if(gettingValueFromPreviousTick){
-            return this.valuePrevious;
+            return this.previousValue;
         }
-        return interpolator.interpolate(this.valuePrevious, this.valueCurrent, partialTicks);
+        return interpolator.interpolate(this.previousValue, this.currentValue, partialTicks);
     }
 
-    public D getValuePrevious(){
-        return this.valuePrevious;
+    public D getPreviousValue(){
+        return this.previousValue;
     }
 
-    public D getValueCurrent(){
-        return this.valueCurrent;
+    public D getCurrentValue(){
+        return this.currentValue;
     }
 
     /**
@@ -62,21 +61,21 @@ public final class VariableDriver<D> implements Driver<D>{
      * @implNote            Ensure that any mutable values inputted here are copies of themselves!
      */
     public void setValue(D newValue){
-        this.valueCurrent = newValue != null ? newValue : this.defaultValue.get();
+        this.currentValue = newValue != null ? newValue : this.initialValue.get();
     }
 
     /**
      * Pushes the current value to the previous tick's value.
      */
     public void prepareForNextTick(){
-        this.valuePrevious = this.valueCurrent;
+        this.previousValue = this.currentValue;
     }
 
     /**
      * Loads the driver with the driver's default value.
      */
-    public void resetValue(){
-        this.setValue(this.defaultValue.get());
+    public void reset(){
+        this.setValue(this.initialValue.get());
     }
 
     /**

@@ -73,7 +73,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         StateTransition.TransitionContext transitionContext = StateTransition.TransitionContext.of(
                 evaluationState.dataContainer(),
                 this.timeTicksElapsed,
-                this.states.get(currentActiveStateIdentifier).weight.getValueCurrent(),
+                this.states.get(currentActiveStateIdentifier).weight.getCurrentValue(),
                 this.states.get(currentActiveStateIdentifier).inputFunction);
 
         // Filter each potential state transition by whether it's valid, then filter by whether its condition predicate is true,
@@ -113,7 +113,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         this.states.forEach((stateIdentifier, state) -> state.tick(evaluationState));
 
         // Evaluated last, remove states from the active state list that have a weight of 0.
-        List<S> statesToRemove = this.activeStates.stream().filter((stateIdentifier) -> this.states.get(stateIdentifier).weight.getValuePrevious() == 0 && this.states.get(stateIdentifier).weight.getValueCurrent() == 0).toList();
+        List<S> statesToRemove = this.activeStates.stream().filter((stateIdentifier) -> this.states.get(stateIdentifier).weight.getPreviousValue() == 0 && this.states.get(stateIdentifier).weight.getCurrentValue() == 0).toList();
         this.activeStates.removeAll(statesToRemove);
     }
 
@@ -215,15 +215,15 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             if(this.currentTransition != null){
                 this.weight.prepareForNextTick();
                 float increaseDecreaseMultiplier = this.isActive ? 1 : -1;
-                float newWeight = Mth.clamp(this.weight.getValuePrevious() + ((1 / this.currentTransition.transitionDurationTicks()) * increaseDecreaseMultiplier), 0, 1);
+                float newWeight = Mth.clamp(this.weight.getPreviousValue() + ((1 / this.currentTransition.transitionDurationTicks()) * increaseDecreaseMultiplier), 0, 1);
 
-                if(this.resetUponEntry && newWeight > 0 && this.weight.getValuePrevious() == 0){
+                if(this.resetUponEntry && newWeight > 0 && this.weight.getPreviousValue() == 0){
                     evaluationState = evaluationState.markedForReset();
                 }
 
                 this.weight.setValue(newWeight);
             }
-            if(this.weight.getValueCurrent() > 0){
+            if(this.weight.getCurrentValue() > 0){
                 this.inputFunction.tick(evaluationState);
             }
         }
