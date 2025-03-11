@@ -1,9 +1,9 @@
 package com.trainguy9512.locomotion.animation.driver;
 
 import com.trainguy9512.locomotion.util.Interpolator;
-import net.minecraft.util.Mth;
+import org.joml.Vector3f;
 
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 public class SpringDriver<D> extends VariableDriver<D> {
@@ -12,47 +12,99 @@ public class SpringDriver<D> extends VariableDriver<D> {
     private final float damping;
     private final float mass;
 
-    private float targetValue;
-    private float velocity;
+    private final BiFunction<D, D, D> addition;
+    private final BiFunction<D, Float, D> multiplication;
+    private final boolean returnsDelta;
 
-    protected SpringDriver(float stiffness, float damping, float mass, Supplier<Float> initialValue, ) {
-        super(initialValue, Interpolator.FLOAT);
+    private D currentTargetValue;
+    private D previousTargetValue;
+    private D velocity;
+
+    protected SpringDriver(
+            float stiffness,
+            float damping,
+            float mass,
+            Supplier<D> initialValue,
+            Interpolator<D> interpolator,
+            BiFunction<D, D, D> addition,
+            BiFunction<D, Float, D> multiplication,
+            boolean returnsDelta
+    ) {
+        super(initialValue, interpolator);
         this.stiffness = stiffness;
         this.damping = damping;
         this.mass = Math.max(mass, 0.1f);
-        this.targetValue = initialValue.get();
-        this.velocity = 0;
 
+        this.addition = addition;
+        this.multiplication = multiplication;
+        this.returnsDelta = returnsDelta;
+
+        this.currentTargetValue = initialValue.get();
+        this.previousTargetValue = initialValue.get();
+        this.velocity = multiplication.apply(initialValue.get(), 0f);
     }
 
-    public static SpringDriver of(float stiffness, float damping, float mass, Supplier<Float> initialValue){
-        return new SpringDriver(stiffness, damping, mass, initialValue);
+    public static <D> SpringDriver<D> of(float stiffness, float damping, float mass, Supplier<D> initialValue, Interpolator<D> interpolator, BiFunction<D, D, D> addition, BiFunction<D, Float, D> multiplication, boolean returnsDelta) {
+        return new SpringDriver<>(stiffness, damping, mass, initialValue, interpolator, addition, multiplication, returnsDelta);
+    }
 
-        Function<Float, Float> applyVelocity = velocity -> {
-            return currentValue + velocity * 0.5f;
-        };
+    public static SpringDriver<Float> ofFloat(float stiffness, float damping, float mass, Supplier<Float> initialValue, boolean returnsDelta) {
+        return SpringDriver.of(stiffness, damping, mass, initialValue,
+                Interpolator.FLOAT,
+                Float::sum,
+                (a, b) -> a * b,
+                returnsDelta
+        );
+    }
+
+    public static SpringDriver<Vector3f> ofVector(float stiffness, float damping, float mass, Supplier<Vector3f> initialValue, boolean returnsDelta) {
+        return SpringDriver.of(stiffness, damping, mass, initialValue,
+                Interpolator.VECTOR,
+                (a, b) -> a.add(b, new Vector3f()),
+                (a, b) -> a.mul(b, new Vector3f()),
+                returnsDelta
+        );
     }
 
     @Override
-    public void setValue(Float value){
-        this.targetValue = value;
+    public void setValue(D value) {
+        this.currentTargetValue = value;
     }
 
     @Override
-    public void reset(){
+    public void prepareForNextTick() {
+        super.prepareForNextTick();
+        this.previousTargetValue = this.currentTargetValue;
+    }
+
+    @Override
+    public void reset() {
         super.reset();
-        this.targetValue = this.initialValue.get();
+        this.previousTargetValue = this.initialValue.get();
+        this.currentTargetValue = this.initialValue.get();
+    }
+
+    @Override
+    public D getValueInterpolated(float partialTicks) {
+        D interpolatedValue = super.getValueInterpolated(partialTicks);
+        if (this.returnsDelta) {
+            D targetInterpolatedValue = this.interpolator.interpolate(this.previousTargetValue, this.currentTargetValue, partialTicks);
+            return this.addition.apply(targetInterpolatedValue, this.multiplication.apply(interpolatedValue, -1f));
+        } else {
+            return interpolatedValue;
+        }
     }
 
     @Override
     public void tick() {
         super.tick();
 
-        float springForce = -this.stiffness * (this.currentValue - this.targetValue);
-        float dampingForce = -this.damping * this.velocity;
-        float acceleration = (springForce + dampingForce) / this.mass;
+        D displacement = this.addition.apply(this.currentValue, this.multiplication.apply(this.currentTargetValue, -1f));
+        D springForce = this.multiplication.apply(displacement, -this.stiffness);
+        D dampingForce = this.multiplication.apply(this.velocity, -this.damping);
+        D acceleration = this.multiplication.apply(this.addition.apply(springForce, dampingForce), this.mass);
 
-        this.velocity += acceleration;
-        this.currentValue += this.velocity;
+        this.velocity = this.addition.apply(this.velocity, acceleration);
+        this.currentValue = this.addition.apply(this.currentValue, this.velocity);
     }
 }

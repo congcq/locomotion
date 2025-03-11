@@ -9,7 +9,7 @@ import java.util.function.Supplier;
  * Driver that acts as a variable that can be updated each tick and then is interpolated.
  * @param <D>
  */
-public class VariableDriver<D> implements Driver<D>{
+public class VariableDriver<D> implements Driver<D> {
 
     protected final Supplier<D> initialValue;
     protected final Interpolator<D> interpolator;
@@ -18,7 +18,7 @@ public class VariableDriver<D> implements Driver<D>{
     protected D previousValue;
 
 
-    protected VariableDriver(Supplier<D> initialValue, Interpolator<D> interpolator){
+    protected VariableDriver(Supplier<D> initialValue, Interpolator<D> interpolator) {
         this.initialValue = initialValue;
         this.interpolator = interpolator;
 
@@ -32,12 +32,12 @@ public class VariableDriver<D> implements Driver<D>{
     }
 
     @Override
-    public D getValueInterpolated(float partialTicks){
+    public D getValueInterpolated(float partialTicks) {
         boolean valueHasNotChanged = this.currentValue.equals(this.previousValue);
         boolean gettingValueFromCurrentTick = partialTicks == 1;
         boolean gettingValueFromPreviousTick = partialTicks == 0;
 
-        if(valueHasNotChanged || gettingValueFromCurrentTick){
+        if (valueHasNotChanged || gettingValueFromCurrentTick) {
             return this.currentValue;
         }
         if(gettingValueFromPreviousTick){
@@ -46,11 +46,11 @@ public class VariableDriver<D> implements Driver<D>{
         return interpolator.interpolate(this.previousValue, this.currentValue, partialTicks);
     }
 
-    public D getPreviousValue(){
+    public D getPreviousValue() {
         return this.previousValue;
     }
 
-    public D getCurrentValue(){
+    public D getCurrentValue() {
         return this.currentValue;
     }
 
@@ -60,21 +60,21 @@ public class VariableDriver<D> implements Driver<D>{
      * @param newValue      Value to load for the current tick.
      * @implNote            Ensure that any mutable values inputted here are copies of themselves!
      */
-    public void setValue(D newValue){
+    public void setValue(D newValue) {
         this.currentValue = newValue != null ? newValue : this.initialValue.get();
     }
 
     /**
      * Pushes the current value to the previous tick's value.
      */
-    public void prepareForNextTick(){
+    public void prepareForNextTick() {
         this.previousValue = this.currentValue;
     }
 
     /**
      * Loads the driver with the driver's default value.
      */
-    public void reset(){
+    public void reset() {
         this.setValue(this.initialValue.get());
     }
 
@@ -83,7 +83,7 @@ public class VariableDriver<D> implements Driver<D>{
      * @param defaultValue      Default value set from the start and set upon resetting the driver.
      * @param interpolator      Interpolation function for the data type
      */
-    public static <D> VariableDriver<D> ofInterpolatable(Supplier<D> defaultValue, Interpolator<D> interpolator){
+    public static <D> VariableDriver<D> ofInterpolatable(Supplier<D> defaultValue, Interpolator<D> interpolator) {
         return new VariableDriver<>(defaultValue, interpolator);
     }
 
@@ -91,7 +91,7 @@ public class VariableDriver<D> implements Driver<D>{
      * Creates a driver of the given data type that will pass the latest non-interpolated tick value when accessed.
      * @param defaultValue      Default value set from the start and set upon resetting the driver.
      */
-    public static <D> VariableDriver<D> ofConstant(Supplier<D> defaultValue){
+    public static <D> VariableDriver<D> ofConstant(Supplier<D> defaultValue) {
         return VariableDriver.ofInterpolatable(defaultValue, Interpolator.constant());
     }
 
@@ -99,7 +99,7 @@ public class VariableDriver<D> implements Driver<D>{
      * Creates a boolean driver that will pass the latest non-interpolated tick value when accessed.
      * @param defaultValue      Default value set from the start and set upon resetting the driver.
      */
-    public static VariableDriver<Boolean> ofBoolean(Supplier<Boolean> defaultValue){
+    public static VariableDriver<Boolean> ofBoolean(Supplier<Boolean> defaultValue) {
         return VariableDriver.ofInterpolatable(defaultValue, Interpolator.BOOLEAN_BLEND);
     }
 
@@ -107,7 +107,7 @@ public class VariableDriver<D> implements Driver<D>{
      * Creates a float driver that will be linearly interpolated between ticks.
      * @param defaultValue      Default value set from the start and set upon resetting the driver.
      */
-    public static VariableDriver<Float> ofFloat(Supplier<Float> defaultValue){
+    public static VariableDriver<Float> ofFloat(Supplier<Float> defaultValue) {
         return VariableDriver.ofInterpolatable(defaultValue, Interpolator.FLOAT);
     }
 
@@ -115,7 +115,7 @@ public class VariableDriver<D> implements Driver<D>{
      * Creates a vector driver that will be linearly interpolated between ticks.
      * @param defaultValue      Default value set from the start and set upon resetting the driver.
      */
-    public static VariableDriver<Vector3f> ofVector(Supplier<Vector3f> defaultValue){
+    public static VariableDriver<Vector3f> ofVector(Supplier<Vector3f> defaultValue) {
         return VariableDriver.ofInterpolatable(defaultValue, Interpolator.VECTOR);
     }
 }
