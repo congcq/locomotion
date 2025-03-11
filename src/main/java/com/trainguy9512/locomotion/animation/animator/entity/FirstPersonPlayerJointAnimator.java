@@ -69,7 +69,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Float>> TIME_TEST = DriverKey.of("time_test", () -> VariableDriver.ofFloat(() -> 0f));
     public static final DriverKey<SpringDriver<Float>> SPRING_TEST = DriverKey.of("spring", () -> SpringDriver.ofFloat(1.0f, 0.4f, 1, () -> 0f, false));
 
-    public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.9f, 0.6f, 1f, () -> new Vector3f(0f), false));
+    public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.7f, 0.6f, 1f, () -> new Vector3f(0f), false));
 
     public static final DriverKey<VariableDriver<Vector3f>> CAMERA_ROTATION = DriverKey.of("camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
     public static final DriverKey<VariableDriver<Vector3f>> DAMPENED_CAMERA_ROTATION = DriverKey.of("dampened_camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
@@ -139,7 +139,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 )
                 .build();
 
-        PoseFunction<LocalSpacePose> testTransformer = LocalConversionFunction.of(
+        PoseFunction<LocalSpacePose> movementDirectionOffsetTransformer = LocalConversionFunction.of(
                 JointTransformerFunction.componentSpaceBuilder(ComponentConversionFunction.of(testStateMachine), ARM_BUFFER_JOINT)
                         .setTranslation(
                                 context -> context.dataContainer().getDriverValue(MOVEMENT_DIRECTION_OFFSET, context.partialTicks()),
@@ -151,7 +151,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         //PoseFunction<LocalSpacePose> cached = cachedPoseContainer.getOrThrow("TEST_SEQ_PLAYER");
         PoseFunction<LocalSpacePose> blendMultipleFunction = BlendMultipleFunction.builder(testSequencePlayer).addBlendInput(testSequencePlayer, (evaluationState) -> 0.5f).build();
 
-        return testTransformer;
+        return movementDirectionOffsetTransformer;
     }
 
 
@@ -166,12 +166,15 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
 
         Vector3f velocity = new Vector3f((float) (dataReference.getX() - dataReference.xo), (float) (dataReference.getY() - dataReference.yo), (float) (dataReference.getZ() - dataReference.zo));
-        Matrix4f rotation = new Matrix4f().rotateX(dataReference.getXRot() * Mth.DEG_TO_RAD).rotateY(dataReference.getYRot() * Mth.DEG_TO_RAD);
-        Vector3f movementDirection = new Vector3f(
-                velocity.dot(dataReference.calculateViewVector(dataReference.getXRot(), dataReference.getYRot() + 90f).toVector3f()),
-                velocity.dot(dataReference.calculateViewVector(dataReference.getXRot() - 90f, dataReference.getYRot()).toVector3f()) * 0.5f,
-                velocity.dot(dataReference.calculateViewVector(dataReference.getXRot(), dataReference.getYRot()).toVector3f())
-        ).mul(5f);
+        velocity.mul(1, 0.5f, 1);
+        Quaternionf rotation = new Quaternionf().rotationYXZ(Mth.PI - dataReference.getYRot() * Mth.DEG_TO_RAD, -dataReference.getXRot() * Mth.DEG_TO_RAD, 0.0F);
+        Vector3f movementDirection;
+        movementDirection = new Vector3f(
+                velocity.dot(new Vector3f(1, 0, 0).rotate(rotation)),
+                velocity.dot(new Vector3f(0, 1, 0).rotate(rotation)),
+                velocity.dot(new Vector3f(0, 0, -1).rotate(rotation))
+        );
+        movementDirection.mul(dataReference.isSprinting() ? 5f : 3f);
         driverContainer.getDriver(MOVEMENT_DIRECTION_OFFSET).setValue(movementDirection);
 
 
