@@ -129,9 +129,9 @@ public class AnimationSequenceDataLoader implements SimpleResourceReloadListener
 
                 if(sequenceFormatVersion >= FORMAT_VERSION_4) {
                     float sequenceLength = sequenceJSON.get("length").getAsFloat();
-                    Map<String, JsonElement> joints = sequenceJSON.getAsJsonObject("joints").asMap();
-
                     AnimationSequenceData.AnimationSequence.Builder sequenceBuilder = AnimationSequenceData.AnimationSequence.builder(TimeSpan.ofSeconds(sequenceLength));
+
+                    Map<String, JsonElement> joints = sequenceJSON.getAsJsonObject("joints").asMap();
                     joints.forEach((joint, jointElement) -> {
                         JsonObject jointJSON = jointElement.getAsJsonObject();
 
@@ -166,6 +166,17 @@ public class AnimationSequenceDataLoader implements SimpleResourceReloadListener
                         sequenceBuilder.putJointVisibilityTimeline(joint, visibilityTimeline);
                         //LocomotionMain.LOGGER.info("joint {} translate {}", joint, translationTimeline.getValueAtTime(0));
                     });
+
+                    // Load time markers from the JSON file, if it has any.
+                    if(sequenceJSON.has("time_markers")){
+                        Map<String, JsonElement> timeMarkers = sequenceJSON.getAsJsonObject("time_markers").asMap();
+                        timeMarkers.forEach((timeMarkerIdentifier, timeMarkerElement) -> {
+                            JsonArray times = timeMarkerElement.getAsJsonArray();
+                            times.forEach(time -> sequenceBuilder.putTimeMarker(timeMarkerIdentifier, TimeSpan.ofSeconds(time.getAsFloat())));
+                        });
+                    }
+
+
                     data.put(resourceLocation, sequenceBuilder.build());
                     LocomotionMain.LOGGER.info("Successfully loaded animation {}", resourceLocation);
                 } else {

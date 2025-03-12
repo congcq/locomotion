@@ -1,10 +1,12 @@
 package com.trainguy9512.locomotion.util;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Utility class for representing time in different formats such as ticks, seconds, or various frames of different frame rates.
  * @author James Pelter
  */
-public class TimeSpan {
+public class TimeSpan implements Comparable<TimeSpan> {
 
     private final float timeInTicks;
 
@@ -60,5 +62,30 @@ public class TimeSpan {
      */
     public float inSeconds(){
         return this.timeInTicks / 20f;
+    }
+
+    @Override
+    public int compareTo(@NotNull TimeSpan timeSpan) {
+        if (this.timeInTicks == timeSpan.timeInTicks){
+            return 0;
+        } else {
+            return this.timeInTicks > timeSpan.timeInTicks ? 1 : -1;
+        }
+    }
+
+    public boolean isGreaterThan(TimeSpan other) {
+        return this.compareTo(other) > 0;
+    }
+
+    public boolean isLessThan(TimeSpan other) {
+        return this.compareTo(other) < 0;
+    }
+
+    public boolean isGreaterThanOrEqualTo(TimeSpan other) {
+        return this.compareTo(other) >= 0;
+    }
+
+    public boolean isLessThanOrEqualTo(TimeSpan other) {
+        return this.compareTo(other) <= 0;
     }
 }

@@ -72,10 +72,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.7f, 0.6f, 1f, Vector3f::new, false));
     public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_lag", () -> SpringDriver.ofVector(0.3f, 0.8f, 1f, Vector3f::new, true));
 
-    public static final DriverKey<VariableDriver<Vector3f>> CAMERA_ROTATION = DriverKey.of("camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
-    public static final DriverKey<VariableDriver<Vector3f>> DAMPENED_CAMERA_ROTATION = DriverKey.of("dampened_camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
     public static final DriverKey<VariableDriver<ItemStack>> MAIN_HAND_ITEM = DriverKey.of("main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> OFF_HAND_ITEM = DriverKey.of("off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
+    public static final DriverKey<VariableDriver<ItemStack>> RENDERED_MAIN_HAND_ITEM = DriverKey.of("rendered_main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
+    public static final DriverKey<VariableDriver<ItemStack>> RENDERED_OFF_HAND_ITEM = DriverKey.of("rendered_off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
+
+    public static final DriverKey<VariableDriver<Vector3f>> CAMERA_ROTATION = DriverKey.of("camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
+    public static final DriverKey<VariableDriver<Vector3f>> DAMPENED_CAMERA_ROTATION = DriverKey.of("dampened_camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
     public static final DriverKey<VariableDriver<Float>> WALK_SPEED = DriverKey.of("walk_speed", () -> VariableDriver.ofFloat(() -> 0f));
 
     @Override
@@ -118,7 +121,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public PoseFunction<LocalSpacePose> constructPoseFunction(SavedCachedPoseContainer cachedPoseContainer) {
         Random random = new Random();
         PoseFunction<LocalSpacePose> testSequencePlayer = SequencePlayerFunction.builder(ROM_TEST).setLooping(true).setPlayRate((context) -> 0f).build();
-        PoseFunction<LocalSpacePose> movingSequencePlayer = SequencePlayerFunction.builder(ROM_TEST).setLooping(true).setPlayRate((context) -> 1f).build();
+        PoseFunction<LocalSpacePose> movingSequencePlayer = SequencePlayerFunction.builder(POSE_TEST)
+                .setLooping(true)
+                .setPlayRate((context) -> 1f)
+                .bindToTimeMarker("clear_main_hand_item", evaluationState ->
+                        evaluationState.dataContainer().getDriver(RENDERED_MAIN_HAND_ITEM).setValue(ItemStack.EMPTY))
+                .bindToTimeMarker("switch_main_hand_item", evaluationState ->
+                        evaluationState.dataContainer().getDriver(RENDERED_MAIN_HAND_ITEM).setValue(evaluationState.dataContainer().getDriverValue(MAIN_HAND_ITEM)))
+                .build();
         //cachedPoseContainer.register("TEST_SEQ_PLAYER", testSequencePlayer);
 
 
@@ -141,7 +151,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .build();
 
         PoseFunction<LocalSpacePose> movementDirectionOffsetTransformer = LocalConversionFunction.of(
-                JointTransformerFunction.componentSpaceBuilder(ComponentConversionFunction.of(testStateMachine), ARM_BUFFER_JOINT)
+                JointTransformerFunction.componentSpaceBuilder(ComponentConversionFunction.of(movingSequencePlayer), ARM_BUFFER_JOINT)
                         .setTranslation(
                                 context -> context.dataContainer().getDriverValue(MOVEMENT_DIRECTION_OFFSET, context.partialTicks()),
                                 JointChannel.TransformType.ADD,

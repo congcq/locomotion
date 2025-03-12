@@ -75,8 +75,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
                             //this.entityRenderDispatcher.render(abstractClientPlayer, 0, 0, 0, partialTicks, poseStack, buffer, combinedLight);
 
-                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.MAIN_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, false, poseStack, rightItemPose, buffer, combinedLight);
-                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.OFF_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_LEFT_HAND, true, poseStack, leftItemPose, buffer, combinedLight);
+                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, false, poseStack, rightItemPose, buffer, combinedLight);
+                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_LEFT_HAND, true, poseStack, leftItemPose, buffer, combinedLight);
                             //this.renderItemInHand(abstractClientPlayer, ItemStack.EMPTY, poseStack, HumanoidArm.LEFT, animationPose, bufferSource, i);
 
 
