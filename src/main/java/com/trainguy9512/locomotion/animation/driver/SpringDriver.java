@@ -1,6 +1,7 @@
 package com.trainguy9512.locomotion.animation.driver;
 
 import com.trainguy9512.locomotion.util.Interpolator;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.function.BiFunction;

@@ -69,7 +69,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Float>> TIME_TEST = DriverKey.of("time_test", () -> VariableDriver.ofFloat(() -> 0f));
     public static final DriverKey<SpringDriver<Float>> SPRING_TEST = DriverKey.of("spring", () -> SpringDriver.ofFloat(1.0f, 0.4f, 1, () -> 0f, false));
 
-    public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.7f, 0.6f, 1f, () -> new Vector3f(0f), false));
+    public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.7f, 0.6f, 1f, Vector3f::new, false));
+    public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_lag", () -> SpringDriver.ofVector(0.4f, 0.6f, 1f, Vector3f::new, true));
 
     public static final DriverKey<VariableDriver<Vector3f>> CAMERA_ROTATION = DriverKey.of("camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
     public static final DriverKey<VariableDriver<Vector3f>> DAMPENED_CAMERA_ROTATION = DriverKey.of("dampened_camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
@@ -146,6 +147,11 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 JointChannel.TransformType.ADD,
                                 JointChannel.TransformSpace.COMPONENT
                         )
+                        .setRotationEuler(
+                                context -> context.dataContainer().getDriverValue(CAMERA_ROTATION_DAMPING, context.partialTicks()).mul(-0.2f, -0.2f, 0f),
+                                JointChannel.TransformType.ADD,
+                                JointChannel.TransformSpace.COMPONENT
+                        )
                         .build());
 
         //PoseFunction<LocalSpacePose> cached = cachedPoseContainer.getOrThrow("TEST_SEQ_PLAYER");
@@ -176,6 +182,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         );
         movementDirection.mul(dataReference.isSprinting() ? 5f : 3f);
         driverContainer.getDriver(MOVEMENT_DIRECTION_OFFSET).setValue(movementDirection);
+        driverContainer.getDriver(CAMERA_ROTATION_DAMPING).setValue(new Vector3f(dataReference.getXRot(), dataReference.getYRot(), dataReference.getYRot()).mul(Mth.DEG_TO_RAD).mul(1, 1, 2));
 
 
 

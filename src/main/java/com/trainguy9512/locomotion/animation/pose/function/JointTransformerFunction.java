@@ -101,8 +101,16 @@ public class JointTransformerFunction<P extends AnimationPose> implements PoseFu
             return this;
         }
 
-        public Builder<P> setRotation(Function<FunctionInterpolationContext, Quaternionf> transformFunction, JointChannel.TransformType transformType, JointChannel.TransformSpace transformSpace){
+        public Builder<P> setRotationQuaternion(Function<FunctionInterpolationContext, Quaternionf> transformFunction, JointChannel.TransformType transformType, JointChannel.TransformSpace transformSpace){
             this.rotationConfiguration = TransformChannelConfiguration.of(transformFunction, transformType, transformSpace);
+            return this;
+        }
+
+        public Builder<P> setRotationEuler(Function<FunctionInterpolationContext, Vector3f> transformFunction, JointChannel.TransformType transformType, JointChannel.TransformSpace transformSpace){
+            this.rotationConfiguration = TransformChannelConfiguration.of(context -> {
+                Vector3f eulerRotation = transformFunction.apply(context);
+                return new Quaternionf().rotationXYZ(eulerRotation.x(), eulerRotation.y(), eulerRotation.z());
+            }, transformType, transformSpace);
             return this;
         }
 
