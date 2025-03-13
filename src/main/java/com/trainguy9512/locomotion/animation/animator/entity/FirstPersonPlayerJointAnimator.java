@@ -70,15 +70,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<SpringDriver<Float>> SPRING_TEST = DriverKey.of("spring", () -> SpringDriver.ofFloat(0.0f, 0.7f, 1, () -> 0f, false));
 
     public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.7f, 0.6f, 1f, Vector3f::new, false));
-    public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_lag", () -> SpringDriver.ofVector(0.3f, 0.8f, 1f, Vector3f::new, true));
+    public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_lag", () -> SpringDriver.ofVector(0.5f, 0.8f, 1f, Vector3f::new, true));
 
     public static final DriverKey<VariableDriver<ItemStack>> MAIN_HAND_ITEM = DriverKey.of("main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> OFF_HAND_ITEM = DriverKey.of("off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> RENDERED_MAIN_HAND_ITEM = DriverKey.of("rendered_main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> RENDERED_OFF_HAND_ITEM = DriverKey.of("rendered_off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
 
-    public static final DriverKey<VariableDriver<Vector3f>> CAMERA_ROTATION = DriverKey.of("camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
-    public static final DriverKey<VariableDriver<Vector3f>> DAMPENED_CAMERA_ROTATION = DriverKey.of("dampened_camera_rotation", () -> VariableDriver.ofVector(() -> new Vector3f(0)));
     public static final DriverKey<VariableDriver<Float>> WALK_SPEED = DriverKey.of("walk_speed", () -> VariableDriver.ofFloat(() -> 0f));
 
     @Override
@@ -158,7 +156,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 JointChannel.TransformSpace.COMPONENT
                         )
                         .setRotationEuler(
-                                context -> context.dataContainer().getDriverValue(CAMERA_ROTATION_DAMPING, context.partialTicks()).mul(-0.2f, -0.2f, -0.1f),
+                                context -> context.dataContainer().getDriverValue(CAMERA_ROTATION_DAMPING, context.partialTicks()).mul(-0.15f, -0.15f, -0.075f),
                                 JointChannel.TransformType.ADD,
                                 JointChannel.TransformSpace.COMPONENT
                         )
@@ -194,56 +192,5 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(MOVEMENT_DIRECTION_OFFSET).setValue(movementDirection);
         driverContainer.getDriver(CAMERA_ROTATION_DAMPING).setValue(new Vector3f(dataReference.getXRot(), dataReference.getYRot(), dataReference.getYRot()).mul(Mth.DEG_TO_RAD));
 
-
-
-
-        //Tick the dampened camera rotation.
-        Vector3f dampenSpeed = new Vector3f(0.5F, 0.5F, 0.2F);
-
-        // First, set the target camera rotation from the living entity.
-        Vector3f targetRotation = new Vector3f(dataReference.getXRot(), dataReference.getYRot(), dataReference.getYRot());
-        driverContainer.getDriver(CAMERA_ROTATION).setValue(targetRotation);
-
-
-        Vector3f dampenedCameraRotation = new Vector3f(driverContainer.getDriver(DAMPENED_CAMERA_ROTATION).getPreviousValue());
-
-
-        // If the dampened camera rotation is 0 (which is what it is upon initialization), set it to the target
-        if(dampenedCameraRotation.x() == 0F && dampenedCameraRotation.y() == 0F){
-            dampenedCameraRotation = targetRotation;
-        } else {
-            // Lerp the dampened camera rotation towards the normal camera rotation
-            dampenedCameraRotation.set(
-                    Mth.lerp(dampenSpeed.x(), dampenedCameraRotation.x(), targetRotation.x()),
-                    Mth.lerp(dampenSpeed.y(), dampenedCameraRotation.y(), targetRotation.y()),
-                    Mth.lerp(dampenSpeed.z(), dampenedCameraRotation.z(), targetRotation.z())
-            );
-            //dampenedCameraRotation.lerp(targetRotation, 0.5F);
-        }
-        driverContainer.getDriver(DAMPENED_CAMERA_ROTATION).setValue(dampenedCameraRotation);
-
-    }
-
-
-
-    /*
-    Get the pose with the added dampened camera rotation
-     */
-    private void dampenArmRotation(AnimationPose pose, PoseCalculationDataContainer dataContainer, float partialTicks){
-        Vector3f cameraRotation = dataContainer.getDriverValue(CAMERA_ROTATION, partialTicks);
-        Vector3f dampenedCameraRotation = dataContainer.getDriverValue(DAMPENED_CAMERA_ROTATION, partialTicks);
-
-        Vector3f cameraDampWeight = new Vector3f(0.6F, 0.3F, 0.1F);
-
-        JointChannel jointChannel = pose.getJointTransform(ARM_BUFFER_JOINT);
-        jointChannel.rotate(
-                new Vector3f(
-                        (dampenedCameraRotation.x() - cameraRotation.x()) * (cameraDampWeight.x() * 0.01F),
-                        (dampenedCameraRotation.y() - cameraRotation.y()) * (cameraDampWeight.y() * 0.01F),
-                        (dampenedCameraRotation.z() - cameraRotation.z()) * (cameraDampWeight.z() * 0.01F)
-                ),
-                JointChannel.TransformSpace.COMPONENT, JointChannel.TransformType.ADD
-        );
-        pose.setJointTransform(ARM_BUFFER_JOINT, jointChannel);
     }
 }
