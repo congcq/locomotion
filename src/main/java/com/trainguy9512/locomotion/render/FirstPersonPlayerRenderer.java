@@ -51,10 +51,10 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                 dataContainer -> jointAnimatorDispatcher.getInterpolatedFirstPersonPlayerPose().ifPresent(
                         animationPose -> {
 
-                            JointChannel rightArmPose = animationPose.setJointChannel(FirstPersonPlayerJointAnimator.RIGHT_ARM_JOINT);
-                            JointChannel leftArmPose = animationPose.setJointChannel(FirstPersonPlayerJointAnimator.LEFT_ARM_JOINT);
-                            JointChannel rightItemPose = animationPose.setJointChannel(FirstPersonPlayerJointAnimator.RIGHT_ITEM_JOINT);
-                            JointChannel leftItemPose = animationPose.setJointChannel(FirstPersonPlayerJointAnimator.LEFT_ITEM_JOINT);
+                            JointChannel rightArmPose = animationPose.getJointChannel(FirstPersonPlayerJointAnimator.RIGHT_ARM_JOINT);
+                            JointChannel leftArmPose = animationPose.getJointChannel(FirstPersonPlayerJointAnimator.LEFT_ARM_JOINT);
+                            JointChannel rightItemPose = animationPose.getJointChannel(FirstPersonPlayerJointAnimator.RIGHT_ITEM_JOINT);
+                            JointChannel leftItemPose = animationPose.getJointChannel(FirstPersonPlayerJointAnimator.LEFT_ITEM_JOINT);
 
                             poseStack.pushPose();
                             poseStack.mulPose(Axis.ZP.rotationDegrees(180));
@@ -131,7 +131,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
     public void transformCamera(PoseStack poseStack){
         if(this.minecraft.options.getCameraType().isFirstPerson()){
             this.jointAnimatorDispatcher.getInterpolatedFirstPersonPlayerPose().ifPresent(animationPose -> {
-                JointChannel cameraPose = animationPose.setJointChannel(FirstPersonPlayerJointAnimator.CAMERA_JOINT);
+                JointChannel cameraPose = animationPose.getJointChannel(FirstPersonPlayerJointAnimator.CAMERA_JOINT);
 
                 Vector3f cameraRot = cameraPose.getEulerRotationZYX();
                 cameraRot.z *= -1;

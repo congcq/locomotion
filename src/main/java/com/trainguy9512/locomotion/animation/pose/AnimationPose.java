@@ -20,7 +20,7 @@ public abstract class AnimationPose {
         this.jointParentMatrices = Maps.newHashMap();
 
         for(String joint : jointSkeleton.getJoints()){
-            this.setJointChannel(joint, JointChannel.ZERO);
+            this.getJointChannel(joint, JointChannel.ZERO);
         }
     }
 
@@ -43,7 +43,7 @@ public abstract class AnimationPose {
      * @param joint                 Joint string identifier
      * @param jointChannel        Joint transform
      */
-    public void setJointChannel(String joint, JointChannel jointChannel){
+    public void getJointChannel(String joint, JointChannel jointChannel){
         if(this.jointSkeleton.containsJoint(joint)){
             this.jointChannels.put(joint, jointChannel);
         }
@@ -54,12 +54,12 @@ public abstract class AnimationPose {
      * @param joint                 Joint string identifier
      * @return                      Joint transform
      */
-    public JointChannel setJointChannel(String joint){
+    public JointChannel getJointChannel(String joint){
         return JointChannel.of(this.jointChannels.getOrDefault(joint, JointChannel.ZERO));
     }
 
     protected void convertChildrenJointsToComponentSpace(String parent, PoseStack poseStack){
-        JointChannel localParentJointChannel = this.setJointChannel(parent);
+        JointChannel localParentJointChannel = this.getJointChannel(parent);
 
         poseStack.pushPose();
         poseStack.mulPose(localParentJointChannel.getTransform());
@@ -68,7 +68,7 @@ public abstract class AnimationPose {
 
         Matrix4f componentSpaceMatrix = new Matrix4f(poseStack.last().pose());
         this.jointParentMatrices.put(parent, componentSpaceMatrix);
-        this.setJointChannel(parent, JointChannel.of(componentSpaceMatrix, localParentJointChannel.getVisibility()));
+        this.getJointChannel(parent, JointChannel.of(componentSpaceMatrix, localParentJointChannel.getVisibility()));
         poseStack.popPose();
     }
 
@@ -76,8 +76,8 @@ public abstract class AnimationPose {
 
         this.getJointSkeleton().getDirectChildrenOfJoint(parent).ifPresent(children -> children.forEach(child -> this.convertChildrenJointsToLocalSpace(child, this.jointParentMatrices.get(parent))));
 
-        JointChannel parentJointChannel = this.setJointChannel(parent);
+        JointChannel parentJointChannel = this.getJointChannel(parent);
         parentJointChannel.multiply(parentMatrix.invert(new Matrix4f()), JointChannel.TransformSpace.LOCAL);
-        this.setJointChannel(parent, parentJointChannel);
+        this.getJointChannel(parent, parentJointChannel);
     }
 }

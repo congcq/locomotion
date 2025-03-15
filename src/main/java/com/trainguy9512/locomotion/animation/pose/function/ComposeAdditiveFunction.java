@@ -1,5 +1,6 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
+import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import org.jetbrains.annotations.NotNull;
 
@@ -36,15 +37,19 @@ public class ComposeAdditiveFunction implements PoseFunction<LocalSpacePose> {
         LocalSpacePose additivePose = this.additivePoseInput.compute(context);
         LocalSpacePose additivePoseReference = this.additivePoseReferenceInput.compute(context);
 
-        additivePose.inverseMultiply(additivePoseReference);
-        basePose.multiply(additivePose);
+        additivePoseReference.invert();
 
-        return basePose;
+        additivePose.multiply(additivePoseReference, JointChannel.TransformSpace.COMPONENT);
+        additivePose.multiply(basePose, JointChannel.TransformSpace.COMPONENT);
+
+        return additivePose;
     }
 
     @Override
     public void tick(FunctionEvaluationState evaluationState) {
-
+        this.basePoseInput.tick(evaluationState);
+        this.additivePoseInput.tick(evaluationState);
+        this.additivePoseReferenceInput.tick(evaluationState);
     }
 
     @Override

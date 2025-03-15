@@ -41,16 +41,16 @@ public class JointTransformerFunction<P extends AnimationPose> implements PoseFu
         P pose = this.input.compute(context);
         float weight = this.weightFunction.apply(context);
 
-        JointChannel jointChannel = pose.setJointChannel(this.joint);
+        JointChannel jointChannel = pose.getJointChannel(this.joint);
         this.transformJoint(jointChannel, context, this.translationConfiguration, JointChannel::translate);
         this.transformJoint(jointChannel, context, this.rotationConfiguration, JointChannel::rotate);
         this.transformJoint(jointChannel, context, this.scaleConfiguration, JointChannel::scale);
 
         if(weight != 0){
             if(weight == 1){
-                pose.setJointChannel(this.joint, jointChannel);
+                pose.getJointChannel(this.joint, jointChannel);
             } else {
-                pose.setJointChannel(this.joint, pose.setJointChannel(this.joint).interpolated(jointChannel, weight));
+                pose.getJointChannel(this.joint, pose.getJointChannel(this.joint).interpolated(jointChannel, weight));
             }
         }
         return pose;

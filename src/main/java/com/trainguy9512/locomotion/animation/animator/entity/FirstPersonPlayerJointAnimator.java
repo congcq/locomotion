@@ -154,8 +154,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
 
         PoseFunction<LocalSpacePose> additivePoseFunction = ComposeAdditiveFunction.of(
-                SequencePlayerFunction.builder(ADDITIVE_TEST_BASE).setLooping(true).setPlayRate(evaluationState -> 0.5f).build(),
-                SequencePlayerFunction.builder(ADDITIVE_TEST_ADDITIVE).setLooping(true).build(),
+                SequencePlayerFunction.builder(ADDITIVE_TEST_BASE).setLooping(true).setPlayRate(evaluationState -> 0.25f).build(),
+                SequencePlayerFunction.builder(ADDITIVE_TEST_ADDITIVE).setLooping(true).setPlayRate(evaluationState -> 2f).build(),
                 SequenceEvaluatorFunction.of(ADDITIVE_TEST_ADDITIVE, TimeSpan.ofSeconds(0))
         );
 

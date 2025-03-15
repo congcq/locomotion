@@ -53,7 +53,7 @@ public class LocalSpacePose extends AnimationPose {
     public static LocalSpacePose fromAnimationSequence(JointSkeleton jointSkeleton, ResourceLocation sequenceLocation, TimeSpan time, boolean looping) {
         LocalSpacePose pose = LocalSpacePose.of(jointSkeleton);
         for(String joint : jointSkeleton.getJoints()){
-            pose.setJointChannel(joint, JointChannel.ofJointFromAnimationSequence(sequenceLocation, joint, time, looping));
+            pose.getJointChannel(joint, JointChannel.ofJointFromAnimationSequence(sequenceLocation, joint, time, looping));
         }
         return pose;
     }
@@ -64,8 +64,8 @@ public class LocalSpacePose extends AnimationPose {
 
     public void mirrorWeighted(float weight) {
         this.jointChannels.forEach((joint, transform) -> {
-            JointChannel mirroredTransform = this.setJointChannel(this.getJointSkeleton().getJointConfiguration(joint).mirrorJoint()).mirrored();
-            this.setJointChannel(joint, transform.interpolated(mirroredTransform, weight));
+            JointChannel mirroredTransform = this.getJointChannel(this.getJointSkeleton().getJointConfiguration(joint).mirrorJoint()).mirrored();
+            this.getJointChannel(joint, transform.interpolated(mirroredTransform, weight));
         });
     }
 
@@ -95,8 +95,8 @@ public class LocalSpacePose extends AnimationPose {
 
         joints.forEach(joint -> {
             if(this.getJointSkeleton().containsJoint(joint)){
-                pose.setJointChannel(joint, weight == 1 ? other.setJointChannel(joint) :
-                        pose.setJointChannel(joint).interpolated(other.setJointChannel(joint), weight));
+                pose.getJointChannel(joint, weight == 1 ? other.getJointChannel(joint) :
+                        pose.getJointChannel(joint).interpolated(other.getJointChannel(joint), weight));
             }
         });
         return pose;
@@ -112,15 +112,11 @@ public class LocalSpacePose extends AnimationPose {
         return interpolatedFilteredByJoints(other, 1, joints);
     }
 
-    public void multiply(LocalSpacePose other) {
-        this.jointChannels.forEach((joint, channel) -> {
-            channel.multiply(other.jointChannels.get(joint));
-        });
+    public void multiply(LocalSpacePose other, JointChannel.TransformSpace transformSpace) {
+        this.jointChannels.forEach((joint, channel) -> channel.multiply(other.jointChannels.get(joint), transformSpace));
     }
 
-    public void inverseMultiply(LocalSpacePose other) {
-        this.jointChannels.forEach((joint, channel) -> {
-            channel.inverseMultiply(other.jointChannels.get(joint));
-        });
+    public void invert() {
+        this.jointChannels.forEach((joint, channel) -> channel.invert());
     }
 }

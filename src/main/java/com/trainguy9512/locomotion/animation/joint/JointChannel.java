@@ -56,27 +56,27 @@ public final class JointChannel {
         }
     }
 
-    public Matrix4f getTransform(){
+    public Matrix4f getTransform() {
         return new Matrix4f(this.transform);
     }
 
-    public boolean getVisibility(){
+    public boolean getVisibility() {
         return this.visibility;
     }
 
-    public Vector3f getTranslation(){
+    public Vector3f getTranslation() {
         return this.transform.getTranslation(new Vector3f());
     }
 
-    public Quaternionf getRotation(){
+    public Quaternionf getRotation() {
         return this.transform.getNormalizedRotation(new Quaternionf());
     }
 
-    public Vector3f getEulerRotationZYX(){
+    public Vector3f getEulerRotationZYX() {
         return this.transform.getEulerAnglesZYX(new Vector3f());
     }
 
-    public Vector3f getScale(){
+    public Vector3f getScale() {
         return this.transform.getScale(new Vector3f());
     }
 
@@ -94,7 +94,7 @@ public final class JointChannel {
                 );
     }
 
-    public void translate(Vector3f translation, TransformSpace transformSpace, TransformType transformType){
+    public void translate(Vector3f translation, TransformSpace transformSpace, TransformType transformType) {
         switch (transformType){
             case ADD -> {
                 if(translation.x() != 0 || translation.y() != 0 || translation.z() != 0){
@@ -108,7 +108,7 @@ public final class JointChannel {
         }
     }
 
-    public void rotate(Quaternionf rotation, TransformSpace transformSpace, TransformType transformType){
+    public void rotate(Quaternionf rotation, TransformSpace transformSpace, TransformType transformType) {
         switch (transformType){
             case ADD -> {
                 switch (transformSpace){
@@ -125,7 +125,7 @@ public final class JointChannel {
         }
     }
 
-    public void scale(Vector3f scale, TransformSpace transformSpace, TransformType transformType){
+    public void scale(Vector3f scale, TransformSpace transformSpace, TransformType transformType) {
         switch (transformType){
             case ADD -> {
                 switch (transformSpace){
@@ -145,33 +145,32 @@ public final class JointChannel {
         }
     }
 
-    public void rotate(Vector3f rotationEuler, TransformSpace transformSpace, TransformType transformType){
+    public void rotate(Vector3f rotationEuler, TransformSpace transformSpace, TransformType transformType) {
         this.rotate(new Quaternionf().rotationXYZ(rotationEuler.x(), rotationEuler.y(), rotationEuler.z()), transformSpace, transformType);
     }
 
-    public void multiply(Matrix4f transform, TransformSpace transformSpace){
-        switch (transformSpace){
-            case COMPONENT, PARENT -> JointChannel.of(this.transform.mul(transform), this.visibility);
-            case LOCAL -> JointChannel.of(this.transform.mulLocal(transform), this.visibility);
+    public void multiply(JointChannel other, TransformSpace transformSpace) {
+        this.multiply(other.transform, transformSpace);
+    }
+
+    public void multiply(Matrix4f transform, TransformSpace transformSpace) {
+        switch (transformSpace) {
+            case COMPONENT, PARENT -> this.transform.mul(transform);
+            case LOCAL -> this.transform.mulLocal(transform);
         }
     }
 
-    //TODO: Why does this use translated and rotated?
-    public void multiply(JointChannel jointChannel){
-        this.transform.mul(jointChannel.transform);
+    public void invert() {
+        this.transform.invert();
     }
 
-    public void inverseMultiply(JointChannel jointChannel){
-        this.transform.mul(jointChannel.transform.invert());
-    }
-
-    public JointChannel mirrored(){
+    public JointChannel mirrored() {
         Vector3f mirroredTranslation = this.getTranslation().mul(-1, 1, 1);
         Vector3f mirroredRotation = this.getEulerRotationZYX().mul(1, -1, -1);
         return JointChannel.ofTranslationRotationScaleEuler(mirroredTranslation, mirroredRotation, new Vector3f(1), this.visibility);
     }
 
-    public JointChannel interpolated(JointChannel other, float weight){
+    public JointChannel interpolated(JointChannel other, float weight) {
         Vector3f translation = this.transform.getTranslation(new Vector3f());
         Quaternionf rotation = this.transform.getNormalizedRotation(new Quaternionf());
         Vector3f scale = this.transform.getScale(new Vector3f());
@@ -189,7 +188,7 @@ public final class JointChannel {
         return JointChannel.of(new Matrix4f().translationRotateScale(translation, rotation, scale), visibility);
     }
 
-    public void transformPoseStack(PoseStack poseStack, float transformMultiplier){
+    public void transformPoseStack(PoseStack poseStack, float transformMultiplier) {
         Matrix4f matrix4f = new Matrix4f(this.transform);
         poseStack.mulPose(matrix4f.setTranslation(this.getTranslation().div(new Vector3f(transformMultiplier))));
 
@@ -203,7 +202,7 @@ public final class JointChannel {
         //poseStack.scale(scale.x(), scale.y(), scale.z());
     }
 
-    public void transformPoseStack(PoseStack poseStack){
+    public void transformPoseStack(PoseStack poseStack) {
         this.transformPoseStack(poseStack, 1F);
     }
 
