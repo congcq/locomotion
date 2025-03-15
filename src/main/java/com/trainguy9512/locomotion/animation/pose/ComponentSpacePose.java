@@ -35,7 +35,7 @@ public class ComponentSpacePose extends AnimationPose {
      * @return                      Joint transform
      */
     public JointChannel getComponentSpaceTransform(String joint){
-        return JointChannel.of(this.jointTransforms.getOrDefault(joint, JointChannel.ZERO));
+        return JointChannel.of(this.jointChannels.getOrDefault(joint, JointChannel.ZERO));
     }
 
     /**

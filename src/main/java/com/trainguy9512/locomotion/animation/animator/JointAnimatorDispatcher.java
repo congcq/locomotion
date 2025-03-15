@@ -112,7 +112,7 @@ public class JointAnimatorDispatcher {
                 .forEach(joint -> {
                     if(jointSkeleton.getJointConfiguration(joint).usesModelPart()){
                         entityModel.getAnyDescendantWithName(jointSkeleton.getJointConfiguration(joint).modelPartIdentifier()).ifPresent(
-                                modelPart -> ((MatrixModelPart)(Object) modelPart).locomotion$setMatrix(animationPose.getJointTransform(joint).getTransform())
+                                modelPart -> ((MatrixModelPart)(Object) modelPart).locomotion$setMatrix(animationPose.setJointChannel(joint).getTransform())
                         );
                     }
                 });

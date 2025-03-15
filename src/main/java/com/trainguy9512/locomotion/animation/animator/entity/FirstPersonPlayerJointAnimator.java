@@ -148,8 +148,19 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 )
                 .build();
 
+
+
+
+        PoseFunction<LocalSpacePose> additivePoseFunction = SequenceEvaluatorFunction.of(POSE_TEST, TimeSpan.ofSeconds(0));
+
+
+
+
         PoseFunction<LocalSpacePose> movementDirectionOffsetTransformer = LocalConversionFunction.of(
-                JointTransformerFunction.componentSpaceBuilder(ComponentConversionFunction.of(movingSequencePlayer), ARM_BUFFER_JOINT)
+                JointTransformerFunction.componentSpaceBuilder(ComponentConversionFunction.of(
+                        additivePoseFunction
+                                ),
+                                ARM_BUFFER_JOINT)
                         .setTranslation(
                                 context -> context.dataContainer().getDriverValue(MOVEMENT_DIRECTION_OFFSET, context.partialTicks()),
                                 JointChannel.TransformType.ADD,

@@ -159,13 +159,10 @@ public final class JointChannel {
     //TODO: Why does this use translated and rotated?
     public void multiply(JointChannel jointChannel){
         this.transform.mul(jointChannel.transform);
-        //this.translate(jointTransform.getTranslation(), TransformSpace.COMPONENT, TransformType.ADD);
-        //this.rotate(jointTransform.getRotation(), TransformSpace.COMPONENT, TransformType.ADD);
     }
 
     public void inverseMultiply(JointChannel jointChannel){
-        this.translate(jointChannel.getTranslation().negate(), TransformSpace.COMPONENT, TransformType.ADD);
-        this.rotate(jointChannel.getRotation().invert(), TransformSpace.COMPONENT, TransformType.ADD);
+        this.transform.mul(jointChannel.transform.invert());
     }
 
     public JointChannel mirrored(){

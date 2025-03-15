@@ -14,7 +14,7 @@ public class LocalSpacePose extends AnimationPose {
         super(jointSkeleton);
     }
 
-    private LocalSpacePose(AnimationPose pose){
+    private LocalSpacePose(AnimationPose pose) {
         super(pose);
     }
 
@@ -24,19 +24,19 @@ public class LocalSpacePose extends AnimationPose {
      * @param jointSkeleton         Template joint skeleton
      * @return                      New animation pose
      */
-    public static LocalSpacePose of(JointSkeleton jointSkeleton){
+    public static LocalSpacePose of(JointSkeleton jointSkeleton) {
         return new LocalSpacePose(jointSkeleton);
     }
 
 
-    public static LocalSpacePose of(AnimationPose pose){
+    public static LocalSpacePose of(AnimationPose pose) {
         return new LocalSpacePose(pose);
     }
 
     /**
      * Creates a local space pose from this component space pose.
      */
-    public ComponentSpacePose convertedToComponentSpace(){
+    public ComponentSpacePose convertedToComponentSpace() {
         ComponentSpacePose pose = ComponentSpacePose.of(this);
         pose.convertChildrenJointsToComponentSpace(this.getJointSkeleton().getRootJoint(), new PoseStack());
         return pose;
@@ -50,22 +50,22 @@ public class LocalSpacePose extends AnimationPose {
      * @param looping               Whether the animation should be looped or not.
      * @return                      New animation pose
      */
-    public static LocalSpacePose fromAnimationSequence(JointSkeleton jointSkeleton, ResourceLocation sequenceLocation, TimeSpan time, boolean looping){
+    public static LocalSpacePose fromAnimationSequence(JointSkeleton jointSkeleton, ResourceLocation sequenceLocation, TimeSpan time, boolean looping) {
         LocalSpacePose pose = LocalSpacePose.of(jointSkeleton);
         for(String joint : jointSkeleton.getJoints()){
-            pose.setJointTransform(joint, JointChannel.ofJointFromAnimationSequence(sequenceLocation, joint, time, looping));
+            pose.setJointChannel(joint, JointChannel.ofJointFromAnimationSequence(sequenceLocation, joint, time, looping));
         }
         return pose;
     }
 
-    public void mirror(){
+    public void mirror() {
         this.mirrorWeighted(1);
     }
 
-    public void mirrorWeighted(float weight){
-        this.jointTransforms.forEach((joint, transform) -> {
-            JointChannel mirroredTransform = this.getJointTransform(this.getJointSkeleton().getJointConfiguration(joint).mirrorJoint()).mirrored();
-            this.setJointTransform(joint, transform.interpolated(mirroredTransform, weight));
+    public void mirrorWeighted(float weight) {
+        this.jointChannels.forEach((joint, transform) -> {
+            JointChannel mirroredTransform = this.setJointChannel(this.getJointSkeleton().getJointConfiguration(joint).mirrorJoint()).mirrored();
+            this.setJointChannel(joint, transform.interpolated(mirroredTransform, weight));
         });
     }
 
@@ -75,7 +75,7 @@ public class LocalSpacePose extends AnimationPose {
      * @param weight    Weight value, 0 is the original pose and 1 is the other pose.
      * @return          New interpolated animation pose.
      */
-    public LocalSpacePose interpolated(LocalSpacePose other, float weight){
+    public LocalSpacePose interpolated(LocalSpacePose other, float weight) {
         return interpolatedFilteredByJoints(other, weight, this.jointSkeleton.getJoints());
     }
 
@@ -89,14 +89,14 @@ public class LocalSpacePose extends AnimationPose {
     public LocalSpacePose interpolatedFilteredByJoints(LocalSpacePose other, float weight, Set<String> joints) {
         LocalSpacePose pose = LocalSpacePose.of(this);
         // If the weight is 0, don't interpolate anything and just return this.
-        if(weight == 0){
+        if(weight == 0) {
             return pose;
         }
 
         joints.forEach(joint -> {
             if(this.getJointSkeleton().containsJoint(joint)){
-                pose.setJointTransform(joint, weight == 1 ? other.getJointTransform(joint) :
-                        pose.getJointTransform(joint).interpolated(other.getJointTransform(joint), weight));
+                pose.setJointChannel(joint, weight == 1 ? other.setJointChannel(joint) :
+                        pose.setJointChannel(joint).interpolated(other.setJointChannel(joint), weight));
             }
         });
         return pose;
@@ -108,7 +108,19 @@ public class LocalSpacePose extends AnimationPose {
      * @param joints    Set of joints to filter by.
      * @return          New filtered animation pose.
      */
-    public LocalSpacePose filteredByJoints(LocalSpacePose other, Set<String> joints){
+    public LocalSpacePose filteredByJoints(LocalSpacePose other, Set<String> joints) {
         return interpolatedFilteredByJoints(other, 1, joints);
+    }
+
+    public void multiply(LocalSpacePose other) {
+        this.jointChannels.forEach((joint, channel) -> {
+            channel.multiply(other.jointChannels.get(joint));
+        });
+    }
+
+    public void inverseMultiply(LocalSpacePose other) {
+        this.jointChannels.forEach((joint, channel) -> {
+            channel.inverseMultiply(other.jointChannels.get(joint));
+        });
     }
 }
