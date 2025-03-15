@@ -109,6 +109,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public static final ResourceLocation ROM_TEST = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "rom_test");
     public static final ResourceLocation POSE_TEST = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "pose_test");
+    public static final ResourceLocation ADDITIVE_TEST_BASE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "additive_test_base");
+    public static final ResourceLocation ADDITIVE_TEST_ADDITIVE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "additive_test_additive");
 
     public enum TestStates {
         IDLE,
