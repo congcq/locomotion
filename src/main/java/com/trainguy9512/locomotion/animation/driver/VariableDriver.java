@@ -118,4 +118,9 @@ public class VariableDriver<D> implements Driver<D> {
     public static VariableDriver<Vector3f> ofVector(Supplier<Vector3f> defaultValue) {
         return VariableDriver.ofInterpolatable(defaultValue, Interpolator.VECTOR);
     }
+
+    @Override
+    public String toString() {
+        return this.currentValue.toString();
+    }
 }

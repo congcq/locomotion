@@ -73,6 +73,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<ItemStack>> RENDERED_OFF_HAND_ITEM = DriverKey.of("rendered_off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
 
     public static final DriverKey<VariableDriver<Float>> WALK_SPEED = DriverKey.of("walk_speed", () -> VariableDriver.ofFloat(() -> 0f));
+    public static final DriverKey<VariableDriver<Boolean>> IS_GROUNDED = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> false));
 
     @Override
     public void postProcessModelParts(EntityModel<PlayerRenderState> entityModel, PlayerRenderState entityRenderState) {
@@ -193,6 +194,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
 
+        driverContainer.getDriver(IS_GROUNDED).setValue(dataReference.onGround());
 
         Vector3f velocity = new Vector3f((float) (dataReference.getX() - dataReference.xo), (float) (dataReference.getY() - dataReference.yo), (float) (dataReference.getZ() - dataReference.zo));
         velocity.mul(1, 0.5f, 1);
