@@ -9,12 +9,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.function.Function;
 
-public class BlendMultipleFunction implements PoseFunction<LocalSpacePose> {
+public class BlendFunction implements PoseFunction<LocalSpacePose> {
 
     private final PoseFunction<LocalSpacePose> baseFunction;
     private final Map<BlendInput, VariableDriver<Float>> inputs;
 
-    public BlendMultipleFunction(PoseFunction<LocalSpacePose> baseFunction, Map<BlendInput, VariableDriver<Float>> inputs){
+    public BlendFunction(PoseFunction<LocalSpacePose> baseFunction, Map<BlendInput, VariableDriver<Float>> inputs){
         this.baseFunction = baseFunction;
         this.inputs = inputs;
     }
@@ -51,7 +51,7 @@ public class BlendMultipleFunction implements PoseFunction<LocalSpacePose> {
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        Builder builder = BlendMultipleFunction.builder(this.baseFunction.wrapUnique());
+        Builder builder = BlendFunction.builder(this.baseFunction.wrapUnique());
         for(BlendInput blendInput : this.inputs.keySet()){
             builder.addBlendInput(blendInput.inputFunction.wrapUnique(), blendInput.weightFunction, blendInput.jointMask.orElse(null));
         }
@@ -81,8 +81,8 @@ public class BlendMultipleFunction implements PoseFunction<LocalSpacePose> {
             return this.addBlendInput(inputFunction, weightFunction, null);
         }
 
-        public BlendMultipleFunction build(){
-            return new BlendMultipleFunction(this.baseFunction, this.inputs);
+        public BlendFunction build(){
+            return new BlendFunction(this.baseFunction, this.inputs);
         }
     }
 

@@ -1,12 +1,9 @@
 package com.trainguy9512.locomotion.animation.animator.entity;
 
-import com.mojang.math.Axis;
-import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.*;
 import com.trainguy9512.locomotion.animation.driver.SpringDriver;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.driver.DriverKey;
-import com.trainguy9512.locomotion.animation.pose.AnimationPose;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.*;
@@ -20,8 +17,6 @@ import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -155,7 +150,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         PoseFunction<LocalSpacePose> additivePoseFunction = ComposeAdditiveFunction.of(
                 SequencePlayerFunction.builder(ADDITIVE_TEST_BASE).setLooping(true).setPlayRate(evaluationState -> 0.25f).build(),
-                SequencePlayerFunction.builder(ADDITIVE_TEST_ADDITIVE).setLooping(true).setPlayRate(evaluationState -> 2f).build(),
+                BlendSpace1DPlayerFunction.builder(evaluationState -> evaluationState.dataContainer().getDriverValue(WALK_SPEED))
+                        .addEntry(0, ADDITIVE_TEST_ADDITIVE, 1)
+                        .addEntry(1, ADDITIVE_TEST_ADDITIVE, 2)
+                        .build(),
                 SequenceEvaluatorFunction.of(ADDITIVE_TEST_ADDITIVE, TimeSpan.ofSeconds(0))
         );
 
@@ -180,7 +178,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .build());
 
         //PoseFunction<LocalSpacePose> cached = cachedPoseContainer.getOrThrow("TEST_SEQ_PLAYER");
-        PoseFunction<LocalSpacePose> blendMultipleFunction = BlendMultipleFunction.builder(testSequencePlayer).addBlendInput(testSequencePlayer, (evaluationState) -> 0.5f).build();
+        PoseFunction<LocalSpacePose> blendMultipleFunction = BlendFunction.builder(testSequencePlayer).addBlendInput(testSequencePlayer, (evaluationState) -> 0.5f).build();
 
         return movementDirectionOffsetTransformer;
     }
