@@ -15,7 +15,7 @@ import java.util.Map;
 @Deprecated
 public class AnimationMontageTrack extends PoseSampler implements SampleableFromInput {
 
-    private final LinkedHashMap<MontageConfiguration, Float> montages;
+    private final LinkedHashMap<MontageConfigurationOLD, Float> montages;
 
     protected AnimationMontageTrack(Builder<?> builder) {
         super(builder);
@@ -50,8 +50,8 @@ public class AnimationMontageTrack extends PoseSampler implements SampleableFrom
     public AnimationPose sample(PoseCalculationDataContainer dataContainer, JointSkeleton jointSkeleton, AnimationPose inputPose, float partialTicks) {
         if(!this.montages.isEmpty()){
             AnimationPose pose = null;// new AnimationPose(inputPose);
-            for (Map.Entry<MontageConfiguration, Float> entry : this.montages.entrySet()){
-                MontageConfiguration configuration = entry.getKey();
+            for (Map.Entry<MontageConfigurationOLD, Float> entry : this.montages.entrySet()){
+                MontageConfigurationOLD configuration = entry.getKey();
                 float timeElapsed = entry.getValue();
                 float weight = configuration.getWeight(timeElapsed);
                 if(weight > 0){
@@ -77,9 +77,9 @@ public class AnimationMontageTrack extends PoseSampler implements SampleableFrom
         //this.montages.putLast(montageConfigurationKey.createInstance(), 0f);
     }
 
-    public record MontageConfiguration(ResourceLocation animationSequence, float startTime, float endTime, float playRate, float transitionInDuration, float transitionOutDuration, Easing transitionInEasing, Easing transitionOutEasing, float transitionOutStartTime){
+    public record MontageConfigurationOLD(ResourceLocation animationSequence, float startTime, float endTime, float playRate, float transitionInDuration, float transitionOutDuration, Easing transitionInEasing, Easing transitionOutEasing, float transitionOutStartTime){
 
-        private MontageConfiguration(Builder builder){
+        private MontageConfigurationOLD(Builder builder){
             this(builder.animationSequence, builder.startTime, builder.endTime, builder.playRate, builder.transitionInDuration, builder.transitionOutDuration, builder.transitionInEasing, builder.transitionOutEasing, builder.transitionOutStartTime);
         }
 
@@ -183,8 +183,8 @@ public class AnimationMontageTrack extends PoseSampler implements SampleableFrom
                 return this;
             }
 
-            public MontageConfiguration build(){
-                return new MontageConfiguration(this);
+            public MontageConfigurationOLD build(){
+                return new MontageConfigurationOLD(this);
             }
         }
     }

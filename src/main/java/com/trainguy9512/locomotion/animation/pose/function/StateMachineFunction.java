@@ -27,7 +27,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     };
 
 
-    protected StateMachineFunction(Map<S, State<S>> states, List<S> activeStates) {
+    private StateMachineFunction(Map<S, State<S>> states, List<S> activeStates) {
         super(evaluationState -> true, evaluationState -> 1f, 0);
         this.states = states;
         this.activeStates = activeStates;
@@ -124,11 +124,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         return builder.build();
     }
 
-    public static <S extends Enum<S>> Builder<S> builder(S[] values){
-        return new Builder<>();
-    }
-
-    public Builder<S> builder(){
+    public Builder<S> builder() {
         return new Builder<>();
     }
 
