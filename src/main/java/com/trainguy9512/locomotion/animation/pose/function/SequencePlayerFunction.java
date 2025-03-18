@@ -1,29 +1,41 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.google.common.collect.Maps;
-import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.util.Tuple;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose> {
+public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose> implements AnimationPlayer {
 
     private final ResourceLocation animationSequence;
     private final boolean looping;
+    private final boolean ignoredByRelevancyTest;
     private final Map<String, Consumer<FunctionEvaluationState>> timeMarkerBindings;
 
-    protected SequencePlayerFunction(Function<FunctionEvaluationState, Boolean> isPlayingFunction, Function<FunctionEvaluationState, Float> playRateFunction, float resetStartTimeOffsetTicks, ResourceLocation animationSequence, boolean looping, Map<String, Consumer<FunctionEvaluationState>> timeMarkerBindings) {
+    protected SequencePlayerFunction(
+            Function<FunctionEvaluationState, Boolean> isPlayingFunction,
+            Function<FunctionEvaluationState, Float> playRateFunction,
+            float resetStartTimeOffsetTicks,
+            ResourceLocation animationSequence,
+            boolean looping,
+            boolean ignoredByRelevancyTest,
+            Map<String, Consumer<FunctionEvaluationState>> timeMarkerBindings
+    ) {
         super(isPlayingFunction, playRateFunction, resetStartTimeOffsetTicks);
         this.animationSequence = animationSequence;
         this.looping = looping;
         this.timeMarkerBindings = timeMarkerBindings;
+        this.ignoredByRelevancyTest = false;
     }
 
     @Override
@@ -49,37 +61,53 @@ public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        return new SequencePlayerFunction(this.isPlayingFunction, this.playRateFunction, this.resetStartTimeOffsetTicks, this.animationSequence, this.looping, this.timeMarkerBindings);
+        return new SequencePlayerFunction(
+                this.isPlayingFunction,
+                this.playRateFunction,
+                this.resetStartTimeOffsetTicks,
+                this.animationSequence,
+                this.looping,
+                this.ignoredByRelevancyTest,
+                this.timeMarkerBindings
+        );
     }
 
-    /**
-     * Returns whether this sequence player has just looped or finished in the previous tick.
-     * Meant to be called in contexts just prior to this sequence player updating, like {@link StateMachineFunction#SEQUENCE_PLAYER_IN_ACTIVE_STATE_HAS_FINISHED}
-     */
-    public boolean hasJustLoopedOrFinished() {
-        float lengthInTicks = AnimationSequenceData.INSTANCE.getOrThrow(animationSequence).length().inTicks();
-        boolean hasProgressedToOrPastLength = this.timeTicksElapsed >= lengthInTicks;
-        if(this.looping){
-            return this.timeTicksElapsed % lengthInTicks - this.playRate <= 0 && hasProgressedToOrPastLength;
-        } else {
-            return this.timeTicksElapsed - this.playRate >= lengthInTicks && hasProgressedToOrPastLength;
-        }
+    @Override
+    public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
+        return this.ignoredByRelevancyTest ? Optional.empty() : Optional.of(this);
     }
 
     public static Builder<?> builder(ResourceLocation animationSequence) {
         return new Builder<>(animationSequence);
     }
 
+    @Override
+    public Tuple<TimeSpan, TimeSpan> getRemainingTime() {
+        float lengthInTicks = AnimationSequenceData.INSTANCE.getOrThrow(animationSequence).length().inTicks();
+        float remainingTimePreviously;
+        float remainingTimeCurrently;
+        if (this.looping) {
+            remainingTimePreviously = lengthInTicks - ((this.timeTicksElapsed - this.playRate) % lengthInTicks);
+            remainingTimeCurrently = lengthInTicks - (this.timeTicksElapsed % lengthInTicks);
+        } else {
+            remainingTimePreviously = lengthInTicks - (Mth.clamp(this.timeTicksElapsed - this.playRate, 0, lengthInTicks));
+            remainingTimeCurrently = lengthInTicks - (Mth.clamp(this.timeTicksElapsed, 0, lengthInTicks));
+        }
+        return new Tuple<>(TimeSpan.ofTicks(remainingTimePreviously), TimeSpan.ofTicks(remainingTimeCurrently));
+    }
+
     public static class Builder<B extends Builder<B>> extends TimeBasedPoseFunction.Builder<B>{
 
         private final ResourceLocation animationSequence;
         private boolean looping;
+        private boolean ignoredForRelevancyTest;
         private final Map<String, Consumer<FunctionEvaluationState>> timeMarkerBindings;
 
         protected Builder(ResourceLocation animationSequence){
             super();
             this.animationSequence = animationSequence;
             this.looping = false;
+            this.ignoredForRelevancyTest = false;
             this.timeMarkerBindings = Maps.newHashMap();
         }
 
@@ -113,8 +141,28 @@ public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose
             return (B) this;
         }
 
+        /**
+         * Marks this sequence player function to be ignored by {@link PoseFunction#testForMostRelevantAnimationPlayer()}.
+         * <p>
+         * If multiple sequence players of equal relevance are used by a state that has an automatic out-transition, use this
+         * to exclude players that shouldn't be retrieved.
+         */
+        @SuppressWarnings("unchecked")
+        public B ignoreForRelevancyTest() {
+            this.ignoredForRelevancyTest = true;
+            return (B) this;
+        }
+
         public SequencePlayerFunction build() {
-            return new SequencePlayerFunction(this.isPlayingFunction, this.playRateFunction, this.resetStartTimeOffsetTicks, this.animationSequence, this.looping, this.timeMarkerBindings);
+            return new SequencePlayerFunction(
+                    this.isPlayingFunction,
+                    this.playRateFunction,
+                    this.resetStartTimeOffsetTicks,
+                    this.animationSequence,
+                    this.looping,
+                    this.ignoredForRelevancyTest,
+                    this.timeMarkerBindings
+            );
         }
     }
 }

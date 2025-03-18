@@ -1,8 +1,11 @@
 package com.trainguy9512.locomotion.animation.pose.function.cache;
 
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
+import com.trainguy9512.locomotion.animation.pose.function.AnimationPlayer;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Optional;
 
 public class CachedPoseFunction implements PoseFunction<LocalSpacePose> {
 
@@ -41,6 +44,11 @@ public class CachedPoseFunction implements PoseFunction<LocalSpacePose> {
     public PoseFunction<LocalSpacePose> wrapUnique() {
         this.input = input.wrapUnique();
         return this;
+    }
+
+    @Override
+    public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
+        return Optional.empty();
     }
 
     public void clearCache(){

@@ -5,9 +5,11 @@ import com.trainguy9512.locomotion.animation.pose.AnimationPose;
 import com.trainguy9512.locomotion.animation.pose.ComponentSpacePose;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 public class JointTransformerFunction<P extends AnimationPose> implements PoseFunction<P> {
@@ -68,6 +70,11 @@ public class JointTransformerFunction<P extends AnimationPose> implements PoseFu
     @Override
     public PoseFunction<P> wrapUnique() {
         return new JointTransformerFunction<>(this.input.wrapUnique(), this.joint, this.translationConfiguration, this.rotationConfiguration, this.scaleConfiguration, this.weightFunction);
+    }
+
+    @Override
+    public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
+        return this.input.testForMostRelevantAnimationPlayer();
     }
 
     public static Builder<LocalSpacePose> localOrParentSpaceBuilder(PoseFunction<LocalSpacePose> poseFunction, String joint){

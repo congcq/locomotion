@@ -4,6 +4,9 @@ import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.data.PoseCalculationDataContainer;
 import com.trainguy9512.locomotion.animation.pose.AnimationPose;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Optional;
 
 public interface PoseFunction<P extends AnimationPose> {
 
@@ -30,6 +33,16 @@ public interface PoseFunction<P extends AnimationPose> {
      * @return                  Clean copy of the pose function with its inputs being clean copies
      */
     PoseFunction<P> wrapUnique();
+
+    /**
+     * Recursive method that goes down the chain of pose functions returns the most relevant {@link AnimationPlayer}.
+     * <p>
+     * If this pose function is not an {@link AnimationPlayer}, or it is set to be ignored for relevancy tests,
+     * then call this method for all inputs in order of most to least relevant.
+     * If this pose function is the end of a chain and is not an animation player, then return null.
+     * @return                  Most relevant animation player, if it exists in this part of the chain.
+     */
+    Optional<AnimationPlayer> testForMostRelevantAnimationPlayer();
 
     record FunctionEvaluationState(OnTickDriverContainer dataContainer, boolean isResetting, long currentTick){
 

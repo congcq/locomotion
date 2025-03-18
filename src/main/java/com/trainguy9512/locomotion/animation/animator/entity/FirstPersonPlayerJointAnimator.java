@@ -128,20 +128,21 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         //cachedPoseContainer.register("TEST_SEQ_PLAYER", testSequencePlayer);
 
 
+        PoseFunction<LocalSpacePose> testIdlePlayer = SequenceEvaluatorFunction.of(POSE_TEST, context -> TimeSpan.ofSeconds(0));
+        PoseFunction<LocalSpacePose> testMovingPlayer = SequencePlayerFunction.builder(ADDITIVE_TEST_ADDITIVE).build();
+
         PoseFunction<LocalSpacePose> testStateMachine = StateMachineFunction.builder(TestStates.values())
-                .addState(TestStates.IDLE, testSequencePlayer, true,
+                .addState(TestStates.IDLE, testIdlePlayer, true,
                         StateMachineFunction.StateTransition.builder(TestStates.MOVING,
-                                        transitionContext -> transitionContext.dataContainer().getDriverValue(WALK_SPEED) >= 0.5f,
+                                        transitionContext -> transitionContext.dataContainer().getDriverValue(WALK_SPEED) >= 0.2f,
                                         StateMachineFunction.CURRENT_TRANSITION_FINISHED)
-                                .setTransitionDuration(TimeSpan.ofSeconds(0.01f))
-                                .setEasing(Easing.SINE_IN_OUT)
+                                .setTransitionDuration(TimeSpan.of24FramesPerSecond(2))
                                 .build()
                 )
-                .addState(TestStates.MOVING, movingSequencePlayer, true,
+                .addState(TestStates.MOVING, testMovingPlayer, true,
                         StateMachineFunction.StateTransition.builder(TestStates.IDLE, context -> false)
-                                .makeAutomaticTransitionBasedOnActiveSequencePlayer()
-                                .setTransitionDuration(TimeSpan.ofSeconds(0.5f))
-                                .setEasing(Easing.easeOut(Easing.Elastic.easeInOf(6, 3)))
+                                .makeAutomaticBasedOnMostRelevantPlayer(0)
+                                .setTransitionDuration(TimeSpan.of24FramesPerSecond(7))
                                 .build()
                 )
                 .build();
@@ -163,7 +164,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         PoseFunction<LocalSpacePose> movementDirectionOffsetTransformer = LocalConversionFunction.of(
                 JointTransformerFunction.componentSpaceBuilder(ComponentConversionFunction.of(
-                        additivePoseFunction
+                        testStateMachine
                                 ),
                                 ARM_BUFFER_JOINT)
                         .setTranslation(

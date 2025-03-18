@@ -1,7 +1,6 @@
 package com.trainguy9512.locomotion.animation.pose.function.montage;
 
 import com.google.common.collect.Maps;
-import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import com.trainguy9512.locomotion.util.Easing;
 import com.trainguy9512.locomotion.util.TimeSpan;
@@ -10,8 +9,21 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.Map;
 import java.util.function.Consumer;
 
+/**
+ * Configuration for a triggerable animation, otherwise known
+ * @param slot
+ * @param animationSequence
+ * @param playRate
+ * @param timeMarkerBindings
+ * @param startTimeOffset
+ * @param endTimeOffset
+ * @param transitionInDuration
+ * @param transitionOutDuration
+ * @param transitionInEasing
+ * @param transitionOutEasing
+ */
 public record MontageConfiguration(
-        String targetTrack,
+        String slot,
         ResourceLocation animationSequence,
         float playRate,
         Map<String, Consumer<PoseFunction.FunctionEvaluationState>> timeMarkerBindings,
@@ -29,7 +41,7 @@ public record MontageConfiguration(
 
     public static class Builder {
 
-        private final String targetTrack;
+        private final String slot;
         private final ResourceLocation animationSequence;
         private float playRate;
         private final Map<String, Consumer<PoseFunction.FunctionEvaluationState>> timeMarkerBindings;
@@ -40,8 +52,8 @@ public record MontageConfiguration(
         private Easing transitionInEasing;
         private Easing transitionOutEasing;
 
-        private Builder(String targetTrack, ResourceLocation animationSequence) {
-            this.targetTrack = targetTrack;
+        private Builder(String slot, ResourceLocation animationSequence) {
+            this.slot = slot;
             this.animationSequence = animationSequence;
             this.playRate = 1;
             this.timeMarkerBindings = Maps.newHashMap();
@@ -123,7 +135,7 @@ public record MontageConfiguration(
 
         public MontageConfiguration build() {
             return new MontageConfiguration(
-                    this.targetTrack,
+                    this.slot,
                     this.animationSequence,
                     this.playRate,
                     this.timeMarkerBindings,

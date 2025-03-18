@@ -3,7 +3,9 @@ package com.trainguy9512.locomotion.animation.pose.function;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 public class ComposeAdditiveFunction implements PoseFunction<LocalSpacePose> {
@@ -55,5 +57,15 @@ public class ComposeAdditiveFunction implements PoseFunction<LocalSpacePose> {
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
         return new ComposeAdditiveFunction(this.basePoseInput.wrapUnique(), this.additivePoseInput.wrapUnique(), this.additivePoseReferenceInput.wrapUnique(), this.weightFunction);
+    }
+
+    @Override
+    public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
+        // Test the base pose input first. If it does not have a relevant animation player, then test the additive pose input.
+        Optional<AnimationPlayer> test = this.basePoseInput.testForMostRelevantAnimationPlayer();
+        if (test.isPresent()) {
+            return test;
+        }
+        return this.additivePoseInput.testForMostRelevantAnimationPlayer();
     }
 }

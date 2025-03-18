@@ -58,6 +58,22 @@ public class BlendFunction implements PoseFunction<LocalSpacePose> {
         return builder.build();
     }
 
+    @Override
+    public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
+        List<Optional<AnimationPlayer>> blendAnimationPlayers = new ArrayList<>();
+        this.inputs.forEach(((blendInput, weightDriver) -> {
+            if (weightDriver.getCurrentValue() >= 0.5f) {
+                blendAnimationPlayers.add(blendInput.inputFunction.testForMostRelevantAnimationPlayer());
+            }
+        }));
+        if (!blendAnimationPlayers.isEmpty()) {
+            return blendAnimationPlayers.getLast();
+        } else {
+            return this.baseFunction.testForMostRelevantAnimationPlayer();
+        }
+    }
+
+
     public static Builder builder(PoseFunction<LocalSpacePose> base){
         return new Builder(base);
     }

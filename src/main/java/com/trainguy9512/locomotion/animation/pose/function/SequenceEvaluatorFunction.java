@@ -4,7 +4,9 @@ import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 public class SequenceEvaluatorFunction implements PoseFunction<LocalSpacePose> {
@@ -44,5 +46,10 @@ public class SequenceEvaluatorFunction implements PoseFunction<LocalSpacePose> {
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
         return new SequenceEvaluatorFunction(this.animationSequenceLocation, this.sequenceTimeFunction);
+    }
+
+    @Override
+    public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
+        return Optional.empty();
     }
 }

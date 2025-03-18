@@ -7,6 +7,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.function.Function;
 
@@ -80,6 +81,12 @@ public class BlendSpace1DPlayerFunction extends TimeBasedPoseFunction<LocalSpace
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
         return new BlendSpace1DPlayerFunction(this.isPlayingFunction, this.playRateFunction, this.resetStartTimeOffsetTicks, this.blendSpaceEntries, this.blendPositionFunction);
+    }
+
+    @Override
+    public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
+        // TODO: Revisit making blend spaces considered to be an animation player.
+        return Optional.empty();
     }
 
     public static Builder<?> builder(Function<FunctionEvaluationState, Float> blendValueFunction) {

@@ -2,12 +2,14 @@ package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
+import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.util.Easing;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import net.minecraft.util.Mth;
+import net.minecraft.util.Tuple;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -18,14 +20,6 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     private final Map<S, State<S>> states;
     private final List<S> activeStates;
-
-    public static final Predicate<StateTransition.TransitionContext> CURRENT_TRANSITION_FINISHED = transitionContext -> transitionContext.currentStateWeight() == 1;
-    public static final Predicate<StateTransition.TransitionContext> SEQUENCE_PLAYER_IN_ACTIVE_STATE_HAS_FINISHED = transitionContext -> {
-        if (transitionContext.currentStateInput instanceof SequencePlayerFunction)
-            return ((SequencePlayerFunction) transitionContext.currentStateInput).hasJustLoopedOrFinished();
-        return false;
-    };
-
 
     private StateMachineFunction(Map<S, State<S>> states, List<S> activeStates) {
         super(evaluationState -> true, evaluationState -> 1f, 0);
@@ -70,11 +64,6 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         S currentActiveStateIdentifier = this.activeStates.getLast();
         State<S> currentActiveState = this.states.get(currentActiveStateIdentifier);
 
-        StateTransition.TransitionContext transitionContext = StateTransition.TransitionContext.of(
-                evaluationState.dataContainer(),
-                this.timeTicksElapsed,
-                this.states.get(currentActiveStateIdentifier).weight.getCurrentValue(),
-                this.states.get(currentActiveStateIdentifier).inputFunction);
 
         // Filter each potential state transition by whether it's valid, then filter by whether its condition predicate is true,
         // then shuffle it in order to make equal priority transitions randomized and re-order the valid transitions by filter order.
@@ -83,6 +72,13 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                     boolean transitionTargetIncludedInThisMachine = this.states.containsKey(transition.target);
                     boolean targetIsNotCurrentActiveState = transition.target() != currentActiveStateIdentifier;
                     if(transitionTargetIncludedInThisMachine && targetIsNotCurrentActiveState){
+                        StateTransition.TransitionContext transitionContext = StateTransition.TransitionContext.of(
+                                evaluationState.dataContainer(),
+                                this.timeTicksElapsed,
+                                this.states.get(currentActiveStateIdentifier).weight.getCurrentValue(),
+                                this.states.get(currentActiveStateIdentifier).inputFunction,
+                                TimeSpan.ofTicks(transition.transitionDurationTicks)
+                        );
                         return transition.conditionPredicate().test(transitionContext);
                     }
                     return false;
@@ -124,7 +120,23 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         return builder.build();
     }
 
-    public Builder<S> builder() {
+    @Override
+    public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
+        // Search for an animation player in the active states from most active to least active.
+        for (int iteration = this.activeStates.size() - 1; iteration >= 0; iteration--) {
+            var potentialPlayer = this.states.get(activeStates.get(iteration)).inputFunction.testForMostRelevantAnimationPlayer();
+            if (potentialPlayer.isPresent()) {
+                return potentialPlayer;
+            }
+        }
+        return Optional.empty();
+    }
+
+    public static <S extends Enum<S>> Builder<S> builder(Enum<S>[] values) {
+        return new Builder<>();
+    }
+
+    private Builder<S> builder() {
         return new Builder<>();
     }
 
@@ -144,6 +156,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
          *
          * @param stateIdentifier       Enum identifier that is associated with the state machine's enum type
          * @param inputFunction         Pose function for this state
+         * @param resetUponEntry        Whether to reset the functions within the state upon the state becoming active.
          * @param stateTransitions      Outbound transition paths from this state to other states
          */
         @SafeVarargs
@@ -156,6 +169,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
          *
          * @param stateIdentifier       Enum identifier that is associated with the state machine's enum type
          * @param inputFunction         Pose function for this state
+         * @param resetUponEntry        Whether to reset the functions within the state upon the state becoming active.
          * @param stateTransitions      Outbound transition paths from this state to other states
          */
         public final Builder<S> addState(S stateIdentifier, PoseFunction<LocalSpacePose> inputFunction, boolean resetUponEntry, Set<StateTransition<S>> stateTransitions){
@@ -226,6 +240,28 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     }
 
+    public static final Predicate<StateTransition.TransitionContext> CURRENT_TRANSITION_FINISHED = transitionContext -> transitionContext.currentStateWeight() == 1;
+
+    public static Predicate<StateTransition.TransitionContext> makeMostRelevantAnimationPlayerFinishedCondition(final float crossFadeWeight) {
+        return transitionContext -> {
+            var potentialPlayer = transitionContext.currentStateInput.testForMostRelevantAnimationPlayer();
+            if (potentialPlayer.isPresent()) {
+                AnimationPlayer player = potentialPlayer.get();
+                float transitionTimeTicks = transitionContext.transitionDuration().inTicks() * crossFadeWeight;
+                Tuple<TimeSpan, TimeSpan> remainingTime = player.getRemainingTime();
+
+                // Mid-animation
+                if (remainingTime.getA().inTicks() > remainingTime.getB().inTicks()) {
+                    return transitionTimeTicks < remainingTime.getA().inTicks() && transitionTimeTicks >= remainingTime.getB().inTicks();
+                    // Looping (remaining time wrapping around 0), but NOT stopped.
+                } else if(remainingTime.getA().inTicks() < remainingTime.getB().inTicks()) {
+                    return transitionTimeTicks < remainingTime.getA().inTicks();
+                }
+            }
+            return false;
+        };
+    }
+
     public record StateTransition<S extends Enum<S>> (S target, Predicate<TransitionContext> conditionPredicate, float transitionDurationTicks, Easing easing, int priority, boolean isAutomaticTransition) implements Comparable<StateTransition<S>> {
 
         @SafeVarargs
@@ -261,15 +297,15 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             }
 
             /**
-             * Sets the transition to be passable as an OR condition if the direct pose function
-             * input of the current active state is a sequence player, and that sequence player
-             * has finished or looped.
+             * Sets the transition to be passable as an OR condition if the most relevant
+             * animation player is within the the transition duration of finishing.
              * <p>
              * In other words, if the sequence player in the current active state loops or ends,
              * this becomes true.
+             * @param crossFadeWeight       Weight of how the transition duration affects the condition. 1 = Full crossfade, 0 = Always at end of animation
              */
-            public Builder<S> makeAutomaticTransitionBasedOnActiveSequencePlayer(){
-                this.conditionPredicate = this.conditionPredicate.or(SEQUENCE_PLAYER_IN_ACTIVE_STATE_HAS_FINISHED);
+            public Builder<S> makeAutomaticBasedOnMostRelevantPlayer(float crossFadeWeight){
+                this.conditionPredicate = this.conditionPredicate.or(makeMostRelevantAnimationPlayerFinishedCondition(crossFadeWeight));
                 this.automaticTransition = true;
                 return this;
             }
@@ -313,9 +349,16 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             }
         }
 
-        public record TransitionContext(OnTickDriverContainer dataContainer, float ticksElapsedInCurrentState, float currentStateWeight, PoseFunction<LocalSpacePose> currentStateInput){
-            public static TransitionContext of(OnTickDriverContainer dataContainer, float ticksElapsedInCurrentState, float currentStateWeight, PoseFunction<LocalSpacePose> currentStateInput){
-                return new TransitionContext(dataContainer, ticksElapsedInCurrentState, currentStateWeight, currentStateInput);
+        public record TransitionContext(
+                OnTickDriverContainer dataContainer,
+                float ticksElapsedInCurrentState,
+                float currentStateWeight,
+                PoseFunction<LocalSpacePose> currentStateInput,
+                TimeSpan transitionDuration
+        )
+        {
+            public static TransitionContext of(OnTickDriverContainer dataContainer, float ticksElapsedInCurrentState, float currentStateWeight, PoseFunction<LocalSpacePose> currentStateInput, TimeSpan transitionDuration){
+                return new TransitionContext(dataContainer, ticksElapsedInCurrentState, currentStateWeight, currentStateInput, transitionDuration);
             }
         }
     }
