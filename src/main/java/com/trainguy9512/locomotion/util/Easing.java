@@ -11,6 +11,7 @@ public interface Easing {
     public float ease(float time);
 
     Easing LINEAR = time -> time;
+    Easing CONSTANT = time -> 1;
 
     // Preset cubic beziers
     // https://easings.net/

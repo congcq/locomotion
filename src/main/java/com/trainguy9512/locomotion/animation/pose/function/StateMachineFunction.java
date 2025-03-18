@@ -2,12 +2,11 @@ package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
-import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
-import com.trainguy9512.locomotion.util.Easing;
 import com.trainguy9512.locomotion.util.TimeSpan;
+import com.trainguy9512.locomotion.util.Transition;
 import net.minecraft.util.Mth;
 import net.minecraft.util.Tuple;
 import org.jetbrains.annotations.NotNull;
@@ -16,6 +15,18 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+/**
+ * Pose function that manages transitions between a set of enum-identified states based on instance-defined transition logic.
+ *
+ * <p>Each state has its own pose function and a set of potential paths to other states that are taken
+ * based on a condition predicate</p>
+ *
+ * <p>State machine functions are useful for animation functionality where specific animations
+ * should be triggered in sequence based on an entity's actions, such as a jumping animation triggering when the entity
+ * is both off the ground and moving upwards, which would transition into a falling animation and then
+ * back to a standing animation once no longer falling.</p>
+ * @param <S>           Enum type used as state identifiers.
+ */
 public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFunction<LocalSpacePose> {
 
     private final Map<S, State<S>> states;
@@ -41,7 +52,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             if(stateIdentifier != this.activeStates.getFirst()){
                 pose = pose.interpolated(
                         this.states.get(stateIdentifier).inputFunction.compute(context),
-                        this.states.get(stateIdentifier).currentTransition.easing().ease(
+                        this.states.get(stateIdentifier).currentTransition.transition.applyEasement(
                                 this.states.get(stateIdentifier).weight.getValueInterpolated(context.partialTicks())
                         )
                 );
@@ -68,18 +79,18 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         // Filter each potential state transition by whether it's valid, then filter by whether its condition predicate is true,
         // then shuffle it in order to make equal priority transitions randomized and re-order the valid transitions by filter order.
         Optional<StateTransition<S>> potentialStateTransition = currentActiveState.potentialStateTransitions.stream()
-                .filter(transition -> {
-                    boolean transitionTargetIncludedInThisMachine = this.states.containsKey(transition.target);
-                    boolean targetIsNotCurrentActiveState = transition.target() != currentActiveStateIdentifier;
+                .filter(stateTransition -> {
+                    boolean transitionTargetIncludedInThisMachine = this.states.containsKey(stateTransition.target);
+                    boolean targetIsNotCurrentActiveState = stateTransition.target() != currentActiveStateIdentifier;
                     if(transitionTargetIncludedInThisMachine && targetIsNotCurrentActiveState){
                         StateTransition.TransitionContext transitionContext = StateTransition.TransitionContext.of(
                                 evaluationState.dataContainer(),
                                 this.timeTicksElapsed,
                                 this.states.get(currentActiveStateIdentifier).weight.getCurrentValue(),
                                 this.states.get(currentActiveStateIdentifier).inputFunction,
-                                TimeSpan.ofTicks(transition.transitionDurationTicks)
+                                stateTransition.transition.duration()
                         );
-                        return transition.conditionPredicate().test(transitionContext);
+                        return stateTransition.conditionPredicate().test(transitionContext);
                     }
                     return false;
                 })
@@ -224,20 +235,25 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         private void tick(FunctionEvaluationState evaluationState){
             if(this.currentTransition != null){
                 this.weight.prepareForNextTick();
-                float increaseDecreaseMultiplier = this.isActive ? 1 : -1;
-                float newWeight = Mth.clamp(this.weight.getPreviousValue() + ((1 / this.currentTransition.transitionDurationTicks()) * increaseDecreaseMultiplier), 0, 1);
 
-                if(this.resetUponEntry && newWeight > 0 && this.weight.getPreviousValue() == 0){
+                // Make the minimum transition time 0.01 to prevent a divide by zero error
+                float increment = 1 / Math.max(this.currentTransition.transition.duration().inTicks(), 0.01f);
+                float increaseDecreaseMultiplier = this.isActive ? 1 : -1;
+                float nextWeightValue = this.weight.getPreviousValue() + increment * increaseDecreaseMultiplier;
+                nextWeightValue = Mth.clamp(nextWeightValue, 0, 1);
+
+                // If the state is just now becoming active after being de-active, and
+                // the state is set to reset upon entry, set the evaluation state for child functions to reset.
+                if(this.resetUponEntry && nextWeightValue > 0 && this.weight.getPreviousValue() == 0){
                     evaluationState = evaluationState.markedForReset();
                 }
-
-                this.weight.setValue(newWeight);
+                this.weight.setValue(nextWeightValue);
             }
             if(this.weight.getCurrentValue() > 0){
+                // Tick the child functions if the current weight value is greater than zero.
                 this.inputFunction.tick(evaluationState);
             }
         }
-
     }
 
     public static final Predicate<StateTransition.TransitionContext> CURRENT_TRANSITION_FINISHED = transitionContext -> transitionContext.currentStateWeight() == 1;
@@ -262,7 +278,13 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         };
     }
 
-    public record StateTransition<S extends Enum<S>> (S target, Predicate<TransitionContext> conditionPredicate, float transitionDurationTicks, Easing easing, int priority, boolean isAutomaticTransition) implements Comparable<StateTransition<S>> {
+    public record StateTransition<S extends Enum<S>> (
+            S target,
+            Predicate<TransitionContext> conditionPredicate,
+            Transition transition,
+            int priority,
+            boolean isAutomaticTransition
+    ) implements Comparable<StateTransition<S>> {
 
         @SafeVarargs
         public static <S extends Enum<S>> Builder<S> builder(S target, Predicate<TransitionContext>... conditionPredicates){
@@ -270,15 +292,14 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         }
 
         @Override
-        public int compareTo(@NotNull StateTransition stateTransition) {
-            return Integer.compare(this.priority(), stateTransition.priority());
+        public int compareTo(@NotNull StateTransition other) {
+            return Integer.compare(this.priority(), other.priority());
         }
 
         public static class Builder<S extends Enum<S>> {
             private Predicate<TransitionContext> conditionPredicate;
             private final S target;
-            private float transitionDurationTicks;
-            private Easing easing;
+            private Transition transition;
             private int priority;
             private boolean automaticTransition;
 
@@ -290,8 +311,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                 }
                 this.conditionPredicate = compiledPredicates;
                 this.target = target;
-                this.transitionDurationTicks = 1;
-                this.easing = Easing.LINEAR;
+                this.transition = Transition.SINGLE_TICK;
                 this.priority = 50;
                 this.automaticTransition = false;
             }
@@ -304,38 +324,28 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
              * this becomes true.
              * @param crossFadeWeight       Weight of how the transition duration affects the condition. 1 = Full crossfade, 0 = Always at end of animation
              */
-            public Builder<S> makeAutomaticBasedOnMostRelevantPlayer(float crossFadeWeight){
+            public Builder<S> automaticallyTransitionIfAnimationPlayerFinishing(float crossFadeWeight){
                 this.conditionPredicate = this.conditionPredicate.or(makeMostRelevantAnimationPlayerFinishedCondition(crossFadeWeight));
                 this.automaticTransition = true;
                 return this;
             }
 
             /**
-             * Sets the transition time for the state transition.
+             * Sets the transition timing properties for the state transition. Default is a single-tick linear transition.
              *
-             * @param transitionDuration        Transition duration time.
+             * @param transition            The {@link Transition} to use
              */
-            public Builder<S> setTransitionDuration(TimeSpan transitionDuration){
-                this.transitionDurationTicks = transitionDuration.inTicks();
-                return this;
-            }
-
-            /**
-             * Sets the easing for the transition.
-             *
-             * @param easing                    Easing function
-             */
-            public Builder<S> setEasing(Easing easing){
-                this.easing = easing;
+            public Builder<S> setTransition(Transition transition){
+                this.transition = transition;
                 return this;
             }
 
             /**
              * Sets the transition priority for the state transition, for when more than one transition is active on the same tick.
-             * <p>
-             * Lower integers specify a higher priority. If more than one transition has the same priority, then it is picked at random.
-             * <p>
-             * Default priority is <code>50</code>.
+             *
+             * <p>Lower integers specify a higher priority. If more than one transition has the same priority, then it is picked at random.</p>
+             *
+             * <p>Default priority is <code>50</code>.</p>
              *
              * @param priority                  Priority integer
              */
@@ -345,7 +355,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             }
 
             public StateTransition<S> build(){
-                return new StateTransition<>(this.target, this.conditionPredicate, this.transitionDurationTicks, this.easing, this.priority, this.automaticTransition);
+                return new StateTransition<>(this.target, this.conditionPredicate, this.transition, this.priority, this.automaticTransition);
             }
         }
 

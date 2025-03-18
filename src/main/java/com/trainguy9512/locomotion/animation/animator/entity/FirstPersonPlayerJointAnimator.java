@@ -7,10 +7,11 @@ import com.trainguy9512.locomotion.animation.driver.DriverKey;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.*;
-import com.trainguy9512.locomotion.animation.pose.function.cache.SavedCachedPoseContainer;
+import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;
 import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
 import com.trainguy9512.locomotion.util.Easing;
 import com.trainguy9512.locomotion.util.TimeSpan;
+import com.trainguy9512.locomotion.util.Transition;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
@@ -114,7 +115,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     }
 
     @Override
-    public PoseFunction<LocalSpacePose> constructPoseFunction(SavedCachedPoseContainer cachedPoseContainer) {
+    public PoseFunction<LocalSpacePose> constructPoseFunction(CachedPoseContainer cachedPoseContainer) {
         Random random = new Random();
         PoseFunction<LocalSpacePose> testSequencePlayer = SequencePlayerFunction.builder(ROM_TEST).setLooping(true).setPlayRate((context) -> 0f).build();
         PoseFunction<LocalSpacePose> movingSequencePlayer = SequencePlayerFunction.builder(POSE_TEST)
@@ -136,13 +137,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         StateMachineFunction.StateTransition.builder(TestStates.MOVING,
                                         transitionContext -> transitionContext.dataContainer().getDriverValue(WALK_SPEED) >= 0.2f,
                                         StateMachineFunction.CURRENT_TRANSITION_FINISHED)
-                                .setTransitionDuration(TimeSpan.of24FramesPerSecond(2))
+                                .setTransition(Transition.INSTANT)
                                 .build()
                 )
                 .addState(TestStates.MOVING, testMovingPlayer, true,
                         StateMachineFunction.StateTransition.builder(TestStates.IDLE, context -> false)
-                                .makeAutomaticBasedOnMostRelevantPlayer(0)
-                                .setTransitionDuration(TimeSpan.of24FramesPerSecond(7))
+                                .automaticallyTransitionIfAnimationPlayerFinishing(1f)
+                                .setTransition(Transition.of(TimeSpan.of24FramesPerSecond(7), Easing.ELASTIC_OUT))
                                 .build()
                 )
                 .build();

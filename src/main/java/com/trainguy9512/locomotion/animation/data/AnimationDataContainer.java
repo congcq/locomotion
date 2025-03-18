@@ -8,16 +8,15 @@ import com.trainguy9512.locomotion.animation.driver.DriverKey;
 import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
-import com.trainguy9512.locomotion.animation.pose.function.cache.SavedCachedPoseContainer;
+import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;
 import com.trainguy9512.locomotion.util.Interpolator;
 
-import java.util.List;
 import java.util.Map;
 
 public class AnimationDataContainer implements PoseCalculationDataContainer, OnTickDriverContainer {
 
     private final Map<DriverKey<? extends Driver<?>>, Driver<?>> drivers;
-    private final SavedCachedPoseContainer savedCachedPoseContainer;
+    private final CachedPoseContainer savedCachedPoseContainer;
     private final PoseFunction<LocalSpacePose> poseFunction;
 
     private final JointSkeleton jointSkeleton;
@@ -26,7 +25,7 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
 
     private AnimationDataContainer(JointAnimator<?> jointAnimator) {
         this.drivers = Maps.newHashMap();
-        this.savedCachedPoseContainer = SavedCachedPoseContainer.of();
+        this.savedCachedPoseContainer = CachedPoseContainer.of();
         this.poseFunction = jointAnimator.constructPoseFunction(savedCachedPoseContainer).wrapUnique();
 
         this.jointSkeleton = jointAnimator.buildSkeleton();

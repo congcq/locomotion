@@ -4,7 +4,7 @@ import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
-import com.trainguy9512.locomotion.animation.pose.function.cache.SavedCachedPoseContainer;
+import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;
 
 /**
  * Uses a data reference and a joint skeleton to calculate a pose once per tick.
@@ -30,7 +30,7 @@ public interface JointAnimator<T> {
      * @param cachedPoseContainer           Container for registering and retrieving saved cached poses.
      * @return                              Pose function that returns a pose in local space.
      */
-    PoseFunction<LocalSpacePose> constructPoseFunction(SavedCachedPoseContainer cachedPoseContainer);
+    PoseFunction<LocalSpacePose> constructPoseFunction(CachedPoseContainer cachedPoseContainer);
 
     default PoseCalculationFrequency getPoseCalulationFrequency(){
         return PoseCalculationFrequency.CALCULATE_ONCE_PER_TICK;
