@@ -1,6 +1,7 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
+import com.trainguy9512.locomotion.animation.joint.Transformer;
 import com.trainguy9512.locomotion.animation.pose.AnimationPose;
 import com.trainguy9512.locomotion.animation.pose.ComponentSpacePose;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
@@ -141,10 +142,5 @@ public class JointTransformerFunction<P extends AnimationPose> implements PoseFu
         private static <X> TransformChannelConfiguration<X> of(Function<FunctionInterpolationContext, X> transformFunction, JointChannel.TransformType transformType, JointChannel.TransformSpace transformSpace){
             return new TransformChannelConfiguration<>(transformFunction, transformType, transformSpace);
         }
-    }
-
-    @FunctionalInterface
-    private interface Transformer<X> {
-        void transform(JointChannel jointChannel, X value, JointChannel.TransformSpace transformSpace, JointChannel.TransformType transformType);
     }
 }
