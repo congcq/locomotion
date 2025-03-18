@@ -112,13 +112,13 @@ public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose
         }
 
         /**
-         * Sets whether the animation sequence function will loop or not when the end of the animation is reached.
+         * Sets the animation sequence player to loop when the end of the animation is reached.
          * @implNote                    The animation sequence will always be looped in full, the reset start time only
          *                              affects where the animation starts when reset.
          */
         @SuppressWarnings("unchecked")
-        public B setLooping(boolean looping) {
-            this.looping = looping;
+        public B looping() {
+            this.looping = true;
             return (B) this;
         }
 

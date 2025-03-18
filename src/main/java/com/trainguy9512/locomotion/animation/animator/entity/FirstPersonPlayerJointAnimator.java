@@ -66,7 +66,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<SpringDriver<Float>> SPRING_TEST = DriverKey.of("spring", () -> SpringDriver.ofFloat(0.0f, 0.7f, 1, () -> 0f, false));
 
     public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.7f, 0.6f, 1f, Vector3f::new, false));
-    public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_lag", () -> SpringDriver.ofVector(0.5f, 0.8f, 1f, Vector3f::new, true));
+    public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_lag", () -> SpringDriver.ofVector(0.3f, 0.7f, 1f, Vector3f::new, true));
 
     public static final DriverKey<VariableDriver<ItemStack>> MAIN_HAND_ITEM = DriverKey.of("main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> OFF_HAND_ITEM = DriverKey.of("off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
@@ -109,6 +109,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation ADDITIVE_TEST_BASE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "additive_test_base");
     public static final ResourceLocation ADDITIVE_TEST_ADDITIVE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "additive_test_additive");
 
+    public static final ResourceLocation GROUND_MOVEMENT_IDLE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_idle");
+    public static final ResourceLocation GROUND_MOVEMENT_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_pose");
+
+
     public enum TestStates {
         IDLE,
         MOVING
@@ -117,9 +121,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     @Override
     public PoseFunction<LocalSpacePose> constructPoseFunction(CachedPoseContainer cachedPoseContainer) {
         Random random = new Random();
-        PoseFunction<LocalSpacePose> testSequencePlayer = SequencePlayerFunction.builder(ROM_TEST).setLooping(true).setPlayRate((context) -> 0f).build();
+        PoseFunction<LocalSpacePose> testSequencePlayer = SequencePlayerFunction.builder(ROM_TEST).looping().setPlayRate((context) -> 0f).build();
         PoseFunction<LocalSpacePose> movingSequencePlayer = SequencePlayerFunction.builder(POSE_TEST)
-                .setLooping(true)
+                .looping()
                 .setPlayRate((context) -> 1f)
                 .bindToTimeMarker("clear_main_hand_item", evaluationState ->
                         evaluationState.dataContainer().getDriver(RENDERED_MAIN_HAND_ITEM).setValue(ItemStack.EMPTY))
@@ -152,12 +156,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
 
         PoseFunction<LocalSpacePose> additivePoseFunction = ComposeAdditiveFunction.of(
-                SequencePlayerFunction.builder(ADDITIVE_TEST_BASE).setLooping(true).setPlayRate(evaluationState -> 0.25f).build(),
-                BlendSpace1DPlayerFunction.builder(evaluationState -> evaluationState.dataContainer().getDriverValue(WALK_SPEED))
-                        .addEntry(0, ADDITIVE_TEST_ADDITIVE, 1)
-                        .addEntry(1, ADDITIVE_TEST_ADDITIVE, 2)
-                        .build(),
-                SequenceEvaluatorFunction.of(ADDITIVE_TEST_ADDITIVE, TimeSpan.ofSeconds(0))
+                SequenceEvaluatorFunction.of(POSE_TEST, TimeSpan.of30FramesPerSecond(70)),
+                SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping().build(),
+                SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0))
         );
 
 
@@ -165,7 +166,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         PoseFunction<LocalSpacePose> movementDirectionOffsetTransformer = LocalConversionFunction.of(
                 JointTransformerFunction.componentSpaceBuilder(ComponentConversionFunction.of(
-                        testStateMachine
+                        additivePoseFunction
                                 ),
                                 ARM_BUFFER_JOINT)
                         .setTranslation(
@@ -195,6 +196,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(TIME_TEST).setValue(driverContainer.getDriver(TIME_TEST).getPreviousValue() + 1);
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
+
+        //DEBUG
+        driverContainer.getDriver(RENDERED_MAIN_HAND_ITEM).setValue(driverContainer.getDriverValue(MAIN_HAND_ITEM));
+        driverContainer.getDriver(RENDERED_OFF_HAND_ITEM).setValue(driverContainer.getDriverValue(OFF_HAND_ITEM));
 
         driverContainer.getDriver(IS_GROUNDED).setValue(dataReference.onGround());
 
