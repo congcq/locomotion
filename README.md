@@ -29,7 +29,7 @@ Locomotion is a mod/animation API for Minecraft centered around giving the game'
 | Data-Driven Joint Animators     | ❌      | Design would need to be locked down enough prior to considering this.                                                                                                                         |
 
 ## 🔗 Socials
-- My Discord server: _Work-in-progress, will reopen when test versions become available._
+- Discord server: https://discord.gg/KxqCSGhaFZ
 - My Twitter: https://twitter.com/Trainguy9512
 - Discord contact: @trainguy9512
 - Moonflower Website: https://moonflower.gg/
