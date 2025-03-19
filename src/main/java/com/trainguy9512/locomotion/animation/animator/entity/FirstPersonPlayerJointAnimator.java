@@ -155,7 +155,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
 
 
-        PoseFunction<LocalSpacePose> additivePoseFunction = ComposeAdditiveFunction.of(
+        PoseFunction<LocalSpacePose> additivePoseFunction = ApplyAdditiveFunction.of(
                 SequenceEvaluatorFunction.of(POSE_TEST, TimeSpan.of30FramesPerSecond(70)),
                 SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping().build(),
                 SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0))
