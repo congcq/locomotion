@@ -11,51 +11,49 @@ public class ApplyAdditiveFunction implements PoseFunction<LocalSpacePose> {
 
     private final PoseFunction<LocalSpacePose> basePoseInput;
     private final PoseFunction<LocalSpacePose> additivePoseInput;
-    private final PoseFunction<LocalSpacePose> additivePoseReferenceInput;
 
     private final Function<FunctionInterpolationContext, Float> weightFunction;
 
-    public ApplyAdditiveFunction(PoseFunction<LocalSpacePose> basePoseInput, PoseFunction<LocalSpacePose> additivePoseInput, PoseFunction<LocalSpacePose> additivePoseReferenceInput, Function<FunctionInterpolationContext, Float> weightFunction) {
+    public ApplyAdditiveFunction(PoseFunction<LocalSpacePose> basePoseInput, PoseFunction<LocalSpacePose> additivePoseInput, Function<FunctionInterpolationContext, Float> weightFunction) {
         this.basePoseInput = basePoseInput;
         this.additivePoseInput = additivePoseInput;
-        this.additivePoseReferenceInput = additivePoseReferenceInput;
         this.weightFunction = weightFunction;
     }
 
-    public static ApplyAdditiveFunction of(PoseFunction<LocalSpacePose> basePoseInput, PoseFunction<LocalSpacePose> additivePoseInput, PoseFunction<LocalSpacePose> additivePoseReferenceInput, Function<FunctionInterpolationContext, Float> weightFunction) {
-        return new ApplyAdditiveFunction(basePoseInput, additivePoseInput, additivePoseReferenceInput, weightFunction);
+    public static ApplyAdditiveFunction of(PoseFunction<LocalSpacePose> basePoseInput, PoseFunction<LocalSpacePose> additivePoseInput, Function<FunctionInterpolationContext, Float> weightFunction) {
+        return new ApplyAdditiveFunction(basePoseInput, additivePoseInput, weightFunction);
     }
 
-    public static ApplyAdditiveFunction of(PoseFunction<LocalSpacePose> basePoseInput, PoseFunction<LocalSpacePose> additivePoseInput, PoseFunction<LocalSpacePose> additivePoseReferenceInput) {
-        return new ApplyAdditiveFunction(basePoseInput, additivePoseInput, additivePoseReferenceInput, context -> 1f);
+    public static ApplyAdditiveFunction of(PoseFunction<LocalSpacePose> basePoseInput, PoseFunction<LocalSpacePose> additivePoseInput) {
+        return new ApplyAdditiveFunction(basePoseInput, additivePoseInput, context -> 1f);
     }
 
     @Override
     public @NotNull LocalSpacePose compute(FunctionInterpolationContext context) {
-        float weight = this.weightFunction.apply(context);
-
         LocalSpacePose basePose = this.basePoseInput.compute(context);
+
         LocalSpacePose additivePose = this.additivePoseInput.compute(context);
-        LocalSpacePose additivePoseReference = this.additivePoseReferenceInput.compute(context);
-
-        additivePoseReference.invert();
-
-        additivePose.multiply(additivePoseReference, JointChannel.TransformSpace.COMPONENT);
         additivePose.multiply(basePose, JointChannel.TransformSpace.COMPONENT);
 
-        return additivePose;
+        float weight = this.weightFunction.apply(context);
+        if (weight == 1f) {
+            return additivePose;
+        } else if (weight == 0f) {
+            return basePose;
+        } else {
+            return basePose.interpolated(additivePose, weight);
+        }
     }
 
     @Override
     public void tick(FunctionEvaluationState evaluationState) {
         this.basePoseInput.tick(evaluationState);
         this.additivePoseInput.tick(evaluationState);
-        this.additivePoseReferenceInput.tick(evaluationState);
     }
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        return new ApplyAdditiveFunction(this.basePoseInput.wrapUnique(), this.additivePoseInput.wrapUnique(), this.additivePoseReferenceInput.wrapUnique(), this.weightFunction);
+        return new ApplyAdditiveFunction(this.basePoseInput.wrapUnique(), this.additivePoseInput.wrapUnique(), this.weightFunction);
     }
 
     @Override
