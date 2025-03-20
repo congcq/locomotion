@@ -143,6 +143,12 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         return Optional.empty();
     }
 
+    /**
+     * Creates a new state machine builder using the enum type of the provided enum type values. Use the state enum's {@code values()} method.
+     * @param values            Possible state values
+     * @return                  State machine builder
+     * @param <S>               Enum type
+     */
     public static <S extends Enum<S>> Builder<S> builder(Enum<S>[] values) {
         return new Builder<>();
     }
@@ -183,7 +189,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
          * @param resetUponEntry        Whether to reset the functions within the state upon the state becoming active.
          * @param stateTransitions      Outbound transition paths from this state to other states
          */
-        public final Builder<S> addState(S stateIdentifier, PoseFunction<LocalSpacePose> inputFunction, boolean resetUponEntry, Set<StateTransition<S>> stateTransitions){
+        private Builder<S> addState(S stateIdentifier, PoseFunction<LocalSpacePose> inputFunction, boolean resetUponEntry, Set<StateTransition<S>> stateTransitions){
             State<S> state = new State<>(inputFunction, stateTransitions, resetUponEntry, this.states.isEmpty());
 
             // If the state machine already has this state defined, then throw an error.

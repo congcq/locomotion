@@ -62,19 +62,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             LEFT_HAND_JOINT
     );
 
-    public static final DriverKey<VariableDriver<Float>> TIME_TEST = DriverKey.of("time_test", () -> VariableDriver.ofFloat(() -> 0f));
-    public static final DriverKey<SpringDriver<Float>> SPRING_TEST = DriverKey.of("spring", () -> SpringDriver.ofFloat(0.0f, 0.7f, 1, () -> 0f, false));
-
-    public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.7f, 0.6f, 1f, Vector3f::new, false));
-    public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_lag", () -> SpringDriver.ofVector(0.3f, 0.7f, 1f, Vector3f::new, true));
-
-    public static final DriverKey<VariableDriver<ItemStack>> MAIN_HAND_ITEM = DriverKey.of("main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
-    public static final DriverKey<VariableDriver<ItemStack>> OFF_HAND_ITEM = DriverKey.of("off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
-    public static final DriverKey<VariableDriver<ItemStack>> RENDERED_MAIN_HAND_ITEM = DriverKey.of("rendered_main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
-    public static final DriverKey<VariableDriver<ItemStack>> RENDERED_OFF_HAND_ITEM = DriverKey.of("rendered_off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
-
-    public static final DriverKey<VariableDriver<Float>> WALK_SPEED = DriverKey.of("walk_speed", () -> VariableDriver.ofFloat(() -> 0f));
-    public static final DriverKey<VariableDriver<Boolean>> IS_GROUNDED = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> false));
+    public static final String ADDITIVE_GROUND_MOVEMENT_CACHE = "additive_ground_movement";
 
     @Override
     public void postProcessModelParts(EntityModel<PlayerRenderState> entityModel, PlayerRenderState entityRenderState) {
@@ -109,9 +97,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation ADDITIVE_TEST_BASE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "additive_test_base");
     public static final ResourceLocation ADDITIVE_TEST_ADDITIVE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "additive_test_additive");
 
-    public static final ResourceLocation GROUND_MOVEMENT_IDLE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_idle");
-    public static final ResourceLocation GROUND_MOVEMENT_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_pose");
-
 
     public enum TestStates {
         IDLE,
@@ -139,7 +124,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> testStateMachine = StateMachineFunction.builder(TestStates.values())
                 .addState(TestStates.IDLE, testIdlePlayer, true,
                         StateMachineFunction.StateTransition.builder(TestStates.MOVING,
-                                        transitionContext -> transitionContext.dataContainer().getDriverValue(WALK_SPEED) >= 0.2f,
+                                        transitionContext -> transitionContext.dataContainer().getDriverValue(MODIFIED_WALK_SPEED) >= 0.2f,
                                         StateMachineFunction.CURRENT_TRANSITION_FINISHED)
                                 .setTransition(Transition.INSTANT)
                                 .build()
@@ -154,46 +139,106 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
 
 
-
         PoseFunction<LocalSpacePose> additivePoseFunction = ApplyAdditiveFunction.of(
                 SequenceEvaluatorFunction.of(POSE_TEST, TimeSpan.of30FramesPerSecond(70)),
-                SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping().build(),
-                SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0))
+                MakeDynamicAdditiveFunction.of(
+                        SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping().build(),
+                        SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0))
+                )
         );
 
 
+        cachedPoseContainer.register(ADDITIVE_GROUND_MOVEMENT_CACHE, constructAdditiveGroundMovementPoseFunction(cachedPoseContainer));
+        PoseFunction<LocalSpacePose> placeholderHandPose = SequenceEvaluatorFunction.of(POSE_TEST, TimeSpan.of30FramesPerSecond(70));
+        PoseFunction<LocalSpacePose> handPoseWithAdditive = ApplyAdditiveFunction.of(placeholderHandPose, cachedPoseContainer.getOrThrow(ADDITIVE_GROUND_MOVEMENT_CACHE));
 
 
-        PoseFunction<LocalSpacePose> movementDirectionOffsetTransformer = LocalConversionFunction.of(
-                JointTransformerFunction.componentSpaceBuilder(ComponentConversionFunction.of(
-                        additivePoseFunction
-                                ),
-                                ARM_BUFFER_JOINT)
+
+        PoseFunction<LocalSpacePose> movementDirectionOffsetTransformer =
+                JointTransformerFunction.localOrParentSpaceBuilder(handPoseWithAdditive, ARM_BUFFER_JOINT)
                         .setTranslation(
-                                context -> context.dataContainer().getDriverValue(MOVEMENT_DIRECTION_OFFSET, context.partialTicks()),
+                                context -> context.dataContainer().getDriverValue(MOVEMENT_DIRECTION_OFFSET, context.partialTicks()).mul(1.5f),
                                 JointChannel.TransformType.ADD,
                                 JointChannel.TransformSpace.COMPONENT
                         )
                         .setRotationEuler(
-                                context -> context.dataContainer().getDriverValue(CAMERA_ROTATION_DAMPING, context.partialTicks()).mul(-0.15f, -0.15f, -0.075f),
+                                context -> context.dataContainer().getDriverValue(CAMERA_ROTATION_DAMPING, context.partialTicks()).mul(-0.15f, -0.15f, 0),
                                 JointChannel.TransformType.ADD,
                                 JointChannel.TransformSpace.COMPONENT
                         )
-                        .build());
-
-        //PoseFunction<LocalSpacePose> cached = cachedPoseContainer.getOrThrow("TEST_SEQ_PLAYER");
-        PoseFunction<LocalSpacePose> blendMultipleFunction = BlendFunction.builder(testSequencePlayer).addBlendInput(testSequencePlayer, (evaluationState) -> 0.5f).build();
+                        .build();
 
         return movementDirectionOffsetTransformer;
     }
 
 
+
+
+    public enum GroundMovementStates {
+        IDLE,
+        WALKING
+    }
+
+    public static final ResourceLocation GROUND_MOVEMENT_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_pose");
+    public static final ResourceLocation GROUND_MOVEMENT_IDLE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_idle");
+    public static final ResourceLocation GROUND_MOVEMENT_WALKING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_walking");
+
+    public PoseFunction<LocalSpacePose> constructAdditiveGroundMovementPoseFunction(CachedPoseContainer cachedPoseContainer) {
+
+        PoseFunction<LocalSpacePose> idleAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping().build();
+        PoseFunction<LocalSpacePose> walkingBlendSpacePlayer = BlendSpace1DPlayerFunction.builder(evaluationState -> evaluationState.dataContainer().getDriverValue(MODIFIED_WALK_SPEED))
+                .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
+                .addEntry(0.86f, GROUND_MOVEMENT_WALKING, 2.25f)
+                .addEntry(1f, GROUND_MOVEMENT_WALKING, 3.5f)
+                .build();
+
+
+        PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.builder(GroundMovementStates.values())
+                .addState(GroundMovementStates.IDLE, idleAnimationPlayer, true,
+                        StateMachineFunction.StateTransition.builder(
+                                GroundMovementStates.WALKING,
+                                        transitionContext -> transitionContext.dataContainer().getDriverValue(HORIZONTAL_MOVEMENT_SPEED) >= 0.01f,
+                                        StateMachineFunction.CURRENT_TRANSITION_FINISHED)
+                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_OUT))
+                                .build()
+                        )
+                .addState(GroundMovementStates.WALKING, walkingBlendSpacePlayer, true,
+                        StateMachineFunction.StateTransition.builder(
+                                        GroundMovementStates.IDLE,
+                                        transitionContext -> transitionContext.dataContainer().getDriverValue(HORIZONTAL_MOVEMENT_SPEED) < 0.01f)
+                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.4f), Easing.SINE_IN_OUT))
+                                .build()
+                )
+                .build();
+
+        return MakeDynamicAdditiveFunction.of(
+                movementStateMachine,
+                SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0))
+        );
+    }
+
+
+
+
+    public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.5f, 0.6f, 1f, Vector3f::new, false));
+    public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_lag", () -> SpringDriver.ofVector(0.3f, 0.7f, 1f, Vector3f::new, true));
+
+    public static final DriverKey<VariableDriver<ItemStack>> MAIN_HAND_ITEM = DriverKey.of("main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
+    public static final DriverKey<VariableDriver<ItemStack>> OFF_HAND_ITEM = DriverKey.of("off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
+    public static final DriverKey<VariableDriver<ItemStack>> RENDERED_MAIN_HAND_ITEM = DriverKey.of("rendered_main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
+    public static final DriverKey<VariableDriver<ItemStack>> RENDERED_OFF_HAND_ITEM = DriverKey.of("rendered_off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
+
+    public static final DriverKey<VariableDriver<Float>> HORIZONTAL_MOVEMENT_SPEED = DriverKey.of("horizontal_movement_speed", () -> VariableDriver.ofFloat(() -> 0f));
+    public static final DriverKey<VariableDriver<Float>> MODIFIED_WALK_SPEED = DriverKey.of("modified_walk_speed", () -> VariableDriver.ofFloat(() -> 0f));
+    public static final DriverKey<VariableDriver<Boolean>> IS_GROUNDED = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> false));
+
+
     @Override
     public void extractAnimationData(LocalPlayer dataReference, OnTickDriverContainer driverContainer){
-        driverContainer.getDriver(SPRING_TEST).setValue(dataReference.walkAnimation.speed());
 
-        driverContainer.getDriver(WALK_SPEED).setValue(dataReference.walkAnimation.speed());
-        driverContainer.getDriver(TIME_TEST).setValue(driverContainer.getDriver(TIME_TEST).getPreviousValue() + 1);
+
+        driverContainer.getDriver(MODIFIED_WALK_SPEED).setValue(dataReference.walkAnimation.speed());
+        driverContainer.getDriver(HORIZONTAL_MOVEMENT_SPEED).setValue(new Vector3f((float) (dataReference.getX() - dataReference.xo), 0.0f, (float) (dataReference.getZ() - dataReference.zo)).length());
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
 
@@ -204,10 +249,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(IS_GROUNDED).setValue(dataReference.onGround());
 
         Vector3f velocity = new Vector3f((float) (dataReference.getX() - dataReference.xo), (float) (dataReference.getY() - dataReference.yo), (float) (dataReference.getZ() - dataReference.zo));
-        velocity.mul(1, 0.5f, 1);
+        // We don't want vertical velocity to be factored into the movement direction offset as much as the horizontal velocity.
+        velocity.mul(1, 0.25f, 1);
         Quaternionf rotation = new Quaternionf().rotationYXZ(Mth.PI - dataReference.getYRot() * Mth.DEG_TO_RAD, -dataReference.getXRot() * Mth.DEG_TO_RAD, 0.0F);
-        Vector3f movementDirection;
-        movementDirection = new Vector3f(
+        Vector3f movementDirection = new Vector3f(
                 velocity.dot(new Vector3f(1, 0, 0).rotate(rotation)),
                 velocity.dot(new Vector3f(0, 1, 0).rotate(rotation)),
                 velocity.dot(new Vector3f(0, 0, -1).rotate(rotation))

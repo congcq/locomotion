@@ -137,7 +137,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                 cameraRot.z *= -1;
                 cameraPose.rotate(cameraRot, JointChannel.TransformSpace.LOCAL, JointChannel.TransformType.REPLACE);
 
-                poseStack.mulPose(cameraPose.getTransform().setTranslation(cameraPose.getTransform().getTranslation(new Vector3f().div(16f))));
+                cameraPose.transformPoseStack(poseStack, 16f);
+                //poseStack.mulPose(cameraPose.getTransform().setTranslation(cameraPose.getTransform().getTranslation(new Vector3f().div(16f))));
             });
         }
     }

@@ -7,17 +7,20 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Optional;
 import java.util.function.Function;
 
+/**
+ * Pose function that adds an additive pose to a base animation pose, based on an alpha value.
+ */
 public class ApplyAdditiveFunction implements PoseFunction<LocalSpacePose> {
 
     private final PoseFunction<LocalSpacePose> basePoseInput;
     private final PoseFunction<LocalSpacePose> additivePoseInput;
 
-    private final Function<FunctionInterpolationContext, Float> weightFunction;
+    private final Function<FunctionInterpolationContext, Float> alphaFunction;
 
-    public ApplyAdditiveFunction(PoseFunction<LocalSpacePose> basePoseInput, PoseFunction<LocalSpacePose> additivePoseInput, Function<FunctionInterpolationContext, Float> weightFunction) {
+    public ApplyAdditiveFunction(PoseFunction<LocalSpacePose> basePoseInput, PoseFunction<LocalSpacePose> additivePoseInput, Function<FunctionInterpolationContext, Float> alphaFunction) {
         this.basePoseInput = basePoseInput;
         this.additivePoseInput = additivePoseInput;
-        this.weightFunction = weightFunction;
+        this.alphaFunction = alphaFunction;
     }
 
     public static ApplyAdditiveFunction of(PoseFunction<LocalSpacePose> basePoseInput, PoseFunction<LocalSpacePose> additivePoseInput, Function<FunctionInterpolationContext, Float> weightFunction) {
@@ -35,7 +38,7 @@ public class ApplyAdditiveFunction implements PoseFunction<LocalSpacePose> {
         LocalSpacePose additivePose = this.additivePoseInput.compute(context);
         additivePose.multiply(basePose, JointChannel.TransformSpace.COMPONENT);
 
-        float weight = this.weightFunction.apply(context);
+        float weight = this.alphaFunction.apply(context);
         if (weight == 1f) {
             return additivePose;
         } else if (weight == 0f) {
@@ -53,7 +56,7 @@ public class ApplyAdditiveFunction implements PoseFunction<LocalSpacePose> {
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        return new ApplyAdditiveFunction(this.basePoseInput.wrapUnique(), this.additivePoseInput.wrapUnique(), this.weightFunction);
+        return new ApplyAdditiveFunction(this.basePoseInput.wrapUnique(), this.additivePoseInput.wrapUnique(), this.alphaFunction);
     }
 
     @Override
