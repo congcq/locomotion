@@ -108,16 +108,21 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             this.states.forEach((stateIdentifier, state) -> {
                 state.currentTransition = stateTransition;
                 state.isActive = state == this.states.get(stateTransition.target());
+
             });
 
             // Update the active states array
             // Make sure there already isn't this state present in active states
             this.activeStates.remove(stateTransition.target());
             this.activeStates.addLast(stateTransition.target());
+
         });
 
         // Tick each state
-        this.states.forEach((stateIdentifier, state) -> state.tick(evaluationState));
+        this.states.forEach((stateIdentifier, state) -> potentialStateTransition.ifPresentOrElse(
+                stateTransition -> state.tick(evaluationState, state == this.states.get(stateTransition.target)),
+                () -> state.tick(evaluationState, false)
+        ));
 
         // Evaluated last, remove states from the active state list that have a weight of 0.
         List<S> statesToRemove = this.activeStates.stream().filter((stateIdentifier) -> this.states.get(stateIdentifier).weight.getPreviousValue() == 0 && this.states.get(stateIdentifier).weight.getCurrentValue() == 0).toList();
@@ -238,7 +243,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             }
         }
 
-        private void tick(FunctionEvaluationState evaluationState){
+        private void tick(FunctionEvaluationState evaluationState, boolean isEntering){
             if(this.currentTransition != null){
                 this.weight.prepareForNextTick();
 
@@ -250,7 +255,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
                 // If the state is just now becoming active after being de-active, and
                 // the state is set to reset upon entry, set the evaluation state for child functions to reset.
-                if(this.resetUponEntry && nextWeightValue > 0 && this.weight.getPreviousValue() == 0){
+                if(this.resetUponEntry && isEntering){
                     evaluationState = evaluationState.markedForReset();
                 }
                 this.weight.setValue(nextWeightValue);

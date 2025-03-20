@@ -23,6 +23,7 @@ import org.joml.Vector3f;
 
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator<LocalPlayer, PlayerRenderState> {
 
@@ -176,16 +177,28 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public enum GroundMovementStates {
         IDLE,
-        WALKING
+        WALKING,
+        STOPPING,
+        JUMP,
+        FALLING,
+        LAND
     }
 
     public static final ResourceLocation GROUND_MOVEMENT_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_pose");
     public static final ResourceLocation GROUND_MOVEMENT_IDLE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_idle");
     public static final ResourceLocation GROUND_MOVEMENT_WALKING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_walking");
+    public static final ResourceLocation GROUND_MOVEMENT_WALK_TO_STOP = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_walk_to_stop");
+    public static final ResourceLocation GROUND_MOVEMENT_JUMP = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_jump");
+    public static final ResourceLocation GROUND_MOVEMENT_FALLING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_falling");
+    public static final ResourceLocation GROUND_MOVEMENT_LAND = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_land");
 
     public PoseFunction<LocalSpacePose> constructAdditiveGroundMovementPoseFunction(CachedPoseContainer cachedPoseContainer) {
 
         PoseFunction<LocalSpacePose> idleAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping().build();
+        PoseFunction<LocalSpacePose> walkToStopAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_WALK_TO_STOP).setPlayRate(0.6f).build();
+        PoseFunction<LocalSpacePose> jumpAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_JUMP).build();
+        PoseFunction<LocalSpacePose> fallingAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_FALLING).looping().build();
+        PoseFunction<LocalSpacePose> landAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_LAND).build();
         PoseFunction<LocalSpacePose> walkingBlendSpacePlayer = BlendSpace1DPlayerFunction.builder(evaluationState -> evaluationState.dataContainer().getDriverValue(MODIFIED_WALK_SPEED))
                 .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
                 .addEntry(0.86f, GROUND_MOVEMENT_WALKING, 2.25f)
@@ -193,21 +206,134 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .build();
 
 
+        Predicate<StateMachineFunction.StateTransition.TransitionContext> walkingCondition = transitionContext -> transitionContext.dataContainer().getDriverValue(IS_MOVING);
+
+        StateMachineFunction.StateTransition<GroundMovementStates> transitionToJumpState = StateMachineFunction.StateTransition.builder(
+                GroundMovementStates.JUMP,
+                transitionContext -> transitionContext.dataContainer().getDriverValue(IS_JUMPING)
+        )
+                .setTransition(Transition.SINGLE_TICK)
+                .setPriority(40)
+                .build();
+
+        StateMachineFunction.StateTransition<GroundMovementStates> transitionToFallingState = StateMachineFunction.StateTransition.builder(
+                        GroundMovementStates.FALLING,
+                        transitionContext -> !transitionContext.dataContainer().getDriverValue(IS_GROUNDED)
+                )
+                .setTransition(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
+                .setPriority(50)
+                .build();
+
         PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.builder(GroundMovementStates.values())
-                .addState(GroundMovementStates.IDLE, idleAnimationPlayer, true,
+                .addState(GroundMovementStates.IDLE, idleAnimationPlayer, false,
+                        // Begin walking if the player is moving horizontally
                         StateMachineFunction.StateTransition.builder(
                                 GroundMovementStates.WALKING,
-                                        transitionContext -> transitionContext.dataContainer().getDriverValue(HORIZONTAL_MOVEMENT_SPEED) >= 0.01f,
-                                        StateMachineFunction.CURRENT_TRANSITION_FINISHED)
+                                        walkingCondition,
+                                        StateMachineFunction.CURRENT_TRANSITION_FINISHED
+                                )
                                 .setTransition(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_OUT))
+                                .build(),
+                        // Transition to the jump state if jumping.
+                        transitionToJumpState,
+                        // Transition to the falling state if falling.
+                        transitionToFallingState
+                )
+                .addState(GroundMovementStates.WALKING, walkingBlendSpacePlayer, true,
+                        // Stop walking with the walk-to-stop animation if the player's already been walking for a bit.
+                        StateMachineFunction.StateTransition.builder(
+                                GroundMovementStates.STOPPING,
+                                        walkingCondition.negate(),
+                                        StateMachineFunction.CURRENT_TRANSITION_FINISHED
+                                )
+                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
+                                .build(),
+                        // Stop walking directly into the idle animation if the player only just began walking.
+                        StateMachineFunction.StateTransition.builder(
+                                GroundMovementStates.IDLE,
+                                        walkingCondition.negate(),
+                                        StateMachineFunction.CURRENT_TRANSITION_FINISHED.negate()
+                                )
+                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
+                                .build(),
+                        // Transition to the jump state if jumping.
+                        transitionToJumpState,
+                        // Transition to the falling state if falling.
+                        transitionToFallingState
+                )
+                .addState(GroundMovementStates.STOPPING, walkToStopAnimationPlayer, true,
+                        // Play the idle animation once the walk to stop animation has finished.
+                        StateMachineFunction.StateTransition.builder(
+                                GroundMovementStates.IDLE,
+                                        transitionContext -> false
+                                )
+                                .automaticallyTransitionIfAnimationPlayerFinishing(1f)
+                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
+                                .build(),
+                        // Transition to the jump state if jumping.
+                        transitionToJumpState,
+                        // Transition to the falling state if falling.
+                        transitionToFallingState
+                )
+                .addState(GroundMovementStates.JUMP, jumpAnimationPlayer, true,
+                        // Automatically move into the falling animation player
+                        StateMachineFunction.StateTransition.builder(
+                                GroundMovementStates.FALLING,
+                                        transitionContext -> false
+                                )
+                                .automaticallyTransitionIfAnimationPlayerFinishing(1f)
+                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(4), Easing.SINE_IN_OUT))
+                                .build(),
+                        // If the player lands before it can move into the falling animation, go straight to the landing animation as long as the jump state is fully transitioned.
+                        StateMachineFunction.StateTransition.builder(
+                                GroundMovementStates.LAND,
+                                        transitionContext -> transitionContext.dataContainer().getDriverValue(IS_GROUNDED),
+                                        StateMachineFunction.CURRENT_TRANSITION_FINISHED
+                                )
+                                .setTransition(Transition.SINGLE_TICK)
                                 .build()
                         )
-                .addState(GroundMovementStates.WALKING, walkingBlendSpacePlayer, true,
+                .addState(GroundMovementStates.FALLING, fallingAnimationPlayer, true,
+                        // Move into the landing animation if the player is no longer falling.
+                        StateMachineFunction.StateTransition.builder(
+                                GroundMovementStates.LAND,
+                                        transitionContext -> transitionContext.dataContainer().getDriverValue(IS_GROUNDED)
+                                )
+                                .setTransition(Transition.SINGLE_TICK)
+                                .setPriority(50)
+                                .build(),
+                        // Move into the jumping animation if the player is no longer falling, but also jumping.
+                        StateMachineFunction.StateTransition.builder(
+                                        GroundMovementStates.JUMP,
+                                        transitionContext -> transitionContext.dataContainer().getDriverValue(IS_GROUNDED),
+                                        transitionContext -> transitionContext.dataContainer().getDriverValue(IS_JUMPING),
+                                        StateMachineFunction.CURRENT_TRANSITION_FINISHED
+                                )
+                                .setTransition(Transition.SINGLE_TICK)
+                                .setPriority(40)
+                                .build()
+                )
+                .addState(GroundMovementStates.LAND, landAnimationPlayer, true,
+                        // Move into the idle animation once the falling animation is finished, if the player is not walking.
                         StateMachineFunction.StateTransition.builder(
                                         GroundMovementStates.IDLE,
-                                        transitionContext -> transitionContext.dataContainer().getDriverValue(HORIZONTAL_MOVEMENT_SPEED) < 0.01f)
-                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.4f), Easing.SINE_IN_OUT))
-                                .build()
+                                        walkingCondition.negate(),
+                                        StateMachineFunction.makeMostRelevantAnimationPlayerFinishedCondition(1)
+                                )
+                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(12), Easing.SINE_IN_OUT))
+                                .setPriority(50)
+                                .build(),
+                        // Move into the walking animation once the falling animation is finished, if the player is walking.
+                        StateMachineFunction.StateTransition.builder(
+                                        GroundMovementStates.WALKING,
+                                        walkingCondition,
+                                        StateMachineFunction.makeMostRelevantAnimationPlayerFinishedCondition(1)
+                                )
+                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(12), Easing.SINE_IN_OUT))
+                                .setPriority(50)
+                                .build(),
+                        // Move into the jumping animation if the player is jumping again
+                        transitionToJumpState
                 )
                 .build();
 
@@ -230,7 +356,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public static final DriverKey<VariableDriver<Float>> HORIZONTAL_MOVEMENT_SPEED = DriverKey.of("horizontal_movement_speed", () -> VariableDriver.ofFloat(() -> 0f));
     public static final DriverKey<VariableDriver<Float>> MODIFIED_WALK_SPEED = DriverKey.of("modified_walk_speed", () -> VariableDriver.ofFloat(() -> 0f));
+    public static final DriverKey<VariableDriver<Boolean>> IS_MOVING = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Boolean>> IS_GROUNDED = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<VariableDriver<Boolean>> IS_JUMPING = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> false));
 
 
     @Override
@@ -246,7 +374,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(RENDERED_MAIN_HAND_ITEM).setValue(driverContainer.getDriverValue(MAIN_HAND_ITEM));
         driverContainer.getDriver(RENDERED_OFF_HAND_ITEM).setValue(driverContainer.getDriverValue(OFF_HAND_ITEM));
 
+        driverContainer.getDriver(IS_MOVING).setValue(dataReference.input.keyPresses.forward() || dataReference.input.keyPresses.backward() || dataReference.input.keyPresses.left() || dataReference.input.keyPresses.right());
         driverContainer.getDriver(IS_GROUNDED).setValue(dataReference.onGround());
+        driverContainer.getDriver(IS_JUMPING).setValue(dataReference.input.keyPresses.jump());
 
         Vector3f velocity = new Vector3f((float) (dataReference.getX() - dataReference.xo), (float) (dataReference.getY() - dataReference.yo), (float) (dataReference.getZ() - dataReference.zo));
         // We don't want vertical velocity to be factored into the movement direction offset as much as the horizontal velocity.

@@ -72,6 +72,17 @@ public abstract class TimeBasedPoseFunction<P extends AnimationPose> implements 
         }
 
         /**
+         * Sets a constant play rate.
+         * <p>
+         * The play rate is used as a multiplier when incrementing time, so 1 is normal time, 0.5 is half as fast, and 2 is twice as fast.
+         */
+        @SuppressWarnings("unchecked")
+        public B setPlayRate(float playRate) {
+            this.playRateFunction = evaluationState -> playRate;
+            return (B) this;
+        }
+
+        /**
          * Sets the function that is used to update whether the function is playing or not each tick.
          */
         @SuppressWarnings("unchecked")
