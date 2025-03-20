@@ -1,5 +1,6 @@
 package com.trainguy9512.locomotion.animation.animator;
 
+import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.access.MatrixModelPart;
 import com.trainguy9512.locomotion.animation.animator.entity.EntityJointAnimator;
 import com.trainguy9512.locomotion.animation.data.AnimationDataContainer;
@@ -42,11 +43,13 @@ public class JointAnimatorDispatcher {
     }
 
     public void tickFirstPersonPlayerJointAnimator(){
-        JointAnimatorRegistry.getFirstPersonPlayerJointAnimator().ifPresent(
-                jointAnimator -> this.getFirstPersonPlayerDataContainer().ifPresent(
-                        dataContainer -> this.tickJointAnimator(jointAnimator, Minecraft.getInstance().player, dataContainer)
-                )
-        );
+        if (LocomotionMain.CONFIG.useLocomotionFirstPersonRenderer) {
+            JointAnimatorRegistry.getFirstPersonPlayerJointAnimator().ifPresent(
+                    jointAnimator -> this.getFirstPersonPlayerDataContainer().ifPresent(
+                            dataContainer -> this.tickJointAnimator(jointAnimator, Minecraft.getInstance().player, dataContainer)
+                    )
+            );
+        }
     }
 
     /**

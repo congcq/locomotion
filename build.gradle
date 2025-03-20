@@ -10,12 +10,14 @@ version = project.mod_version
 group = project.maven_group
 
 repositories {
-	//MOD MENU   maven { url "https://maven.terraformersmc.com/" }
 
+	mavenCentral()
 	maven {
 		name = 'ParchmentMC'
 		url = 'https://maven.parchmentmc.org'
 	}
+	maven { url 'https://maven.isxander.dev/releases' }
+	maven { url "https://api.modrinth.com/maven" }
 
 	// Add repositories to retrieve artifacts from in here.
 	// You should only use this when depending on other mods because
@@ -23,6 +25,7 @@ repositories {
 	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
 	// for more information about repositories.
 }
+
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -33,8 +36,10 @@ dependencies {
 		parchment("org.parchmentmc.data:parchment-1.21.4:2025.02.16@zip")
 	}
 
-	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	modImplementation "dev.isxander:yet-another-config-lib:${project.yacl_version}"
+	modImplementation "maven.modrinth:modmenu:${project.modmenu_version}"
+
 
 
 

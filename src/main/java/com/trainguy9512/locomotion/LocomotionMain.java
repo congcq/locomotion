@@ -4,6 +4,7 @@ package com.trainguy9512.locomotion;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorRegistry;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import com.trainguy9512.locomotion.animation.data.AnimationSequenceDataLoader;
+import com.trainguy9512.locomotion.config.LocomotionConfig;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.server.packs.PackType;
@@ -14,9 +15,8 @@ public class LocomotionMain implements ModInitializer {
 
 
 	public static final String MOD_ID = "locomotion";
-
-
 	public static Logger LOGGER = LogManager.getLogger();
+	public static final LocomotionConfig CONFIG = new LocomotionConfig();
 
 
 	public static void onClientInit() {

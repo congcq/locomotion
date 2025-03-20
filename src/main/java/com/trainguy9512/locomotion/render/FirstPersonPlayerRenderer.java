@@ -2,6 +2,7 @@ package com.trainguy9512.locomotion.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.access.MatrixModelPart;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
@@ -45,6 +46,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
     }
 
     public void render(float partialTicks, PoseStack poseStack, MultiBufferSource.BufferSource buffer, LocalPlayer playerEntity, int combinedLight) {
+
         JointAnimatorDispatcher jointAnimatorDispatcher = JointAnimatorDispatcher.getInstance();
 
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(

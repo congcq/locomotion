@@ -20,6 +20,9 @@
   "entrypoints": {
     "main": [
       "com.trainguy9512.locomotion.LocomotionMain"
+    ],
+    "modmenu": [
+      "com.trainguy9512.locomotion.config.ModMenuIntegration"
     ]
   },
   "mixins": [
@@ -29,6 +32,7 @@
   "depends": {
     "fabricloader": ">=0.16.10",
     "fabric-api": "*",
+    "yet_another_config_lib_v3": ">=3.6.1",
     "minecraft": "1.21.4",
     "java": ">=21"
   },
