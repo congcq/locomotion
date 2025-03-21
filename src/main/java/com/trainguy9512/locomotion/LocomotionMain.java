@@ -15,11 +15,13 @@ public class LocomotionMain implements ModInitializer {
 
 
 	public static final String MOD_ID = "locomotion";
-	public static Logger LOGGER = LogManager.getLogger();
+	public static final Logger LOGGER = LogManager.getLogger();
 	public static final LocomotionConfig CONFIG = new LocomotionConfig();
 
 
 	public static void onClientInit() {
+		CONFIG.load();
+
 		registerTimelineGroupLoader();
 		registerEntityAnimators();
 		//registerBlockRenderers();

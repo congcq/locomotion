@@ -1,23 +1,74 @@
 package com.trainguy9512.locomotion.config;
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.trainguy9512.locomotion.LocomotionMain;
-import dev.isxander.yacl3.config.v2.api.ConfigClassHandler;
-import dev.isxander.yacl3.config.v2.api.SerialEntry;
-import dev.isxander.yacl3.config.v2.api.serializer.GsonConfigSerializerBuilder;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.resources.ResourceLocation;
+
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class LocomotionConfig {
 
-    public static final ConfigClassHandler<LocomotionConfig> HANDLER = ConfigClassHandler.createBuilder(LocomotionConfig.class)
-            .id(ResourceLocation.fromNamespaceAndPath(LocomotionMain.MOD_ID, "config"))
-            .serializer(config -> GsonConfigSerializerBuilder.create(config)
-                    .setPath(FabricLoader.getInstance().getConfigDir().resolve("locomotion.json5"))
-                    .setJson5(true)
-                    .build())
-            .build();
+    private static final Path CONFIG_FILE_PATH = FabricLoader.getInstance().getConfigDir().resolve(LocomotionMain.MOD_ID + ".json");
+    private static final Gson GSON = new GsonBuilder()
+            .setPrettyPrinting()
+            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+            .excludeFieldsWithModifiers(Modifier.PRIVATE)
+            .create();
 
-    @SerialEntry
-    public boolean useLocomotionFirstPersonRenderer = true;
+    private Data configData;
+
+    public LocomotionConfig() {
+        this.configData = new Data();
+    }
+
+    public Data data() {
+        return configData;
+    }
+
+    public void load() {
+        if (Files.exists(CONFIG_FILE_PATH)) {
+            try (FileReader reader = new FileReader(CONFIG_FILE_PATH.toFile())) {
+                this.configData = GSON.fromJson(reader, LocomotionConfig.Data.class);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to load locomotion config file", e);
+            }
+        } else {
+            configData = new LocomotionConfig.Data();
+        }
+        save();
+
+    }
+
+    public void save() {
+        try (BufferedWriter writer = Files.newBufferedWriter(CONFIG_FILE_PATH)) {
+            writer.write(GSON.toJson(this.configData));
+        } catch (Exception e) {
+            LocomotionMain.LOGGER.error("Failed to write config to path {}", CONFIG_FILE_PATH.toAbsolutePath());
+        }
+    }
+
+
+    public static class Data {
+
+        public final FirstPersonPlayerSettings firstPersonPlayerSettings = new FirstPersonPlayerSettings();
+
+        public TestType type = TestType.ONE_TEST;
+
+        public enum TestType {
+            ONE_TEST,
+            TWO_TEST
+
+        }
+
+        public static class FirstPersonPlayerSettings {
+            public boolean useLocomotionFirstPersonRenderer = true;
+        }
+    }
 }

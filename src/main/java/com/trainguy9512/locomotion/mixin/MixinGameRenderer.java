@@ -6,21 +6,15 @@ import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.access.FirstPersonPlayerRendererGetter;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorRegistry;
-import com.trainguy9512.locomotion.render.FirstPersonPlayerRenderer;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.geom.EntityModelSet;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderBuffers;
-import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.server.packs.resources.ResourceManager;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -39,7 +33,7 @@ public abstract class MixinGameRenderer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setup(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;ZZF)V")
     )
     private void computePosePriorToRendering(DeltaTracker deltaTracker, CallbackInfo ci){
-        if (LocomotionMain.CONFIG.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
             JointAnimatorDispatcher jointAnimatorDispatcher = JointAnimatorDispatcher.getInstance();
             jointAnimatorDispatcher.getFirstPersonPlayerDataContainer().ifPresent(dataContainer ->
                     JointAnimatorRegistry.getFirstPersonPlayerJointAnimator().ifPresent(
@@ -57,7 +51,7 @@ public abstract class MixinGameRenderer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GameRenderer;bobHurt(Lcom/mojang/blaze3d/vertex/PoseStack;F)V")
     )
     private void addCameraRotation(DeltaTracker deltaTracker, CallbackInfo ci, @Local PoseStack poseStack){
-        if (LocomotionMain.CONFIG.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
             ((FirstPersonPlayerRendererGetter)this.minecraft.getEntityRenderDispatcher()).locomotion$getFirstPersonPlayerRenderer().ifPresent(firstPersonPlayerRenderer -> firstPersonPlayerRenderer.transformCamera(poseStack));
         }
 
@@ -71,7 +65,7 @@ public abstract class MixinGameRenderer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderHandsWithItems(FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;Lnet/minecraft/client/player/LocalPlayer;I)V")
     )
     private void renderLocomotionFirstPersonPlayer(ItemInHandRenderer instance, float partialTicks, PoseStack poseStack, MultiBufferSource.BufferSource buffer, LocalPlayer playerEntity, int combinedLight){
-        if (LocomotionMain.CONFIG.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
             ((FirstPersonPlayerRendererGetter) this.minecraft.getEntityRenderDispatcher()).locomotion$getFirstPersonPlayerRenderer().ifPresent(firstPersonPlayerRenderer -> firstPersonPlayerRenderer.render(partialTicks, poseStack, buffer, playerEntity, combinedLight));
         } else {
             instance.renderHandsWithItems(partialTicks, poseStack, buffer, playerEntity, combinedLight);
@@ -88,7 +82,7 @@ public abstract class MixinGameRenderer {
             cancellable = true
     )
     private void removeViewBobbing(PoseStack poseStack, float partialTicks, CallbackInfo ci){
-        if (LocomotionMain.CONFIG.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
             ci.cancel();
         }
     }

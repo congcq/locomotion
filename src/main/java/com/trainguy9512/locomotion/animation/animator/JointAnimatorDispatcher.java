@@ -43,7 +43,7 @@ public class JointAnimatorDispatcher {
     }
 
     public void tickFirstPersonPlayerJointAnimator(){
-        if (LocomotionMain.CONFIG.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
             JointAnimatorRegistry.getFirstPersonPlayerJointAnimator().ifPresent(
                     jointAnimator -> this.getFirstPersonPlayerDataContainer().ifPresent(
                             dataContainer -> this.tickJointAnimator(jointAnimator, Minecraft.getInstance().player, dataContainer)
