@@ -4,6 +4,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.trainguy9512.locomotion.LocomotionMain;
+import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.BufferedWriter;
@@ -52,12 +53,13 @@ public class LocomotionConfig {
         } catch (Exception e) {
             LocomotionMain.LOGGER.error("Failed to write config to path {}", CONFIG_FILE_PATH.toAbsolutePath());
         }
+        JointAnimatorDispatcher.getInstance().reInitializeData();
     }
 
 
     public static class Data {
 
-        public final FirstPersonPlayerSettings firstPersonPlayerSettings = new FirstPersonPlayerSettings();
+        public final FirstPersonPlayer firstPersonPlayer = new FirstPersonPlayer();
 
         public TestType type = TestType.ONE_TEST;
 
@@ -67,8 +69,11 @@ public class LocomotionConfig {
 
         }
 
-        public static class FirstPersonPlayerSettings {
-            public boolean useLocomotionFirstPersonRenderer = true;
+        public static class FirstPersonPlayer {
+            public boolean enableRenderer = true;
+            public boolean enableCameraRotationDamping = true;
+            public float cameraRotationStiffnessFactor = 0.3f;
+            public float cameraRotationDampingFactor = 0.7f;
         }
     }
 }

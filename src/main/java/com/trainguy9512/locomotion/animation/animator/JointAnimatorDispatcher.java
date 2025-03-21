@@ -24,15 +24,23 @@ public class JointAnimatorDispatcher {
     private AnimationDataContainer firstPersonPlayerDataContainer;
     private ComponentSpacePose interpolatedFirstPersonPlayerPose;
 
-    public JointAnimatorDispatcher(){
+    public JointAnimatorDispatcher() {
         this.entityAnimationDataContainerStorage = new WeakHashMap<>();
     }
 
-    public static JointAnimatorDispatcher getInstance(){
+    public static JointAnimatorDispatcher getInstance() {
         return INSTANCE;
     }
 
-    public <T extends Entity> void tickEntityJointAnimators(Iterable<T> entitiesForRendering){
+    /**
+     * Re-initializes all created data containers
+     */
+    public void reInitializeData() {
+        this.firstPersonPlayerDataContainer = null;
+        this.entityAnimationDataContainerStorage.clear();
+    }
+
+    public <T extends Entity> void tickEntityJointAnimators(Iterable<T> entitiesForRendering) {
         entitiesForRendering.forEach(entity ->
                 JointAnimatorRegistry.getThirdPersonJointAnimator(entity).ifPresent(
                         jointAnimator -> this.getEntityAnimationDataContainer(entity).ifPresent(
@@ -43,7 +51,7 @@ public class JointAnimatorDispatcher {
     }
 
     public void tickFirstPersonPlayerJointAnimator(){
-        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
             JointAnimatorRegistry.getFirstPersonPlayerJointAnimator().ifPresent(
                     jointAnimator -> this.getFirstPersonPlayerDataContainer().ifPresent(
                             dataContainer -> this.tickJointAnimator(jointAnimator, Minecraft.getInstance().player, dataContainer)

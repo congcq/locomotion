@@ -50,13 +50,13 @@ public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose
 
     @Override
     public void tick(FunctionEvaluationState evaluationState) {
+        super.tick(evaluationState);
         Set<String> timeMarkersToFire = AnimationSequenceData.INSTANCE.getOrThrow(this.animationSequence).getMarkersInRange(TimeSpan.ofTicks(this.timeTicksElapsed), TimeSpan.ofTicks(this.timeTicksElapsed + this.playRate), this.looping);
         for (String timeMarker : timeMarkersToFire) {
             if (this.timeMarkerBindings.containsKey(timeMarker)) {
                 this.timeMarkerBindings.get(timeMarker).accept(evaluationState);
             }
         }
-        super.tick(evaluationState);
     }
 
     @Override

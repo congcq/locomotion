@@ -1,5 +1,6 @@
 package com.trainguy9512.locomotion.animation.animator.entity;
 
+import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.*;
 import com.trainguy9512.locomotion.animation.driver.SpringDriver;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
@@ -167,6 +168,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 JointChannel.TransformType.ADD,
                                 JointChannel.TransformSpace.COMPONENT
                         )
+                        .setWeight(interpolationContext -> LocomotionMain.CONFIG.data().firstPersonPlayer.enableCameraRotationDamping ? 1f : 0f)
                         .build();
 
         return movementDirectionOffsetTransformer;
@@ -210,14 +212,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         StateMachineFunction.StateTransition<GroundMovementStates> transitionToJumpState = StateMachineFunction.StateTransition.builder(
                 GroundMovementStates.JUMP,
-                transitionContext -> transitionContext.dataContainer().getDriverValue(IS_JUMPING)
-        )
+                        transitionContext -> transitionContext.dataContainer().getDriverValue(IS_JUMPING)
+                )
                 .setTransition(Transition.SINGLE_TICK)
                 .setPriority(40)
                 .build();
 
         StateMachineFunction.StateTransition<GroundMovementStates> transitionToFallingState = StateMachineFunction.StateTransition.builder(
-                        GroundMovementStates.FALLING,
+                GroundMovementStates.FALLING,
                         transitionContext -> !transitionContext.dataContainer().getDriverValue(IS_GROUNDED)
                 )
                 .setTransition(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
@@ -282,7 +284,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         transitionContext -> false
                                 )
                                 .automaticallyTransitionIfAnimationPlayerFinishing(1f)
-                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(4), Easing.SINE_IN_OUT))
+                                .setTransition(Transition.SINGLE_TICK)
                                 .build(),
                         // If the player lands before it can move into the falling animation, go straight to the landing animation as long as the jump state is fully transitioned.
                         StateMachineFunction.StateTransition.builder(
@@ -347,7 +349,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
 
     public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector(0.5f, 0.6f, 1f, Vector3f::new, false));
-    public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_lag", () -> SpringDriver.ofVector(0.3f, 0.7f, 1f, Vector3f::new, true));
+    public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_damping", () -> SpringDriver.ofVector(LocomotionMain.CONFIG.data().firstPersonPlayer.cameraRotationStiffnessFactor, LocomotionMain.CONFIG.data().firstPersonPlayer.cameraRotationDampingFactor, 1f, Vector3f::new, true));
 
     public static final DriverKey<VariableDriver<ItemStack>> MAIN_HAND_ITEM = DriverKey.of("main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> OFF_HAND_ITEM = DriverKey.of("off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));

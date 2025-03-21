@@ -33,7 +33,7 @@ public abstract class MixinGameRenderer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setup(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;ZZF)V")
     )
     private void computePosePriorToRendering(DeltaTracker deltaTracker, CallbackInfo ci){
-        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
             JointAnimatorDispatcher jointAnimatorDispatcher = JointAnimatorDispatcher.getInstance();
             jointAnimatorDispatcher.getFirstPersonPlayerDataContainer().ifPresent(dataContainer ->
                     JointAnimatorRegistry.getFirstPersonPlayerJointAnimator().ifPresent(
@@ -51,7 +51,7 @@ public abstract class MixinGameRenderer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GameRenderer;bobHurt(Lcom/mojang/blaze3d/vertex/PoseStack;F)V")
     )
     private void addCameraRotation(DeltaTracker deltaTracker, CallbackInfo ci, @Local PoseStack poseStack){
-        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
             ((FirstPersonPlayerRendererGetter)this.minecraft.getEntityRenderDispatcher()).locomotion$getFirstPersonPlayerRenderer().ifPresent(firstPersonPlayerRenderer -> firstPersonPlayerRenderer.transformCamera(poseStack));
         }
 
@@ -65,7 +65,7 @@ public abstract class MixinGameRenderer {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderHandsWithItems(FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;Lnet/minecraft/client/player/LocalPlayer;I)V")
     )
     private void renderLocomotionFirstPersonPlayer(ItemInHandRenderer instance, float partialTicks, PoseStack poseStack, MultiBufferSource.BufferSource buffer, LocalPlayer playerEntity, int combinedLight){
-        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
             ((FirstPersonPlayerRendererGetter) this.minecraft.getEntityRenderDispatcher()).locomotion$getFirstPersonPlayerRenderer().ifPresent(firstPersonPlayerRenderer -> firstPersonPlayerRenderer.render(partialTicks, poseStack, buffer, playerEntity, combinedLight));
         } else {
             instance.renderHandsWithItems(partialTicks, poseStack, buffer, playerEntity, combinedLight);
@@ -82,7 +82,7 @@ public abstract class MixinGameRenderer {
             cancellable = true
     )
     private void removeViewBobbing(PoseStack poseStack, float partialTicks, CallbackInfo ci){
-        if (LocomotionMain.CONFIG.data().firstPersonPlayerSettings.useLocomotionFirstPersonRenderer) {
+        if (LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
             ci.cancel();
         }
     }

@@ -260,7 +260,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                 }
                 this.weight.setValue(nextWeightValue);
             }
-            if(this.weight.getCurrentValue() > 0){
+            if (this.weight.getCurrentValue() > 0 || this.weight.getPreviousValue() > 0) {
                 // Tick the child functions if the current weight value is greater than zero.
                 this.inputFunction.tick(evaluationState);
             }
