@@ -1,5 +1,6 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
+import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.AnimationPose;
 import com.trainguy9512.locomotion.util.TimeSpan;
 
@@ -9,9 +10,9 @@ public abstract class TimeBasedPoseFunction<P extends AnimationPose> implements 
 
     protected final Function<FunctionEvaluationState, Boolean> isPlayingFunction;
     protected final Function<FunctionEvaluationState, Float> playRateFunction;
-    protected float resetStartTimeOffsetTicks;
+    protected final float resetStartTimeOffsetTicks;
 
-    protected float timeTicksElapsed;
+    protected final VariableDriver<Float> ticksElapsed;
     protected float playRate;
     protected boolean isPlaying;
 
@@ -20,7 +21,7 @@ public abstract class TimeBasedPoseFunction<P extends AnimationPose> implements 
         this.playRateFunction = playRateFunction;
         this.resetStartTimeOffsetTicks = resetStartTimeOffsetTicks;
 
-        this.timeTicksElapsed = this.resetStartTimeOffsetTicks;
+        this.ticksElapsed = VariableDriver.ofFloat(() -> this.resetStartTimeOffsetTicks);
     }
 
     @Override
@@ -32,20 +33,19 @@ public abstract class TimeBasedPoseFunction<P extends AnimationPose> implements 
     }
 
     protected void updateTime(FunctionEvaluationState evaluationState) {
-        if (evaluationState.isResetting()) {
-            this.resetTime();
-        }
+        this.ticksElapsed.pushCurrentToPrevious();
+        evaluationState.ifMarkedForReset(this::resetTime);
         if (this.isPlaying) {
-            this.timeTicksElapsed += this.playRate;
+            this.ticksElapsed.modifyValue(currentValue -> currentValue + this.playRate);
         }
     }
 
-    protected void resetTime(){
-        this.timeTicksElapsed = this.resetStartTimeOffsetTicks;
+    protected void resetTime() {
+        this.ticksElapsed.hardReset();
     }
 
     protected TimeSpan getInterpolatedTimeElapsed(FunctionInterpolationContext context){
-        return TimeSpan.ofTicks(this.timeTicksElapsed - (1 - context.partialTicks()) * this.playRate);
+        return TimeSpan.ofTicks(this.ticksElapsed.getValueInterpolated(context.partialTicks()));
     }
 
     public static class Builder<B> {

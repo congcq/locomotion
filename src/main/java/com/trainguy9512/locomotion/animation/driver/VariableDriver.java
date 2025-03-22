@@ -3,6 +3,7 @@ package com.trainguy9512.locomotion.animation.driver;
 import com.trainguy9512.locomotion.util.Interpolator;
 import org.joml.Vector3f;
 
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -65,9 +66,17 @@ public class VariableDriver<D> implements Driver<D> {
     }
 
     /**
+     * Modifies the current value based on the provided function
+     * @param valueModifier Value modifier function
+     */
+    public void modifyValue(Function<D, D> valueModifier) {
+        this.currentValue = valueModifier.apply(this.currentValue);
+    }
+
+    /**
      * Pushes the current value to the previous tick's value.
      */
-    public void prepareForNextTick() {
+    public void pushCurrentToPrevious() {
         this.previousValue = this.currentValue;
     }
 
@@ -76,6 +85,14 @@ public class VariableDriver<D> implements Driver<D> {
      */
     public void reset() {
         this.setValue(this.initialValue.get());
+    }
+
+    /**
+     * Loads both the driver's current and previous values with the driver's default value
+     */
+    public void hardReset() {
+        this.setValue(this.initialValue.get());
+        this.pushCurrentToPrevious();
     }
 
     /**

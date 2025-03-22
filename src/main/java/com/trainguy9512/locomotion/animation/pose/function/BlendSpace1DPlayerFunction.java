@@ -27,7 +27,7 @@ public class BlendSpace1DPlayerFunction extends TimeBasedPoseFunction<LocalSpace
     @Override
     public void tick(FunctionEvaluationState evaluationState) {
         float position = this.blendPositionFunction.apply(evaluationState);
-        this.blendPosition.prepareForNextTick();
+        this.blendPosition.pushCurrentToPrevious();
         this.blendPosition.setValue(position);
 
         this.isPlaying = isPlayingFunction.apply(evaluationState);

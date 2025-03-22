@@ -4,7 +4,6 @@ import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.data.PoseCalculationDataContainer;
 import com.trainguy9512.locomotion.animation.pose.AnimationPose;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
@@ -44,18 +43,41 @@ public interface PoseFunction<P extends AnimationPose> {
      */
     Optional<AnimationPlayer> testForMostRelevantAnimationPlayer();
 
-    record FunctionEvaluationState(OnTickDriverContainer dataContainer, boolean isResetting, long currentTick){
+    record FunctionEvaluationState(OnTickDriverContainer dataContainer, boolean resetting, long currentTick) {
 
-        public static FunctionEvaluationState of(OnTickDriverContainer dataContainer, boolean isResetting, long currentTick){
-            return new FunctionEvaluationState(dataContainer, isResetting, currentTick);
+        public static FunctionEvaluationState of(OnTickDriverContainer dataContainer, boolean resetting, long currentTick) {
+            return new FunctionEvaluationState(dataContainer, resetting, currentTick);
         }
 
-        public FunctionEvaluationState markedForReset(){
+        /**
+         * Creates a copy of the evaluation state that is marked for a hard reset.
+         *
+         * <p>A hard reset is an animation reset that immediately resets with no blending.</p>
+         */
+        public FunctionEvaluationState markedForReset() {
             return FunctionEvaluationState.of(this.dataContainer, true, this.currentTick);
         }
 
-        public FunctionEvaluationState cancelMarkedForReset(){
+        /**
+         * Creates a copy of the evaluation state that is marked for a soft reset.
+         *
+         * <p>A soft reset is an animation reset that resets with one tick of blending.</p>
+         */
+        public FunctionEvaluationState markedForSoftReset() {
+            return FunctionEvaluationState.of(this.dataContainer, this.resetting, this.currentTick);
+        }
+
+        public FunctionEvaluationState cleared() {
             return FunctionEvaluationState.of(this.dataContainer, false, this.currentTick);
+        }
+
+        /**
+         * Runs the provided runnable if this evaluation state is marked for hard reset.
+         */
+        public void ifMarkedForReset(Runnable runnable) {
+            if (this.resetting) {
+                runnable.run();
+            }
         }
     }
 

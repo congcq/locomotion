@@ -76,7 +76,7 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
     }
 
     public void prepareForNextTick(){
-        this.drivers.values().forEach(Driver::prepareForNextTick);
+        this.drivers.values().forEach(Driver::pushCurrentToPrevious);
     }
 
     @SuppressWarnings("unchecked")

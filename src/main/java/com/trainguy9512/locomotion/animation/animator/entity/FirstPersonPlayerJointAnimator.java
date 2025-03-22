@@ -123,7 +123,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> testIdlePlayer = SequenceEvaluatorFunction.of(POSE_TEST, context -> TimeSpan.ofSeconds(0));
         PoseFunction<LocalSpacePose> testMovingPlayer = SequencePlayerFunction.builder(ADDITIVE_TEST_ADDITIVE).build();
 
-        PoseFunction<LocalSpacePose> testStateMachine = StateMachineFunction.builder(TestStates.values())
+        PoseFunction<LocalSpacePose> testStateMachine = StateMachineFunction.<TestStates>builder()
                 .addState(TestStates.IDLE, testIdlePlayer, true,
                         StateMachineFunction.StateTransition.builder(TestStates.MOVING,
                                         transitionContext -> transitionContext.dataContainer().getDriverValue(MODIFIED_WALK_SPEED) >= 0.2f,
@@ -226,7 +226,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .setPriority(50)
                 .build();
 
-        PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.builder(GroundMovementStates.values())
+        PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.<GroundMovementStates>builder()
                 .addState(GroundMovementStates.IDLE, idleAnimationPlayer, false,
                         // Begin walking if the player is moving horizontally
                         StateMachineFunction.StateTransition.builder(
@@ -308,8 +308,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         StateMachineFunction.StateTransition.builder(
                                         GroundMovementStates.JUMP,
                                         transitionContext -> transitionContext.dataContainer().getDriverValue(IS_GROUNDED),
-                                        transitionContext -> transitionContext.dataContainer().getDriverValue(IS_JUMPING),
-                                        StateMachineFunction.CURRENT_TRANSITION_FINISHED
+                                        transitionContext -> transitionContext.dataContainer().getDriverValue(IS_JUMPING)
                                 )
                                 .setTransition(Transition.SINGLE_TICK)
                                 .setPriority(40)
@@ -322,7 +321,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         walkingCondition.negate(),
                                         StateMachineFunction.makeMostRelevantAnimationPlayerFinishedCondition(1)
                                 )
-                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(12), Easing.SINE_IN_OUT))
+                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build(),
                         // Move into the walking animation once the falling animation is finished, if the player is walking.
@@ -331,9 +330,11 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         walkingCondition,
                                         StateMachineFunction.makeMostRelevantAnimationPlayerFinishedCondition(1)
                                 )
-                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(12), Easing.SINE_IN_OUT))
+                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build(),
+                        // Transition to the falling state if falling.
+                        transitionToFallingState,
                         // Move into the jumping animation if the player is jumping again
                         transitionToJumpState
                 )
@@ -358,9 +359,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public static final DriverKey<VariableDriver<Float>> HORIZONTAL_MOVEMENT_SPEED = DriverKey.of("horizontal_movement_speed", () -> VariableDriver.ofFloat(() -> 0f));
     public static final DriverKey<VariableDriver<Float>> MODIFIED_WALK_SPEED = DriverKey.of("modified_walk_speed", () -> VariableDriver.ofFloat(() -> 0f));
-    public static final DriverKey<VariableDriver<Boolean>> IS_MOVING = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> false));
-    public static final DriverKey<VariableDriver<Boolean>> IS_GROUNDED = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> false));
-    public static final DriverKey<VariableDriver<Boolean>> IS_JUMPING = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<VariableDriver<Boolean>> IS_MOVING = DriverKey.of("is_moving", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<VariableDriver<Boolean>> IS_GROUNDED = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> true));
+    public static final DriverKey<VariableDriver<Boolean>> IS_JUMPING = DriverKey.of("is_jumping", () -> VariableDriver.ofBoolean(() -> false));
 
 
     @Override

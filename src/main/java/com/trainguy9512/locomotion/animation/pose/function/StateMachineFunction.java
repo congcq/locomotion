@@ -85,7 +85,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                     if(transitionTargetIncludedInThisMachine && targetIsNotCurrentActiveState){
                         StateTransition.TransitionContext transitionContext = StateTransition.TransitionContext.of(
                                 evaluationState.dataContainer(),
-                                this.timeTicksElapsed,
+                                TimeSpan.ofTicks(this.ticksElapsed.getCurrentValue()),
                                 this.states.get(currentActiveStateIdentifier).weight.getCurrentValue(),
                                 this.states.get(currentActiveStateIdentifier).inputFunction,
                                 stateTransition.transition.duration()
@@ -108,11 +108,11 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             this.states.forEach((stateIdentifier, state) -> {
                 state.currentTransition = stateTransition;
                 state.isActive = state == this.states.get(stateTransition.target());
-
             });
 
             // Update the active states array
             // Make sure there already isn't this state present in active states
+
             this.activeStates.remove(stateTransition.target());
             this.activeStates.addLast(stateTransition.target());
 
@@ -131,7 +131,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        Builder<S> builder = this.builder();
+        Builder<S> builder = StateMachineFunction.builder();
         this.states.forEach((stateIdentifier, state) -> builder.addState(stateIdentifier, state.inputFunction.wrapUnique(), state.resetUponEntry, state.potentialStateTransitions));
         return builder.build();
     }
@@ -148,17 +148,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         return Optional.empty();
     }
 
-    /**
-     * Creates a new state machine builder using the enum type of the provided enum type values. Use the state enum's {@code values()} method.
-     * @param values            Possible state values
-     * @return                  State machine builder
-     * @param <S>               Enum type
-     */
-    public static <S extends Enum<S>> Builder<S> builder(Enum<S>[] values) {
-        return new Builder<>();
-    }
-
-    private Builder<S> builder() {
+    public static <S extends Enum<S>> Builder<S> builder() {
         return new Builder<>();
     }
 
@@ -245,7 +235,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         private void tick(FunctionEvaluationState evaluationState, boolean isEntering){
             if(this.currentTransition != null){
-                this.weight.prepareForNextTick();
+                this.weight.pushCurrentToPrevious();
 
                 // Make the minimum transition time 0.01 to prevent a divide by zero error
                 float increment = 1 / Math.max(this.currentTransition.transition.duration().inTicks(), 0.01f);
@@ -255,7 +245,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
                 // If the state is just now becoming active after being de-active, and
                 // the state is set to reset upon entry, set the evaluation state for child functions to reset.
-                if(this.resetUponEntry && isEntering){
+                if (this.resetUponEntry && isEntering) {
                     evaluationState = evaluationState.markedForReset();
                 }
                 this.weight.setValue(nextWeightValue);
@@ -269,7 +259,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     public static final Predicate<StateTransition.TransitionContext> CURRENT_TRANSITION_FINISHED = transitionContext -> transitionContext.currentStateWeight() == 1;
 
-    public static Predicate<StateTransition.TransitionContext> makeMostRelevantAnimationPlayerFinishedCondition(final float crossFadeWeight) {
+    public static Predicate<StateTransition.TransitionContext> makeMostRelevantAnimationPlayerFinishedCondition(float crossFadeWeight) {
         return transitionContext -> {
             var potentialPlayer = transitionContext.currentStateInput.testForMostRelevantAnimationPlayer();
             if (potentialPlayer.isPresent()) {
@@ -372,14 +362,14 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         public record TransitionContext(
                 OnTickDriverContainer dataContainer,
-                float ticksElapsedInCurrentState,
+                TimeSpan timeElapsedInCurrentState,
                 float currentStateWeight,
                 PoseFunction<LocalSpacePose> currentStateInput,
                 TimeSpan transitionDuration
         )
         {
-            public static TransitionContext of(OnTickDriverContainer dataContainer, float ticksElapsedInCurrentState, float currentStateWeight, PoseFunction<LocalSpacePose> currentStateInput, TimeSpan transitionDuration){
-                return new TransitionContext(dataContainer, ticksElapsedInCurrentState, currentStateWeight, currentStateInput, transitionDuration);
+            public static TransitionContext of(OnTickDriverContainer dataContainer, TimeSpan timeElapsedInCurrentState, float currentStateWeight, PoseFunction<LocalSpacePose> currentStateInput, TimeSpan transitionDuration){
+                return new TransitionContext(dataContainer, timeElapsedInCurrentState, currentStateWeight, currentStateInput, transitionDuration);
             }
         }
     }

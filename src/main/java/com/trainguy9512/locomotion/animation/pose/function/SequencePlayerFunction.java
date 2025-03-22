@@ -51,7 +51,7 @@ public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose
     @Override
     public void tick(FunctionEvaluationState evaluationState) {
         super.tick(evaluationState);
-        Set<String> timeMarkersToFire = AnimationSequenceData.INSTANCE.getOrThrow(this.animationSequence).getMarkersInRange(TimeSpan.ofTicks(this.timeTicksElapsed), TimeSpan.ofTicks(this.timeTicksElapsed + this.playRate), this.looping);
+        Set<String> timeMarkersToFire = AnimationSequenceData.INSTANCE.getOrThrow(this.animationSequence).getMarkersInRange(TimeSpan.ofTicks(this.ticksElapsed.getCurrentValue()), TimeSpan.ofTicks(this.ticksElapsed.getCurrentValue() + this.playRate), this.looping);
         for (String timeMarker : timeMarkersToFire) {
             if (this.timeMarkerBindings.containsKey(timeMarker)) {
                 this.timeMarkerBindings.get(timeMarker).accept(evaluationState);
@@ -87,11 +87,11 @@ public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose
         float remainingTimePreviously;
         float remainingTimeCurrently;
         if (this.looping) {
-            remainingTimePreviously = lengthInTicks - ((this.timeTicksElapsed - this.playRate) % lengthInTicks);
-            remainingTimeCurrently = lengthInTicks - (this.timeTicksElapsed % lengthInTicks);
+            remainingTimePreviously = lengthInTicks - ((this.ticksElapsed.getCurrentValue() - this.playRate) % lengthInTicks);
+            remainingTimeCurrently = lengthInTicks - (this.ticksElapsed.getCurrentValue() % lengthInTicks);
         } else {
-            remainingTimePreviously = lengthInTicks - (Mth.clamp(this.timeTicksElapsed - this.playRate, 0, lengthInTicks));
-            remainingTimeCurrently = lengthInTicks - (Mth.clamp(this.timeTicksElapsed, 0, lengthInTicks));
+            remainingTimePreviously = lengthInTicks - (Mth.clamp(this.ticksElapsed.getCurrentValue() - this.playRate, 0, lengthInTicks));
+            remainingTimeCurrently = lengthInTicks - (Mth.clamp(this.ticksElapsed.getCurrentValue(), 0, lengthInTicks));
         }
         return new Tuple<>(TimeSpan.ofTicks(remainingTimePreviously), TimeSpan.ofTicks(remainingTimeCurrently));
     }

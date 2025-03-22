@@ -35,7 +35,7 @@ public class CachedPoseFunction implements PoseFunction<LocalSpacePose> {
     @Override
     public void tick(FunctionEvaluationState evaluationState) {
         if(!this.hasTickedAlready){
-            this.input.tick(evaluationState.cancelMarkedForReset());
+            this.input.tick(evaluationState.cleared());
             this.hasTickedAlready = true;
         }
     }
