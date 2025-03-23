@@ -288,7 +288,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         public static class Builder<S extends Enum<S>> {
 
             private final S identifier;
-            private final PoseFunction<LocalSpacePose> inputFunction;
+            private PoseFunction<LocalSpacePose> inputFunction;
             private final List<StateTransition<S>> outboundTransitions;
             private boolean resetUponEntry;
 
@@ -303,6 +303,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                 this.identifier = state.identifier;
                 this.inputFunction = state.inputFunction;
                 this.outboundTransitions = state.outboundTransitions;
+                this.resetUponEntry = state.resetUponEntry;
             }
 
             /**
@@ -313,14 +314,33 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                 return this;
             }
 
+            /**
+             * Assigns a set of potential outbound transitions to this state.
+             * @param outboundTransitions       Set of individual transitions.
+             */
             public Builder<S> withOutboundTransitions(List<StateTransition<S>> outboundTransitions) {
-                this.outboundTransitions.addAll(outboundTransitions);
+                outboundTransitions.forEach(transition -> {
+                    if (transition.target != this.identifier) {
+                        this.outboundTransitions.add(transition);
+                    } else {
+                        LocomotionMain.LOGGER.warn("Cannot add state transition to state {} from the same state {}", transition.target, this.identifier);
+                    }
+                });
                 return this;
             }
 
+            /**
+             * Assigns a set of potential outbound transitions to this state.
+             * @param outboundTransitions       Set of individual transitions.
+             */
             @SafeVarargs
             public final Builder<S> withOutboundTransitions(StateTransition<S>... outboundTransitions) {
                 return this.withOutboundTransitions(List.of(outboundTransitions));
+            }
+
+            private Builder<S> wrapUniquePoseFunction() {
+                this.inputFunction = inputFunction.wrapUnique();
+                return this;
             }
 
             public State<S> build() {
@@ -332,28 +352,6 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         }
     }
 
-    public static final Predicate<StateTransition.TransitionContext> CURRENT_TRANSITION_FINISHED = transitionContext -> transitionContext.currentStateWeight() == 1;
-
-    public static Predicate<StateTransition.TransitionContext> makeMostRelevantAnimationPlayerFinishedCondition(float crossFadeWeight) {
-        return transitionContext -> {
-            var potentialPlayer = transitionContext.currentStateInput.testForMostRelevantAnimationPlayer();
-            if (potentialPlayer.isPresent()) {
-                AnimationPlayer player = potentialPlayer.get();
-                float transitionTimeTicks = transitionContext.transitionDuration().inTicks() * crossFadeWeight;
-                Tuple<TimeSpan, TimeSpan> remainingTime = player.getRemainingTime();
-
-                // Mid-animation
-                if (remainingTime.getA().inTicks() > remainingTime.getB().inTicks()) {
-                    return transitionTimeTicks < remainingTime.getA().inTicks() && transitionTimeTicks >= remainingTime.getB().inTicks();
-                    // Looping (remaining time wrapping around 0), but NOT stopped.
-                } else if(remainingTime.getA().inTicks() < remainingTime.getB().inTicks()) {
-                    return transitionTimeTicks < remainingTime.getA().inTicks();
-                }
-            }
-            return false;
-        };
-    }
-
     public record StateTransition<S extends Enum<S>> (
             S target,
             Predicate<TransitionContext> conditionPredicate,
@@ -361,6 +359,29 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             int priority,
             boolean isAutomaticTransition
     ) implements Comparable<StateTransition<S>> {
+
+        public static final Predicate<StateTransition.TransitionContext> CURRENT_TRANSITION_FINISHED = transitionContext -> transitionContext.currentStateWeight() == 1;
+        public static final Predicate<StateTransition.TransitionContext> MOST_RELEVANT_ANIMATION_PLAYER_FINISHING = makeMostRelevantAnimationPlayerFinishedCondition(1f);
+
+        public static Predicate<StateTransition.TransitionContext> makeMostRelevantAnimationPlayerFinishedCondition(float crossFadeWeight) {
+            return transitionContext -> {
+                var potentialPlayer = transitionContext.currentStateInput.testForMostRelevantAnimationPlayer();
+                if (potentialPlayer.isPresent()) {
+                    AnimationPlayer player = potentialPlayer.get();
+                    float transitionTimeTicks = transitionContext.transitionDuration().inTicks() * crossFadeWeight;
+                    Tuple<TimeSpan, TimeSpan> remainingTime = player.getRemainingTime();
+
+                    // Mid-animation
+                    if (remainingTime.getA().inTicks() > remainingTime.getB().inTicks()) {
+                        return transitionTimeTicks < remainingTime.getA().inTicks() && transitionTimeTicks >= remainingTime.getB().inTicks();
+                        // Looping (remaining time wrapping around 0), but NOT stopped.
+                    } else if(remainingTime.getA().inTicks() < remainingTime.getB().inTicks()) {
+                        return transitionTimeTicks < remainingTime.getA().inTicks();
+                    }
+                }
+                return false;
+            };
+        }
 
         @SafeVarargs
         public static <S extends Enum<S>> Builder<S> builder(S target, Predicate<TransitionContext>... conditionPredicates){
@@ -400,10 +421,15 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
              * this becomes true.
              * @param crossFadeWeight       Weight of how the transition duration affects the condition. 1 = Full crossfade, 0 = Always at end of animation
              */
-            public Builder<S> automaticallyTransitionIfAnimationPlayerFinishing(float crossFadeWeight){
+            public Builder<S> automaticallyTransitionIfAnimationPlayerFinishing(float crossFadeWeight) {
                 this.conditionPredicate = this.conditionPredicate.or(makeMostRelevantAnimationPlayerFinishedCondition(crossFadeWeight));
                 this.automaticTransition = true;
                 return this;
+            }
+
+            @SafeVarargs
+            public final Builder<S> setCondition(Predicate<TransitionContext>... conditionPredicates) {
+
             }
 
             /**
@@ -411,7 +437,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
              *
              * @param transition            The {@link Transition} to use
              */
-            public Builder<S> setTransition(Transition transition){
+            public Builder<S> setTiming(Transition transition) {
                 this.transition = transition;
                 return this;
             }
@@ -425,12 +451,12 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
              *
              * @param priority                  Priority integer
              */
-            public Builder<S> setPriority(int priority){
+            public Builder<S> setPriority(int priority) {
                 this.priority = priority;
                 return this;
             }
 
-            public StateTransition<S> build(){
+            public StateTransition<S> build() {
                 return new StateTransition<>(this.target, this.conditionPredicate, this.transition, this.priority, this.automaticTransition);
             }
         }

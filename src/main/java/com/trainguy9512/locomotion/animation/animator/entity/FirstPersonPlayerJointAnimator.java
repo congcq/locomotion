@@ -128,13 +128,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         StateMachineFunction.StateTransition.builder(TestStates.MOVING,
                                         transitionContext -> transitionContext.dataContainer().getDriverValue(MODIFIED_WALK_SPEED) >= 0.2f,
                                         StateMachineFunction.CURRENT_TRANSITION_FINISHED)
-                                .setTransition(Transition.INSTANT)
+                                .setTiming(Transition.INSTANT)
                                 .build()
                 )
                 .addState(TestStates.MOVING, testMovingPlayer, true,
                         StateMachineFunction.StateTransition.builder(TestStates.IDLE, context -> false)
                                 .automaticallyTransitionIfAnimationPlayerFinishing(1f)
-                                .setTransition(Transition.of(TimeSpan.of24FramesPerSecond(7), Easing.ELASTIC_OUT))
+                                .setTiming(Transition.of(TimeSpan.of24FramesPerSecond(7), Easing.ELASTIC_OUT))
                                 .build()
                 )
                 .build();
@@ -214,7 +214,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 GroundMovementStates.JUMP,
                         transitionContext -> transitionContext.dataContainer().getDriverValue(IS_JUMPING)
                 )
-                .setTransition(Transition.SINGLE_TICK)
+                .setTiming(Transition.SINGLE_TICK)
                 .setPriority(40)
                 .build();
 
@@ -222,7 +222,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 GroundMovementStates.FALLING,
                         transitionContext -> !transitionContext.dataContainer().getDriverValue(IS_GROUNDED)
                 )
-                .setTransition(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
+                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
                 .setPriority(50)
                 .build();
 
@@ -234,7 +234,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         walkingCondition,
                                         StateMachineFunction.CURRENT_TRANSITION_FINISHED
                                 )
-                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_OUT))
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_OUT))
                                 .build(),
                         // Transition to the jump state if jumping.
                         transitionToJumpState,
@@ -248,7 +248,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         walkingCondition.negate(),
                                         StateMachineFunction.CURRENT_TRANSITION_FINISHED
                                 )
-                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
                                 .build(),
                         // Stop walking directly into the idle animation if the player only just began walking.
                         StateMachineFunction.StateTransition.builder(
@@ -256,7 +256,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         walkingCondition.negate(),
                                         StateMachineFunction.CURRENT_TRANSITION_FINISHED.negate()
                                 )
-                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
                                 .build(),
                         // Transition to the jump state if jumping.
                         transitionToJumpState,
@@ -270,7 +270,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         transitionContext -> false
                                 )
                                 .automaticallyTransitionIfAnimationPlayerFinishing(1f)
-                                .setTransition(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
                                 .build(),
                         // Transition to the jump state if jumping.
                         transitionToJumpState,
@@ -284,7 +284,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         transitionContext -> false
                                 )
                                 .automaticallyTransitionIfAnimationPlayerFinishing(1f)
-                                .setTransition(Transition.SINGLE_TICK)
+                                .setTiming(Transition.SINGLE_TICK)
                                 .build(),
                         // If the player lands before it can move into the falling animation, go straight to the landing animation as long as the jump state is fully transitioned.
                         StateMachineFunction.StateTransition.builder(
@@ -292,7 +292,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         transitionContext -> transitionContext.dataContainer().getDriverValue(IS_GROUNDED),
                                         StateMachineFunction.CURRENT_TRANSITION_FINISHED
                                 )
-                                .setTransition(Transition.SINGLE_TICK)
+                                .setTiming(Transition.SINGLE_TICK)
                                 .build()
                         )
                 .addState(GroundMovementStates.FALLING, fallingAnimationPlayer, true,
@@ -301,7 +301,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 GroundMovementStates.LAND,
                                         transitionContext -> transitionContext.dataContainer().getDriverValue(IS_GROUNDED)
                                 )
-                                .setTransition(Transition.SINGLE_TICK)
+                                .setTiming(Transition.SINGLE_TICK)
                                 .setPriority(50)
                                 .build(),
                         // Move into the jumping animation if the player is no longer falling, but also jumping.
@@ -310,7 +310,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         transitionContext -> transitionContext.dataContainer().getDriverValue(IS_GROUNDED),
                                         transitionContext -> transitionContext.dataContainer().getDriverValue(IS_JUMPING)
                                 )
-                                .setTransition(Transition.SINGLE_TICK)
+                                .setTiming(Transition.SINGLE_TICK)
                                 .setPriority(40)
                                 .build()
                 )
@@ -321,7 +321,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         walkingCondition.negate(),
                                         StateMachineFunction.makeMostRelevantAnimationPlayerFinishedCondition(1)
                                 )
-                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build(),
                         // Move into the walking animation once the falling animation is finished, if the player is walking.
@@ -330,7 +330,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         walkingCondition,
                                         StateMachineFunction.makeMostRelevantAnimationPlayerFinishedCondition(1)
                                 )
-                                .setTransition(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build(),
                         // Transition to the falling state if falling.
