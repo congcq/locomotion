@@ -226,7 +226,21 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .setPriority(50)
                 .build();
 
-        PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.<GroundMovementStates>builder()
+
+
+        PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.builder(dataContainer -> GroundMovementStates.IDLE)
+                .addState(StateMachineFunction.State.builder(GroundMovementStates.IDLE, idleAnimationPlayer)
+                        .resetUponEntry(true)
+                        .withOutboundTransitions(StateMachineFunction.StateTransition.builder(GroundMovementStates.WALKING)
+                                .setCondition(
+                                        walkingCondition,
+                                        StateMachineFunction.StateTransition.CURRENT_TRANSITION_FINISHED)
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_OUT))
+                                .build())
+                        .build())
+                .build();
+
+        PoseFunction<LocalSpacePose> movementStateMachineOld = StateMachineFunction.<GroundMovementStates>builder()
                 .addState(GroundMovementStates.IDLE, idleAnimationPlayer, false, Set.of(
                         // Begin walking if the player is moving horizontally
                         StateMachineFunction.StateTransition.builder(

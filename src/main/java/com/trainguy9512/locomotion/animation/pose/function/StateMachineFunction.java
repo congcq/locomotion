@@ -31,14 +31,14 @@ import java.util.stream.Collectors;
 public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFunction<LocalSpacePose> {
 
     private final Map<S, State<S>> states;
-    private final List<S> activeStates;
     private final Function<OnTickDriverContainer, S> initialState;
+    private final List<S> activeStates;
 
-    private StateMachineFunction(Map<S, State<S>> states, List<S> activeStates, Function<OnTickDriverContainer, S> initialState) {
+    private StateMachineFunction(Map<S, State<S>> states, Function<OnTickDriverContainer, S> initialState) {
         super(evaluationState -> true, evaluationState -> 1f, 0);
         this.states = states;
-        this.activeStates = activeStates;
         this.initialState = initialState;
+        this.activeStates = new ArrayList<>();
     }
 
     @Override
@@ -155,8 +155,12 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        Builder<S> builder = StateMachineFunction.builder();
-        this.states.forEach((stateIdentifier, state) -> builder.addState(stateIdentifier, state.inputFunction.wrapUnique(), state.resetUponEntry, state.outboundTransitions));
+        Builder<S> builder = StateMachineFunction.builder(this.initialState);
+        this.states.forEach((identifier, state) ->
+                builder.addState(
+                        State.builder(state).wrapUniquePoseFunction().build()
+                )
+        );
         return builder.build();
     }
 
@@ -180,13 +184,12 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         private final Function<OnTickDriverContainer, S> initialState;
         private final Map<S, State<S>> states;
-        private final List<S> activeStates;
-
+        private final List<StateAlias<S>> stateAliases;
 
         protected Builder(Function<OnTickDriverContainer, S> initialState) {
             this.initialState = initialState;
             this.states = Maps.newHashMap();
-            this.activeStates = new ArrayList<>();
+            this.stateAliases = new ArrayList<>();
         }
 
         /**
@@ -202,16 +205,96 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             return this;
         }
 
-        public Builder<S> addTransitionsFromMultipleStates(Set<S> originStates, Set<StateTransition<S>> outboundTransitions) {
-            return this;
-        }
-
-        public Builder<S> addTransitionsFromAnyState(Set<StateTransition<S>> outboundTransitions) {
+        /**
+         * Adds a state alias to the state machine builder.
+         *
+         * <p>A state alias is a shortcut function that allows you to add transitions from
+         * multiple states at once, as a many-to-one transition.</p>
+         *
+         * <p>One example of how this could be used would be for a jumping animation state that
+         * can be transitioned from the walking, idle, or crouching states with the same transition
+         * properties and condition. Rather than individually adding the transition to each state,
+         * this could be done through a state alias.</p>
+         *
+         * @param stateAlias            State alias created with a {@link StateAlias.Builder}
+         */
+        public Builder<S> addStateAlias(StateAlias<S> stateAlias) {
+            this.stateAliases.add(stateAlias);
             return this;
         }
 
         public StateMachineFunction<S> build(){
-            return new StateMachineFunction<>(this.states, this.activeStates, this.initialState);
+            // Apply the state alias's outbound transitions to each of its origin states.
+            for (StateAlias<S> stateAlias : this.stateAliases) {
+                for (S originState : stateAlias.originStates) {
+                    if (this.states.containsKey(originState)) {
+                        State.Builder<S> stateBuilder = State.builder(this.states.get(originState));
+                        stateBuilder.withOutboundTransitions(stateAlias.outboundTransitions);
+                        this.states.put(originState, stateBuilder.build());
+                    } else {
+                        LocomotionMain.LOGGER.error("Failed to apply state alias for state {}, as it hasn't been added to the state machine builder.", originState);
+                    }
+                }
+            }
+            // Check that every state's outbound transitions have valid identifiers.
+            for (State<S> state : this.states.values()) {
+                for (StateTransition<S> transition : state.outboundTransitions) {
+                    if (!this.states.containsKey(transition.target)) {
+                        LocomotionMain.LOGGER.error("State transition from states {} to {} not valid because state {} is not present in the state machine.", state.identifier, transition.target, transition.target);
+                    }
+                }
+            }
+            return new StateMachineFunction<>(this.states, this.initialState);
+        }
+    }
+
+    public record StateAlias<S extends Enum<S>>(Set<S> originStates, List<StateTransition<S>> outboundTransitions) {
+
+        /**
+         * Creates a new state alias builder.
+         * @param originStates              List of origin states.
+         */
+        public static <S extends Enum<S>> Builder<S> builder(Set<S> originStates) {
+            return new Builder<>(originStates);
+        }
+
+        public static class Builder<S extends Enum<S>> {
+
+            private final Set<S> originStates;
+            private final List<StateTransition<S>> outboundTransitions;
+
+            private Builder(Set<S> originStates) {
+                this.originStates = originStates;
+                this.outboundTransitions = new ArrayList<>();
+            }
+
+            /**
+             * Assigns a set of potential outbound transitions to this state.
+             * @param outboundTransitions       Set of individual transitions.
+             */
+            public Builder<S> withOutboundTransitions(List<StateTransition<S>> outboundTransitions) {
+                outboundTransitions.forEach(transition -> {
+                    if (this.originStates.contains(transition.target)) {
+                        this.outboundTransitions.add(transition);
+                    } else {
+                        LocomotionMain.LOGGER.warn("Cannot add state transition to state {} from the this state alias, as it already contains the state {} as an origin state.", transition.target, transition.target);
+                    }
+                });
+                return this;
+            }
+
+            /**
+             * Assigns a set of potential outbound transitions to this state.
+             * @param outboundTransitions       Set of individual transitions.
+             */
+            @SafeVarargs
+            public final Builder<S> withOutboundTransitions(StateTransition<S>... outboundTransitions) {
+                return this.withOutboundTransitions(List.of(outboundTransitions));
+            }
+
+            public StateAlias<S> build() {
+                return new StateAlias<>(this.originStates, this.outboundTransitions);
+            }
         }
     }
 
@@ -280,6 +363,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         /**
          * Creates a new state builder with the properties of the provided state.
+         * @param state         Identifier for the new state.
          */
         private static <S extends Enum<S>> Builder<S> builder(State<S> state) {
             return new Builder<>(state);
@@ -330,11 +414,11 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             }
 
             /**
-             * Assigns a set of potential outbound transitions to this state.
-             * @param outboundTransitions       Set of individual transitions.
+             * Assigns a potential outbound transition to this state.
+             * @param outboundTransition        Set of individual transitions.
              */
             @SafeVarargs
-            public final Builder<S> withOutboundTransitions(StateTransition<S>... outboundTransitions) {
+            public final Builder<S> withOutboundTransitions(StateTransition<S> outboundTransition) {
                 return this.withOutboundTransitions(List.of(outboundTransitions));
             }
 
@@ -383,9 +467,12 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             };
         }
 
-        @SafeVarargs
-        public static <S extends Enum<S>> Builder<S> builder(S target, Predicate<TransitionContext>... conditionPredicates){
-            return new Builder<>(target, conditionPredicates);
+        /**
+         * Creates a new state transition builder with the provided state identifier as the target.
+         * @param target                    Destination state identifier of the transition
+         */
+        public static <S extends Enum<S>> Builder<S> builder(S target){
+            return new Builder<>(target);
         }
 
         @Override
@@ -394,23 +481,20 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         }
 
         public static class Builder<S extends Enum<S>> {
-            private Predicate<TransitionContext> conditionPredicate;
             private final S target;
+            private Predicate<TransitionContext> conditionPredicate;
             private Transition transition;
             private int priority;
             private boolean automaticTransition;
+            private float automaticTransitionCrossfadeWeight;
 
-            @SafeVarargs
-            private Builder(S target, Predicate<TransitionContext>... conditionPredicates){
-                Predicate<TransitionContext> compiledPredicates = context -> true;
-                for(Predicate<TransitionContext> predicate : conditionPredicates){
-                    compiledPredicates = compiledPredicates.and(predicate);
-                }
-                this.conditionPredicate = compiledPredicates;
+            private Builder(S target){
+                this.conditionPredicate = null;
                 this.target = target;
                 this.transition = Transition.SINGLE_TICK;
                 this.priority = 50;
                 this.automaticTransition = false;
+                this.automaticTransitionCrossfadeWeight = 1f;
             }
 
             /**
@@ -422,14 +506,28 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
              * @param crossFadeWeight       Weight of how the transition duration affects the condition. 1 = Full crossfade, 0 = Always at end of animation
              */
             public Builder<S> automaticallyTransitionIfAnimationPlayerFinishing(float crossFadeWeight) {
-                this.conditionPredicate = this.conditionPredicate.or(makeMostRelevantAnimationPlayerFinishedCondition(crossFadeWeight));
                 this.automaticTransition = true;
+                this.automaticTransitionCrossfadeWeight = crossFadeWeight;
                 return this;
             }
 
+            /**
+             * Sets the condition predicate that determines whether the transition will be taken or not.
+             *
+             * <p>Multiple predicates can be added, which are read as an "AND" chain.</p>
+             * @param conditionPredicates   List of condition predicates
+             */
             @SafeVarargs
             public final Builder<S> setCondition(Predicate<TransitionContext>... conditionPredicates) {
-
+                if (conditionPredicates.length > 0) {
+                    if (this.conditionPredicate == null) {
+                        this.conditionPredicate = context -> true;
+                    }
+                    for (Predicate<TransitionContext> conditionPredicate : conditionPredicates) {
+                        this.conditionPredicate = this.conditionPredicate.and(conditionPredicate);
+                    }
+                }
+                return this;
             }
 
             /**
@@ -457,6 +555,15 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             }
 
             public StateTransition<S> build() {
+                if (this.conditionPredicate == null) {
+                    this.conditionPredicate = context -> false;
+                    if (!this.automaticTransition) {
+                        LocomotionMain.LOGGER.error("State transition to target {} has no passable conditions, and will go unused.", this.target);
+                    }
+                }
+                if (this.automaticTransition) {
+                    this.conditionPredicate = this.conditionPredicate.or(makeMostRelevantAnimationPlayerFinishedCondition(this.automaticTransitionCrossfadeWeight));
+                }
                 return new StateTransition<>(this.target, this.conditionPredicate, this.transition, this.priority, this.automaticTransition);
             }
         }
