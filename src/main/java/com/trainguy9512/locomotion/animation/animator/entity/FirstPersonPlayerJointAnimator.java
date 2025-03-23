@@ -227,7 +227,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .build();
 
         PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.<GroundMovementStates>builder()
-                .addState(GroundMovementStates.IDLE, idleAnimationPlayer, false,
+                .addState(GroundMovementStates.IDLE, idleAnimationPlayer, false, Set.of(
                         // Begin walking if the player is moving horizontally
                         StateMachineFunction.StateTransition.builder(
                                 GroundMovementStates.WALKING,
@@ -239,7 +239,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         // Transition to the jump state if jumping.
                         transitionToJumpState,
                         // Transition to the falling state if falling.
-                        transitionToFallingState
+                        transitionToFallingState)
                 )
                 .addState(GroundMovementStates.WALKING, walkingBlendSpacePlayer, true,
                         // Stop walking with the walk-to-stop animation if the player's already been walking for a bit.

@@ -2,7 +2,6 @@ package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
-import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
@@ -13,6 +12,7 @@ import net.minecraft.util.Tuple;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -32,16 +32,18 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     private final Map<S, State<S>> states;
     private final List<S> activeStates;
+    private final Function<OnTickDriverContainer, S> initialState;
 
-    private StateMachineFunction(Map<S, State<S>> states, List<S> activeStates) {
+    private StateMachineFunction(Map<S, State<S>> states, List<S> activeStates, Function<OnTickDriverContainer, S> initialState) {
         super(evaluationState -> true, evaluationState -> 1f, 0);
         this.states = states;
         this.activeStates = activeStates;
+        this.initialState = initialState;
     }
 
     @Override
     public @NotNull LocalSpacePose compute(FunctionInterpolationContext context) {
-        // Throw an error if the active states are empty, this should never happen but this should help with debugging.
+        // If the list of active states is empty, throw an error because this should never be the case unless something has gone wrong.
         if(this.activeStates.isEmpty()){
             throw new IllegalStateException("State machine's active states list found to be empty.");
         }
@@ -64,9 +66,19 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     @Override
     public void tick(FunctionEvaluationState evaluationState) {
-        // Don't evaluate if the state machine has no states
+        // If the state machine has no active states, initialize it using the initial state function.
         if(this.activeStates.isEmpty()){
-            throw new IllegalStateException("State machine's active states list found to be empty. This should never happen, so something went very wrong!");
+            S initialStateIdentifier = this.initialState.apply(evaluationState.dataContainer());
+            if (this.states.containsKey(initialStateIdentifier)) {
+                this.activeStates.add(initialStateIdentifier);
+                State<S> intialState = this.states.get(initialStateIdentifier);
+                intialState.isActive = true;
+                intialState.weight.setValue(1f);
+                intialState.weight.pushCurrentToPrevious();
+                intialState.weight.setValue(1f);
+            } else {
+                throw new IllegalStateException("Initial state " + initialStateIdentifier + " not found to be present in the state machine");
+            }
         }
 
         // Add to the current elapsed ticks
@@ -79,7 +91,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         // Filter each potential state transition by whether it's valid, then filter by whether its condition predicate is true,
         // then shuffle it in order to make equal priority transitions randomized and re-order the valid transitions by filter order.
-        Optional<StateTransition<S>> potentialStateTransition = currentActiveState.potentialStateTransitions.stream()
+        Optional<StateTransition<S>> potentialStateTransition = currentActiveState.outboundTransitions.stream()
                 .filter(stateTransition -> {
                     boolean transitionTargetIncludedInThisMachine = this.states.containsKey(stateTransition.target);
                     boolean targetIsNotCurrentActiveState = stateTransition.target() != currentActiveStateIdentifier;
@@ -144,7 +156,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
         Builder<S> builder = StateMachineFunction.builder();
-        this.states.forEach((stateIdentifier, state) -> builder.addState(stateIdentifier, state.inputFunction.wrapUnique(), state.resetUponEntry, state.potentialStateTransitions));
+        this.states.forEach((stateIdentifier, state) -> builder.addState(stateIdentifier, state.inputFunction.wrapUnique(), state.resetUponEntry, state.outboundTransitions));
         return builder.build();
     }
 
@@ -160,92 +172,72 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         return Optional.empty();
     }
 
-    public static <S extends Enum<S>> Builder<S> builder() {
-        return new Builder<>();
+    public static <S extends Enum<S>> Builder<S> builder(Function<OnTickDriverContainer, S> initialState) {
+        return new Builder<>(initialState);
     }
 
     public static class Builder<S extends Enum<S>> {
 
+        private final Function<OnTickDriverContainer, S> initialState;
         private final Map<S, State<S>> states;
         private final List<S> activeStates;
 
 
-        protected Builder() {
+        protected Builder(Function<OnTickDriverContainer, S> initialState) {
+            this.initialState = initialState;
             this.states = Maps.newHashMap();
             this.activeStates = new ArrayList<>();
         }
 
         /**
-         * Adds a state to the state machine builder with a set of outgoing transitions.
-         *
-         * @param stateIdentifier       Enum identifier that is associated with the state machine's enum type
-         * @param statePoseFunction     Pose function for this state
-         * @param resetUponEntry        Whether to reset the functions within the state upon the state becoming active.
-         * @param outboundTransitions   Outbound transition paths from this state to other states
+         * Adds a state to the state machine builder.
+         * @param state                 State created with a {@link State.Builder}
          */
-        @SafeVarargs
-        public final Builder<S> addState(S stateIdentifier, PoseFunction<LocalSpacePose> statePoseFunction, boolean resetUponEntry, StateTransition<S>... outboundTransitions) {
-            return this.addState(stateIdentifier, statePoseFunction, resetUponEntry, Set.of(outboundTransitions));
-        }
-
-        /**
-         * Adds a state to the state machine builder with a set of outgoing transitions.
-         *
-         * @param stateIdentifier       Enum identifier that is associated with the state machine's enum type
-         * @param statePoseFunction     Pose function for this state
-         * @param resetUponEntry        Whether to reset the functions within the state upon the state becoming active.
-         * @param outboundTransitions   Outbound transition paths from this state to other states
-         */
-        public Builder<S> addState(S stateIdentifier, PoseFunction<LocalSpacePose> statePoseFunction, boolean resetUponEntry, Set<StateTransition<S>> outboundTransitions) {
-            State<S> state = new State<>(statePoseFunction, outboundTransitions, resetUponEntry, this.states.isEmpty());
-
-            // If the state machine already has this state defined, then throw an error.
-            if(this.states.containsKey(stateIdentifier)){
-                throw new IllegalStateException("Cannot add state " + stateIdentifier.toString() + " twice to the same state machine.");
+        public Builder<S> addState(State<S> state) {
+            if (this.states.containsKey(state.identifier)) {
+                throw new IllegalStateException("Cannot add state " + state.identifier + " twice to the same state machine.");
+            } else {
+                this.states.put(state.identifier, state);
             }
-
-            // If this is the first state to be added, set it to be active.
-            if (this.activeStates.isEmpty()){
-                this.activeStates.add(stateIdentifier);
-            }
-            this.states.put(stateIdentifier, state);
             return this;
         }
 
-        public Builder<S> addStateAlias(Set<S> originStates, Set<StateTransition<S>> outboundTransitions) {
+        public Builder<S> addTransitionsFromMultipleStates(Set<S> originStates, Set<StateTransition<S>> outboundTransitions) {
+            return this;
+        }
 
+        public Builder<S> addTransitionsFromAnyState(Set<StateTransition<S>> outboundTransitions) {
+            return this;
         }
 
         public StateMachineFunction<S> build(){
-            return new StateMachineFunction<>(this.states, this.activeStates);
-        }
-
-        private record StateAlias<S extends Enum<S>>(Set<S> originStates, Set<StateTransition<S>> outboundTransitions) {
-
+            return new StateMachineFunction<>(this.states, this.activeStates, this.initialState);
         }
     }
 
-    private static class State<S extends Enum<S>> {
+    public static class State<S extends Enum<S>> {
 
+        private final S identifier;
         private final PoseFunction<LocalSpacePose> inputFunction;
-        private final Set<StateTransition<S>> potentialStateTransitions;
+        private final List<StateTransition<S>> outboundTransitions;
         private final boolean resetUponEntry;
 
         private boolean isActive;
         private final VariableDriver<Float> weight;
         private StateTransition<S> currentTransition;
 
-        private State(PoseFunction<LocalSpacePose> inputFunction, Set<StateTransition<S>> potentialStateTransitions, boolean resetUponEntry, boolean isActive){
+        private State(S identifier, PoseFunction<LocalSpacePose> inputFunction, List<StateTransition<S>> outboundTransitions, boolean resetUponEntry){
+            this.identifier = identifier;
             this.inputFunction = inputFunction;
-            this.potentialStateTransitions = potentialStateTransitions;
+            this.outboundTransitions = outboundTransitions;
             this.resetUponEntry = resetUponEntry;
 
-            this.isActive = isActive;
-            this.weight = isActive ? VariableDriver.ofFloat(() -> 1f) : VariableDriver.ofFloat(() -> 0f);
+            this.isActive = false;
+            this.weight = VariableDriver.ofFloat(() -> 0f);
             this.currentTransition = null;
 
             if(!resetUponEntry){
-                for(StateTransition<S> transition : potentialStateTransitions){
+                for(StateTransition<S> transition : outboundTransitions){
                     if(transition.isAutomaticTransition()){
                         LocomotionMain.LOGGER.warn("State transition to state {} in a state machine is set to be automatic based on the input sequence player, but the origin state is not set to reset upon entry. Automatic transitions are intended to be used with reset-upon-entry states, beware of unexpected behavior!", transition.target);
                     }
@@ -276,12 +268,67 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             }
         }
 
-        private static Builder<S> builder() {
-
+        /**
+         * Creates a new state builder.
+         *
+         * @param identifier            Enum identifier that is associated with this state. Used for identifying transition targets.
+         * @param inputFunction         Pose function used for this state when it's active.
+         */
+        public static <S extends Enum<S>> Builder<S> builder(S identifier, PoseFunction<LocalSpacePose> inputFunction) {
+            return new Builder<>(identifier, inputFunction);
         }
 
-        private static class Builder<S extends Enum<S>> {
+        /**
+         * Creates a new state builder with the properties of the provided state.
+         */
+        private static <S extends Enum<S>> Builder<S> builder(State<S> state) {
+            return new Builder<>(state);
+        }
 
+        public static class Builder<S extends Enum<S>> {
+
+            private final S identifier;
+            private final PoseFunction<LocalSpacePose> inputFunction;
+            private final List<StateTransition<S>> outboundTransitions;
+            private boolean resetUponEntry;
+
+            private Builder(S identifier, PoseFunction<LocalSpacePose> inputFunction) {
+                this.identifier = identifier;
+                this.inputFunction = inputFunction;
+                this.outboundTransitions = new ArrayList<>();
+                this.resetUponEntry = false;
+            }
+
+            private Builder(State<S> state) {
+                this.identifier = state.identifier;
+                this.inputFunction = state.inputFunction;
+                this.outboundTransitions = state.outboundTransitions;
+            }
+
+            /**
+             * If true, this state will reset its pose function every time it is entered.
+             */
+            public Builder<S> resetUponEntry(boolean resetUponEntry) {
+                this.resetUponEntry = resetUponEntry;
+                return this;
+            }
+
+            public Builder<S> withOutboundTransitions(List<StateTransition<S>> outboundTransitions) {
+                this.outboundTransitions.addAll(outboundTransitions);
+                return this;
+            }
+
+            @SafeVarargs
+            public final Builder<S> withOutboundTransitions(StateTransition<S>... outboundTransitions) {
+                return this.withOutboundTransitions(List.of(outboundTransitions));
+            }
+
+            public State<S> build() {
+                if (this.outboundTransitions.isEmpty()) {
+                    LocomotionMain.LOGGER.warn("State {} in state machine contains no outbound transitions. If this state is entered, it will have no valid path out without re-initializing the state!", this.identifier);
+                }
+                return new State<>(this.identifier, this.inputFunction, this.outboundTransitions, this.resetUponEntry);
+            }
         }
     }
 
