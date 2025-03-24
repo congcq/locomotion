@@ -140,9 +140,6 @@ public class State<S extends Enum<S>> {
         }
 
         public State<S> build() {
-            if (this.outboundTransitions.isEmpty()) {
-                LocomotionMain.LOGGER.warn("State {} in state machine contains no outbound transitions. If this state is entered, it will have no valid path out without re-initializing the state!", this.identifier);
-            }
             return new State<>(this.identifier, this.inputFunction, this.outboundTransitions, this.resetUponEntry);
         }
     }

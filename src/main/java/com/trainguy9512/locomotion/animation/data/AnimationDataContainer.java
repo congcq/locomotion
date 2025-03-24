@@ -31,6 +31,7 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
         this.jointSkeleton = jointAnimator.buildSkeleton();
         this.perTickCalculatedPoseDriverKey = DriverKey.of("per_tick_calculated_pose", () -> VariableDriver.ofInterpolatable(() -> LocalSpacePose.of(jointSkeleton), Interpolator.LOCAL_SPACE_POSE));
         this.gameTimeTicksDriverKey = DriverKey.of("game_time", () -> VariableDriver.ofConstant(() -> 0L));
+        this.tick();
     }
 
     public static AnimationDataContainer of(JointAnimator<?> jointAnimator) {

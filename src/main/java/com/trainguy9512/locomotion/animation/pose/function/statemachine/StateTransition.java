@@ -83,7 +83,7 @@ public record StateTransition<S extends Enum<S>>(
 
         /**
          * Sets the transition to be passable as an OR condition if the most relevant
-         * animation player is within the the transition duration of finishing.
+         *          * animation player is within the transition duration of finishing.
          * <p>
          * In other words, if the sequence player in the current active state loops or ends,
          * this becomes true.

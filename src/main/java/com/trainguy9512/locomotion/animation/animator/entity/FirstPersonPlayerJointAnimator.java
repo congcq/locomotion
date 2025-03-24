@@ -141,7 +141,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         STOPPING,
         JUMP,
         FALLING,
-        LAND
+        LAND,
+        SOFT_LAND
     }
 
     public static final ResourceLocation GROUND_MOVEMENT_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_pose");
@@ -154,17 +155,20 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public PoseFunction<LocalSpacePose> constructAdditiveGroundMovementPoseFunction(CachedPoseContainer cachedPoseContainer) {
 
-        PoseFunction<LocalSpacePose> idleAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping().build();
+        PoseFunction<LocalSpacePose> idleAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping(true).build();
         PoseFunction<LocalSpacePose> walkToStopAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_WALK_TO_STOP).setPlayRate(0.6f).build();
         PoseFunction<LocalSpacePose> jumpAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_JUMP).build();
-        PoseFunction<LocalSpacePose> fallingAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_FALLING).looping().build();
-        PoseFunction<LocalSpacePose> landAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_LAND).build();
+        PoseFunction<LocalSpacePose> fallingAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_FALLING).looping(true).build();
         PoseFunction<LocalSpacePose> walkingBlendSpacePlayer = BlendSpace1DPlayerFunction.builder(evaluationState -> evaluationState.dataContainer().getDriverValue(MODIFIED_WALK_SPEED))
                 .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
                 .addEntry(0.86f, GROUND_MOVEMENT_WALKING, 2.25f)
                 .addEntry(1f, GROUND_MOVEMENT_WALKING, 3.5f)
                 .build();
 
+        PoseFunction<LocalSpacePose> landAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_LAND).build();
+        PoseFunction<LocalSpacePose> softLandAnimationPlayer = BlendFunction.builder(SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0)))
+                .addBlendInput(SequencePlayerFunction.builder(GROUND_MOVEMENT_LAND).setPlayRate(1f).build(), evaluationState -> 0.5f)
+                .build();
 
         Predicate<StateTransition.TransitionContext> walkingCondition = transitionContext -> transitionContext.dataContainer().getDriverValue(IS_MOVING);
 
@@ -181,7 +185,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .build())
                         .build())
                 .addState(State.builder(GroundMovementStates.WALKING, walkingBlendSpacePlayer)
-                        .resetUponEntry(true)
+                        .resetUponEntry(false)
                         // Stop walking with the walk-to-stop animation if the player's already been walking for a bit.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.STOPPING)
                                 .isTakenIfTrue(walkingCondition.negate()
@@ -220,32 +224,23 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetUponEntry(true)
                         // Move into the landing animation if the player is no longer falling
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.LAND)
-                                .isTakenIfTrue(context -> context.dataContainer().getDriverValue(IS_GROUNDED))
-                                .setTiming(Transition.SINGLE_TICK)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_GROUNDED))
+                                .setTiming(Transition.of(TimeSpan.ofTicks(1), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build())
-                        // Move into the jumping animation if the player is no longer falling, but is also jumping.
-                        .addOutboundTransition(StateTransition.builder(GroundMovementStates.JUMP)
+                        // Move into the landing animation if the player is no longer falling, but only just began falling.
+                        .addOutboundTransition(StateTransition.builder(GroundMovementStates.SOFT_LAND)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_GROUNDED)
-                                        .and(StateTransition.booleanDriverPredicate(IS_JUMPING)))
-                                .setTiming(Transition.SINGLE_TICK)
+                                        .and(StateTransition.CURRENT_TRANSITION_FINISHED.negate()))
+                                .setTiming(Transition.of(TimeSpan.ofTicks(2), Easing.LINEAR))
                                 .setPriority(60)
                                 .build())
                         .build())
+                .addState(State.builder(GroundMovementStates.SOFT_LAND, softLandAnimationPlayer)
+                        .resetUponEntry(true)
+                        .build())
                 .addState(State.builder(GroundMovementStates.LAND, landAnimationPlayer)
                         .resetUponEntry(true)
-                        // If the falling animation is finishing and the player is not walking, play the idle animation.
-                        .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
-                                .isTakenIfTrue(walkingCondition.negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING))
-                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
-                                .setPriority(50)
-                                .build())
-                        // If the falling animation is finishing and the player is walking, play the walking animation.
-                        .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
-                                .isTakenIfTrue(walkingCondition.and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING))
-                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
-                                .setPriority(50)
-                                .build())
                         .build())
                 .addStateAlias(StateAlias.builder(
                         Set.of(
@@ -256,14 +251,33 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         ))
                         // Transition to the jumping animation if the player is jumping.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.JUMP)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_JUMPING))
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_JUMPING)
+                                        .and(StateTransition.booleanDriverPredicate(IS_GROUNDED).negate()))
                                 .setTiming(Transition.SINGLE_TICK)
                                 .setPriority(60)
                                 .build())
                         // Transition to the jumping animation if the player is falling.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.FALLING)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_GROUNDED).negate())
-                                .setTiming(Transition.SINGLE_TICK)
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.LINEAR))
+                                .setPriority(50)
+                                .build())
+                        .build())
+                .addStateAlias(StateAlias.builder(
+                                Set.of(
+                                        GroundMovementStates.LAND,
+                                        GroundMovementStates.SOFT_LAND
+                                ))
+                        // If the falling animation is finishing and the player is not walking, play the idle animation.
+                        .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
+                                .isTakenIfTrue(walkingCondition.negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING))
+                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
+                                .setPriority(50)
+                                .build())
+                        // If the falling animation is finishing and the player is walking, play the walking animation.
+                        .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
+                                .isTakenIfTrue(walkingCondition.and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING))
+                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build())
                         .build())

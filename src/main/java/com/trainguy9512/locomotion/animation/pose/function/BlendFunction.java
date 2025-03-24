@@ -1,6 +1,8 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.google.common.collect.Maps;
+import com.trainguy9512.locomotion.LocomotionMain;
+import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import org.jetbrains.annotations.NotNull;
@@ -67,7 +69,9 @@ public class BlendFunction implements PoseFunction<LocalSpacePose> {
             }
         }));
         if (!blendAnimationPlayers.isEmpty()) {
-            return blendAnimationPlayers.getLast();
+            return blendAnimationPlayers.getLast().isPresent() ?
+                    blendAnimationPlayers.getLast() :
+                    this.baseFunction.testForMostRelevantAnimationPlayer();
         } else {
             return this.baseFunction.testForMostRelevantAnimationPlayer();
         }

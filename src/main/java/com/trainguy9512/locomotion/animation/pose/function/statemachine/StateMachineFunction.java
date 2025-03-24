@@ -2,12 +2,14 @@ package com.trainguy9512.locomotion.animation.pose.function.statemachine;
 
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
+import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.AnimationPlayer;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import com.trainguy9512.locomotion.animation.pose.function.TimeBasedPoseFunction;
 import com.trainguy9512.locomotion.util.TimeSpan;
+import com.trainguy9512.locomotion.util.Transition;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -50,14 +52,12 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         LocalSpacePose pose = this.states.get(this.activeStates.getFirst()).inputFunction.compute(context);
         for(S stateIdentifier : this.activeStates){
             // We already got the first active state's pose.
-            if(stateIdentifier != this.activeStates.getFirst()){
                 pose = pose.interpolated(
                         this.states.get(stateIdentifier).inputFunction.compute(context),
                         this.states.get(stateIdentifier).currentTransition.transition().applyEasement(
                                 this.states.get(stateIdentifier).weight.getValueInterpolated(context.partialTicks())
                         )
                 );
-            }
         }
         return pose;
     }
@@ -66,7 +66,20 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     public void tick(FunctionEvaluationState evaluationState) {
         // If the state machine has no active states, initialize it using the initial state function.
         if(this.activeStates.isEmpty()){
-            this.setToInitialState();
+            S initialStateIdentifier = this.initialState.apply(evaluationState.dataContainer());
+            if (this.states.containsKey(initialStateIdentifier)) {
+                this.activeStates.add(initialStateIdentifier);
+                State<S> newInitialState = this.states.get(initialStateIdentifier);
+                newInitialState.isActive = true;
+                newInitialState.weight.setValue(1f);
+                newInitialState.weight.pushCurrentToPrevious();
+                newInitialState.weight.setValue(1f);
+                for (State<S> state : this.states.values()) {
+                    state.currentTransition = StateTransition.builder(initialStateIdentifier).setTiming(Transition.INSTANT).build();
+                }
+            } else {
+                throw new IllegalStateException("Initial state " + initialStateIdentifier + " not found to be present in the state machine");
+            }
         }
 
         // Add to the current elapsed ticks
@@ -126,16 +139,19 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         ));
 
         // Evaluated last, remove states from the active state list that have a weight of 0.
-        List<S> statesToRemove = this.activeStates.stream().filter((stateIdentifier) -> this.states.get(stateIdentifier).weight.getPreviousValue() == 0 && this.states.get(stateIdentifier).weight.getCurrentValue() == 0).toList();
+        List<S> statesToRemove = this.activeStates.stream()
+                .filter((stateIdentifier) -> this.states.get(stateIdentifier).weight.getPreviousValue() == 0 && this.states.get(stateIdentifier).weight.getCurrentValue() == 0)
+                .toList();
         this.activeStates.removeAll(statesToRemove);
 
         /*
         if (this.activeStates.getLast() instanceof FirstPersonPlayerJointAnimator.GroundMovementStates) {
-            LocomotionMain.LOGGER.info("{}\t\t{} {}\t{}",
+            LocomotionMain.LOGGER.info("{}\t{}\t{}\t{}\t{}",
                     this.activeStates.getLast(),
-                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.JUMP).weight.getPreviousValue(),
-                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.JUMP).weight.getCurrentValue(),
-                    potentialStateTransition.isPresent());
+                    potentialStateTransition.isPresent(),
+                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.FALLING).weight.getPreviousValue(),
+                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.FALLING).weight.getCurrentValue(),
+                    this.activeStates);
         }
          */
 
@@ -230,6 +246,12 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                     if (!this.states.containsKey(transition.target())) {
                         LocomotionMain.LOGGER.error("State transition from states {} to {} not valid because state {} is not present in the state machine.", state.identifier, transition.target(), transition.target());
                     }
+                }
+            }
+            // Check that each state has at least one outbound transitions.
+            for (State<S> state : this.states.values()) {
+                if (state.outboundTransitions.isEmpty()) {
+                    LocomotionMain.LOGGER.warn("State {} in state machine contains no outbound transitions. If this state is entered, it will have no valid path out without re-initializing the state!", state.identifier);
                 }
             }
             return new StateMachineFunction<>(this.states, this.initialState);
