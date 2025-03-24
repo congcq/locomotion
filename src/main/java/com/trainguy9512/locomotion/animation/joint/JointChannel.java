@@ -35,7 +35,7 @@ public final class JointChannel {
     }
 
     public static JointChannel ofTranslationRotationScaleEuler(Vector3f translation, Vector3f rotationEuler, Vector3f scale, boolean visibility){
-        return ofTranslationRotationScaleQuaternion(translation, new Quaternionf().rotationXYZ(rotationEuler.x(), rotationEuler.y(), rotationEuler.z()), scale, visibility);
+        return ofTranslationRotationScaleQuaternion(translation, new Quaternionf().rotationZYX(rotationEuler.z(), rotationEuler.y(), rotationEuler.x()), scale, visibility);
     }
 
     public static JointChannel ofTranslationRotationScaleQuaternion(Vector3f translation, Quaternionf rotation, Vector3f scale, boolean visibility){
@@ -167,7 +167,7 @@ public final class JointChannel {
     public JointChannel mirrored() {
         Vector3f mirroredTranslation = this.getTranslation().mul(-1, 1, 1);
         Vector3f mirroredRotation = this.getEulerRotationZYX().mul(1, -1, -1);
-        return JointChannel.ofTranslationRotationScaleEuler(mirroredTranslation, mirroredRotation, new Vector3f(1), this.visibility);
+        return JointChannel.ofTranslationRotationScaleEuler(mirroredTranslation, mirroredRotation, this.getScale(), this.visibility);
     }
 
     public JointChannel interpolated(JointChannel other, float weight) {

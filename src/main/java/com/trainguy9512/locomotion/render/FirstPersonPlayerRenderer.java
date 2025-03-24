@@ -77,8 +77,12 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
                             //this.entityRenderDispatcher.render(abstractClientPlayer, 0, 0, 0, partialTicks, poseStack, buffer, combinedLight);
 
-                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, false, poseStack, rightItemPose, buffer, combinedLight);
-                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_LEFT_HAND, true, poseStack, leftItemPose, buffer, combinedLight);
+                            boolean leftHanded = abstractClientPlayer.getMainArm() == HumanoidArm.LEFT;
+
+                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, HumanoidArm.RIGHT, poseStack, rightItemPose, buffer, combinedLight);
+                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_LEFT_HAND, HumanoidArm.LEFT, poseStack, leftItemPose, buffer, combinedLight);
+
+
                             //this.renderItemInHand(abstractClientPlayer, ItemStack.EMPTY, poseStack, HumanoidArm.LEFT, animationPose, bufferSource, i);
 
 
@@ -109,7 +113,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             LivingEntity entity,
             ItemStack itemStack,
             ItemDisplayContext displayContext,
-            boolean isLeftHand,
+            HumanoidArm arm,
             PoseStack poseStack,
             JointChannel jointChannel,
             MultiBufferSource buffer,
@@ -125,7 +129,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             //poseStack.translate((isLeftHand ? -0.5F : 0.5F) / 16.0F, 2F/16F, -10F/16F);
 
 
-            this.itemRenderer.renderStatic(entity, itemStack, displayContext, isLeftHand, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());
+            this.itemRenderer.renderStatic(entity, itemStack, displayContext, arm == HumanoidArm.LEFT, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());
             poseStack.popPose();
         }
     }

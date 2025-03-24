@@ -145,6 +145,7 @@ public class JointSkeleton {
         public Builder setMirrorJoint(String joint, String mirrorJoint){
             if(this.joints.containsKey(joint)){
                 this.joints.get(joint).setMirrorJoint(mirrorJoint);
+                this.joints.get(mirrorJoint).setMirrorJoint(joint);
             } else {
                 LocomotionMain.LOGGER.warn("Mirror joint not set during joint skeleton construction for joint {}, due to joint {} not being defined in the skeleton.", joint, joint);
             }

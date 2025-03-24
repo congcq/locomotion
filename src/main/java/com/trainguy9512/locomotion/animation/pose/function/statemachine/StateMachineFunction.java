@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
 public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFunction<LocalSpacePose> {
 
     private final Map<S, State<S>> states;
-    private final Function<OnTickDriverContainer, S> initialState;
+    private final Function<FunctionEvaluationState, S> initialState;
     private final List<StateBlendLayer> stateBlendLayerStack;
 
-    private StateMachineFunction(Map<S, State<S>> states, Function<OnTickDriverContainer, S> initialState) {
+    private StateMachineFunction(Map<S, State<S>> states, Function<FunctionEvaluationState, S> initialState) {
         super(evaluationState -> true, evaluationState -> 1f, 0);
         this.states = states;
         this.initialState = initialState;
@@ -78,7 +78,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         // If the state machine has no active states, initialize it using the initial state function.
         if(this.stateBlendLayerStack.isEmpty()){
-            S initialStateIdentifier = this.initialState.apply(evaluationState.dataContainer());
+            S initialStateIdentifier = this.initialState.apply(evaluationState);
             if (this.states.containsKey(initialStateIdentifier)) {
                 this.stateBlendLayerStack.addLast(new StateBlendLayer(initialStateIdentifier, StateTransition.builder(initialStateIdentifier).setTiming(Transition.INSTANT).build()));
             } else {
@@ -90,6 +90,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         // If there is a transition occurring, add a new state blend layer instance to the layer stack, and resets the elapsed time in the state machine.
         potentialStateTransition.ifPresent(stateTransition -> {
+            stateTransition.onTransitionTakenListener().accept(evaluationState);
             this.stateBlendLayerStack.addLast(new StateBlendLayer(stateTransition.target(), stateTransition));
             this.resetTime();
         });
@@ -229,17 +230,17 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         }
     }
 
-    public static <S extends Enum<S>> Builder<S> builder(Function<OnTickDriverContainer, S> initialState) {
+    public static <S extends Enum<S>> Builder<S> builder(Function<FunctionEvaluationState, S> initialState) {
         return new Builder<>(initialState);
     }
 
     public static class Builder<S extends Enum<S>> {
 
-        private final Function<OnTickDriverContainer, S> initialState;
+        private final Function<FunctionEvaluationState, S> initialState;
         private final Map<S, State<S>> states;
         private final List<StateAlias<S>> stateAliases;
 
-        protected Builder(Function<OnTickDriverContainer, S> initialState) {
+        protected Builder(Function<FunctionEvaluationState, S> initialState) {
             this.initialState = initialState;
             this.states = Maps.newHashMap();
             this.stateAliases = new ArrayList<>();

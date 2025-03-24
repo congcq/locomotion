@@ -20,7 +20,7 @@ public abstract class AnimationPose {
         this.jointParentMatrices = Maps.newHashMap();
 
         for(String joint : jointSkeleton.getJoints()){
-            this.getJointChannel(joint, JointChannel.ZERO);
+            this.setJointChannel(joint, JointChannel.ZERO);
         }
     }
 
@@ -43,7 +43,7 @@ public abstract class AnimationPose {
      * @param joint                 Joint string identifier
      * @param jointChannel        Joint transform
      */
-    public void getJointChannel(String joint, JointChannel jointChannel){
+    public void setJointChannel(String joint, JointChannel jointChannel){
         if(this.jointSkeleton.containsJoint(joint)){
             this.jointChannels.put(joint, jointChannel);
         }
@@ -68,7 +68,7 @@ public abstract class AnimationPose {
 
         Matrix4f componentSpaceMatrix = new Matrix4f(poseStack.last().pose());
         this.jointParentMatrices.put(parent, componentSpaceMatrix);
-        this.getJointChannel(parent, JointChannel.of(componentSpaceMatrix, localParentJointChannel.getVisibility()));
+        this.setJointChannel(parent, JointChannel.of(componentSpaceMatrix, localParentJointChannel.getVisibility()));
         poseStack.popPose();
     }
 
@@ -78,6 +78,6 @@ public abstract class AnimationPose {
 
         JointChannel parentJointChannel = this.getJointChannel(parent);
         parentJointChannel.multiply(parentMatrix.invert(new Matrix4f()), JointChannel.TransformSpace.LOCAL);
-        this.getJointChannel(parent, parentJointChannel);
+        this.setJointChannel(parent, parentJointChannel);
     }
 }

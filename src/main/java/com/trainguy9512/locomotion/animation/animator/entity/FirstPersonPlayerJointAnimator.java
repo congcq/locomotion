@@ -22,6 +22,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -112,10 +113,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> placeholderHandPose = SequenceEvaluatorFunction.of(POSE_TEST, TimeSpan.of30FramesPerSecond(70));
         PoseFunction<LocalSpacePose> handPoseWithAdditive = ApplyAdditiveFunction.of(placeholderHandPose, cachedPoseContainer.getOrThrow(ADDITIVE_GROUND_MOVEMENT_CACHE));
 
-
+        PoseFunction<LocalSpacePose> mirroredBasedOnHandednessPose = MirrorFunction.of(handPoseWithAdditive, context -> context.dataContainer().getDriverValue(IS_LEFT_HANDED, context.partialTicks()));
 
         PoseFunction<LocalSpacePose> movementDirectionOffsetTransformer =
-                JointTransformerFunction.localOrParentSpaceBuilder(handPoseWithAdditive, ARM_BUFFER_JOINT)
+                JointTransformerFunction.localOrParentSpaceBuilder(mirroredBasedOnHandednessPose, ARM_BUFFER_JOINT)
                         .setTranslation(
                                 context -> context.dataContainer().getDriverValue(MOVEMENT_DIRECTION_OFFSET, context.partialTicks()).mul(1.5f),
                                 JointChannel.TransformType.ADD,
@@ -173,7 +174,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         Predicate<StateTransition.TransitionContext> walkingCondition = transitionContext -> transitionContext.dataContainer().getDriverValue(IS_MOVING);
 
 
-        PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.builder(dataContainer -> GroundMovementStates.IDLE)
+        PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.builder(evaluationState -> GroundMovementStates.IDLE)
                 .addState(State.builder(GroundMovementStates.IDLE, idleAnimationPlayer)
                         .resetUponEntry(false)
                         // Begin walking if the player is moving horizontally
@@ -215,8 +216,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .build())
                         // If the player lands before it can move into the falling animation, go straight to the landing animation as long as the jump state is fully transitioned.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.LAND)
-                                .isTakenIfTrue(StateTransition.CURRENT_TRANSITION_FINISHED
-                                        .and(StateTransition.booleanDriverPredicate(IS_GROUNDED)))
+                                .isTakenIfTrue(
+                                        StateTransition.CURRENT_TRANSITION_FINISHED
+                                        .and(StateTransition.booleanDriverPredicate(IS_GROUNDED))
+                                )
                                 .setTiming(Transition.SINGLE_TICK)
                                 .build())
                         .build())
@@ -224,14 +227,18 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetUponEntry(true)
                         // Move into the landing animation if the player is no longer falling
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.LAND)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_GROUNDED))
+                                .isTakenIfTrue(
+                                        StateTransition.booleanDriverPredicate(IS_GROUNDED)
+                                )
                                 .setTiming(Transition.of(TimeSpan.ofTicks(1), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build())
                         // Move into the landing animation if the player is no longer falling, but only just began falling.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.SOFT_LAND)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_GROUNDED)
-                                        .and(StateTransition.CURRENT_TRANSITION_FINISHED.negate()))
+                                .isTakenIfTrue(
+                                        StateTransition.booleanDriverPredicate(IS_GROUNDED)
+                                        .and(StateTransition.CURRENT_TRANSITION_FINISHED.negate())
+                                )
                                 .setTiming(Transition.of(TimeSpan.ofTicks(1), Easing.LINEAR))
                                 .setPriority(60)
                                 .build())
@@ -272,13 +279,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         // If the falling animation is finishing and the player is not walking, play the idle animation.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
                                 .isTakenIfTrue(walkingCondition.negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING))
-                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(9), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build())
                         // If the falling animation is finishing and the player is walking, play the walking animation.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
                                 .isTakenIfTrue(walkingCondition.and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING))
-                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(9), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build())
                         .build())
@@ -306,24 +313,25 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Boolean>> IS_MOVING = DriverKey.of("is_moving", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Boolean>> IS_GROUNDED = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> true));
     public static final DriverKey<VariableDriver<Boolean>> IS_JUMPING = DriverKey.of("is_jumping", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<VariableDriver<Boolean>> IS_LEFT_HANDED = DriverKey.of("is_left_handed", () -> VariableDriver.ofBoolean(() -> false));
 
 
     @Override
     public void extractAnimationData(LocalPlayer dataReference, OnTickDriverContainer driverContainer){
 
-
         driverContainer.getDriver(MODIFIED_WALK_SPEED).setValue(dataReference.walkAnimation.speed());
         driverContainer.getDriver(HORIZONTAL_MOVEMENT_SPEED).setValue(new Vector3f((float) (dataReference.getX() - dataReference.xo), 0.0f, (float) (dataReference.getZ() - dataReference.zo)).length());
+
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
 
-        //DEBUG
         driverContainer.getDriver(RENDERED_MAIN_HAND_ITEM).setValue(driverContainer.getDriverValue(MAIN_HAND_ITEM));
         driverContainer.getDriver(RENDERED_OFF_HAND_ITEM).setValue(driverContainer.getDriverValue(OFF_HAND_ITEM));
 
         driverContainer.getDriver(IS_MOVING).setValue(dataReference.input.keyPresses.forward() || dataReference.input.keyPresses.backward() || dataReference.input.keyPresses.left() || dataReference.input.keyPresses.right());
         driverContainer.getDriver(IS_GROUNDED).setValue(dataReference.onGround());
         driverContainer.getDriver(IS_JUMPING).setValue(dataReference.input.keyPresses.jump());
+        driverContainer.getDriver(IS_LEFT_HANDED).setValue(dataReference.getMainArm() == HumanoidArm.LEFT);
 
         Vector3f velocity = new Vector3f((float) (dataReference.getX() - dataReference.xo), (float) (dataReference.getY() - dataReference.yo), (float) (dataReference.getZ() - dataReference.zo));
         // We don't want vertical velocity to be factored into the movement direction offset as much as the horizontal velocity.

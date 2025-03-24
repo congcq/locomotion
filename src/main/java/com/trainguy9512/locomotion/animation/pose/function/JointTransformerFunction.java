@@ -6,7 +6,6 @@ import com.trainguy9512.locomotion.animation.pose.AnimationPose;
 import com.trainguy9512.locomotion.animation.pose.ComponentSpacePose;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -51,9 +50,9 @@ public class JointTransformerFunction<P extends AnimationPose> implements PoseFu
 
         if(weight != 0){
             if(weight == 1){
-                pose.getJointChannel(this.joint, jointChannel);
+                pose.setJointChannel(this.joint, jointChannel);
             } else {
-                pose.getJointChannel(this.joint, pose.getJointChannel(this.joint).interpolated(jointChannel, weight));
+                pose.setJointChannel(this.joint, pose.getJointChannel(this.joint).interpolated(jointChannel, weight));
             }
         }
         return pose;

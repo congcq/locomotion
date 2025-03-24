@@ -53,20 +53,20 @@ public class LocalSpacePose extends AnimationPose {
     public static LocalSpacePose fromAnimationSequence(JointSkeleton jointSkeleton, ResourceLocation sequenceLocation, TimeSpan time, boolean looping) {
         LocalSpacePose pose = LocalSpacePose.of(jointSkeleton);
         for(String joint : jointSkeleton.getJoints()){
-            pose.getJointChannel(joint, JointChannel.ofJointFromAnimationSequence(sequenceLocation, joint, time, looping));
+            pose.setJointChannel(joint, JointChannel.ofJointFromAnimationSequence(sequenceLocation, joint, time, looping));
         }
         return pose;
     }
 
-    public void mirror() {
-        this.mirrorWeighted(1);
-    }
-
-    public void mirrorWeighted(float weight) {
+    public LocalSpacePose mirrored() {
+        LocalSpacePose mirroredPose = new LocalSpacePose(this);
         this.jointChannels.forEach((joint, transform) -> {
-            JointChannel mirroredTransform = this.getJointChannel(this.getJointSkeleton().getJointConfiguration(joint).mirrorJoint()).mirrored();
-            this.getJointChannel(joint, transform.interpolated(mirroredTransform, weight));
+            JointSkeleton.JointConfiguration configuration = this.getJointSkeleton().getJointConfiguration(joint);
+            String mirrorJoint = configuration.mirrorJoint() != null ? configuration.mirrorJoint() : joint;
+            JointChannel mirroredTransform = this.getJointChannel(mirrorJoint).mirrored();
+            mirroredPose.setJointChannel(joint, mirroredTransform);
         });
+        return mirroredPose;
     }
 
     /**
@@ -95,7 +95,7 @@ public class LocalSpacePose extends AnimationPose {
 
         joints.forEach(joint -> {
             if(this.getJointSkeleton().containsJoint(joint)){
-                pose.getJointChannel(joint, weight == 1 ? other.getJointChannel(joint) :
+                pose.setJointChannel(joint, weight == 1 ? other.getJointChannel(joint) :
                         pose.getJointChannel(joint).interpolated(other.getJointChannel(joint), weight));
             }
         });

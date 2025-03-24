@@ -12,6 +12,7 @@ import com.trainguy9512.locomotion.util.Transition;
 import net.minecraft.util.Tuple;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public record StateTransition<S extends Enum<S>>(
@@ -19,6 +20,7 @@ public record StateTransition<S extends Enum<S>>(
         Predicate<TransitionContext> conditionPredicate,
         Transition transition,
         int priority,
+        Consumer<PoseFunction.FunctionEvaluationState> onTransitionTakenListener,
         boolean isAutomaticTransition
 ) implements Comparable<StateTransition<S>> {
 
@@ -69,6 +71,7 @@ public record StateTransition<S extends Enum<S>>(
         private Predicate<TransitionContext> conditionPredicate;
         private Transition transition;
         private int priority;
+        private Consumer<PoseFunction.FunctionEvaluationState> onTransitionTakenListener;
         private boolean automaticTransition;
         private float automaticTransitionCrossfadeWeight;
 
@@ -77,13 +80,14 @@ public record StateTransition<S extends Enum<S>>(
             this.target = target;
             this.transition = Transition.SINGLE_TICK;
             this.priority = 50;
+            this.onTransitionTakenListener = evaluationState -> {};
             this.automaticTransition = false;
             this.automaticTransitionCrossfadeWeight = 1f;
         }
 
         /**
          * Sets the transition to be passable as an OR condition if the most relevant
-         *          * animation player is within the transition duration of finishing.
+         * animation player is within the transition duration of finishing.
          * <p>
          * In other words, if the sequence player in the current active state loops or ends,
          * this becomes true.
@@ -132,6 +136,16 @@ public record StateTransition<S extends Enum<S>>(
             return this;
         }
 
+        /**
+         * Binds an event to be called every time this transition is entered in the state machine.
+         *
+         * <p>Multiple events can be chained together with multiple calls to this method.</p>
+         */
+        public Builder<S> bindToOnTransitionTaken(Consumer<PoseFunction.FunctionEvaluationState> onTransitionTaken) {
+            this.onTransitionTakenListener = this.onTransitionTakenListener.andThen(onTransitionTaken);
+            return this;
+        }
+
         public StateTransition<S> build() {
             if (this.conditionPredicate == null) {
                 this.conditionPredicate = context -> false;
@@ -142,7 +156,7 @@ public record StateTransition<S extends Enum<S>>(
             if (this.automaticTransition) {
                 this.conditionPredicate = this.conditionPredicate.or(makeMostRelevantAnimationPlayerFinishedCondition(this.automaticTransitionCrossfadeWeight));
             }
-            return new StateTransition<>(this.target, this.conditionPredicate, this.transition, this.priority, this.automaticTransition);
+            return new StateTransition<>(this.target, this.conditionPredicate, this.transition, this.priority, this.onTransitionTakenListener, this.automaticTransition);
         }
     }
 
