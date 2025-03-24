@@ -232,7 +232,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.SOFT_LAND)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_GROUNDED)
                                         .and(StateTransition.CURRENT_TRANSITION_FINISHED.negate()))
-                                .setTiming(Transition.of(TimeSpan.ofTicks(2), Easing.LINEAR))
+                                .setTiming(Transition.of(TimeSpan.ofTicks(1), Easing.LINEAR))
                                 .setPriority(60)
                                 .build())
                         .build())
@@ -247,7 +247,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 GroundMovementStates.IDLE,
                                 GroundMovementStates.WALKING,
                                 GroundMovementStates.STOPPING,
-                                GroundMovementStates.LAND
+                                GroundMovementStates.LAND,
+                                GroundMovementStates.SOFT_LAND
                         ))
                         // Transition to the jumping animation if the player is jumping.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.JUMP)

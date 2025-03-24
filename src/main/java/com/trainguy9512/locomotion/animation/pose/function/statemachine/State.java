@@ -16,19 +16,11 @@ public class State<S extends Enum<S>> {
     protected final List<StateTransition<S>> outboundTransitions;
     protected final boolean resetUponEntry;
 
-    protected boolean isActive;
-    protected final VariableDriver<Float> weight;
-    protected StateTransition<S> currentTransition;
-
     protected State(S identifier, PoseFunction<LocalSpacePose> inputFunction, List<StateTransition<S>> outboundTransitions, boolean resetUponEntry) {
         this.identifier = identifier;
         this.inputFunction = inputFunction;
         this.outboundTransitions = outboundTransitions;
         this.resetUponEntry = resetUponEntry;
-
-        this.isActive = false;
-        this.weight = VariableDriver.ofFloat(() -> 0f);
-        this.currentTransition = null;
 
         if (!resetUponEntry) {
             for (StateTransition<S> transition : outboundTransitions) {
@@ -36,30 +28,6 @@ public class State<S extends Enum<S>> {
                     LocomotionMain.LOGGER.warn("State transition to state {} in a state machine is set to be automatic based on the input sequence player, but the origin state is not set to reset upon entry. Automatic transitions are intended to be used with reset-upon-entry states, beware of unexpected behavior!", transition.target());
                 }
             }
-        }
-    }
-
-    protected void tick(PoseFunction.FunctionEvaluationState evaluationState, boolean isEntering) {
-        // Update the state weight information
-        if (this.currentTransition != null) {
-            this.weight.pushCurrentToPrevious();
-
-            // Make the minimum transition time 0.01 to prevent a divide by zero error
-            float increment = 1 / Math.max(this.currentTransition.transition().duration().inTicks(), 0.01f);
-            float increaseDecreaseMultiplier = this.isActive ? 1 : -1;
-            float nextWeightValue = this.weight.getPreviousValue() + increment * increaseDecreaseMultiplier;
-            nextWeightValue = Mth.clamp(nextWeightValue, 0, 1);
-
-            // If the state is just now becoming active after being de-active, and
-            // the state is set to reset upon entry, set the evaluation state for child functions to reset.
-            if (this.resetUponEntry && isEntering) {
-                evaluationState = evaluationState.markedForReset();
-            }
-            this.weight.setValue(nextWeightValue);
-        }
-        if (this.weight.getCurrentValue() > 0 || this.weight.getPreviousValue() > 0) {
-            // Tick the child functions if the current weight value is greater than zero.
-            this.inputFunction.tick(evaluationState);
         }
     }
 

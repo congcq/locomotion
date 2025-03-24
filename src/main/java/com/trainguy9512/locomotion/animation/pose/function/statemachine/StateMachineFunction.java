@@ -2,8 +2,8 @@ package com.trainguy9512.locomotion.animation.pose.function.statemachine;
 
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
-import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
+import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.AnimationPlayer;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
@@ -32,67 +32,122 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     private final Map<S, State<S>> states;
     private final Function<OnTickDriverContainer, S> initialState;
-    private final List<S> activeStates;
+    private final List<StateBlendLayer> stateBlendLayerStack;
 
     private StateMachineFunction(Map<S, State<S>> states, Function<OnTickDriverContainer, S> initialState) {
         super(evaluationState -> true, evaluationState -> 1f, 0);
         this.states = states;
         this.initialState = initialState;
-        this.activeStates = new ArrayList<>();
+        this.stateBlendLayerStack = new ArrayList<>();
     }
 
     @Override
     public @NotNull LocalSpacePose compute(FunctionInterpolationContext context) {
         // If the list of active states is empty, throw an error because this should never be the case unless something has gone wrong.
-        if(this.activeStates.isEmpty()){
+        if(this.stateBlendLayerStack.isEmpty()){
             throw new IllegalStateException("State machine's active states list found to be empty.");
         }
+        // Add all calculated poses to a map, because there can be multiple instances of the same
+        // state in the stack but each state should only have its pose calculated once.
+        Set<S> uniqueStatesInLayerStack = this.getStatesInLayerStack();
+        Map<S, LocalSpacePose> layerStackPoses = Maps.newHashMapWithExpectedSize(uniqueStatesInLayerStack.size());
+        for (S stateIdentifier : uniqueStatesInLayerStack) {
+            layerStackPoses.put(stateIdentifier, this.states.get(stateIdentifier).inputFunction.compute(context));
+        }
 
-        // Blend each active state's pose.
-        LocalSpacePose pose = this.states.get(this.activeStates.getFirst()).inputFunction.compute(context);
-        for(S stateIdentifier : this.activeStates){
-            // We already got the first active state's pose.
+        // Blend the poses from the layer stack poses map, starting with the first pose.
+        LocalSpacePose pose = layerStackPoses.get(this.stateBlendLayerStack.getFirst().identifier);
+
+        if (this.stateBlendLayerStack.size() > 1) {
+            for (StateBlendLayer stateBlendLayer : this.stateBlendLayerStack.subList(1, stateBlendLayerStack.size())) {
                 pose = pose.interpolated(
-                        this.states.get(stateIdentifier).inputFunction.compute(context),
-                        this.states.get(stateIdentifier).currentTransition.transition().applyEasement(
-                                this.states.get(stateIdentifier).weight.getValueInterpolated(context.partialTicks())
+                        layerStackPoses.get(stateBlendLayer.identifier),
+                        stateBlendLayer.entranceTransition.transition().applyEasement(
+                                stateBlendLayer.weight.getValueInterpolated(context.partialTicks())
                         )
                 );
+            }
         }
         return pose;
     }
 
     @Override
     public void tick(FunctionEvaluationState evaluationState) {
+        // Add to the current elapsed ticks
+        super.tick(evaluationState);
+
         // If the state machine has no active states, initialize it using the initial state function.
-        if(this.activeStates.isEmpty()){
+        if(this.stateBlendLayerStack.isEmpty()){
             S initialStateIdentifier = this.initialState.apply(evaluationState.dataContainer());
             if (this.states.containsKey(initialStateIdentifier)) {
-                this.activeStates.add(initialStateIdentifier);
-                State<S> newInitialState = this.states.get(initialStateIdentifier);
-                newInitialState.isActive = true;
-                newInitialState.weight.setValue(1f);
-                newInitialState.weight.pushCurrentToPrevious();
-                newInitialState.weight.setValue(1f);
-                for (State<S> state : this.states.values()) {
-                    state.currentTransition = StateTransition.builder(initialStateIdentifier).setTiming(Transition.INSTANT).build();
-                }
+                this.stateBlendLayerStack.addLast(new StateBlendLayer(initialStateIdentifier, StateTransition.builder(initialStateIdentifier).setTiming(Transition.INSTANT).build()));
             } else {
                 throw new IllegalStateException("Initial state " + initialStateIdentifier + " not found to be present in the state machine");
             }
         }
 
-        // Add to the current elapsed ticks
-        super.tick(evaluationState);
+        Optional<StateTransition<S>> potentialStateTransition = this.getPotentialTransitionFromCurrentState(evaluationState);
 
+        // If there is a transition occuring, add a new state blend layer instance to the layer stack, and resets the elapsed time in the state machine.
+        potentialStateTransition.ifPresent(stateTransition -> {
+            this.stateBlendLayerStack.addLast(new StateBlendLayer(stateTransition.target(), stateTransition));
+            this.resetTime();
+        });
+
+        // Tick each layer on the blend layer instance stack.
+        this.stateBlendLayerStack.forEach(StateBlendLayer::tick);
+        // Iterate through the layer stack top to bottom.
+        // If a layer is found to be fully active, meaning it's overriding all states beneath it, remove all states beneath it.
+        boolean higherStateIsFullyOverriding = false;
+        List<StateBlendLayer> inactiveLayers = new ArrayList<>();
+        for (StateBlendLayer stateBlendLayer : this.stateBlendLayerStack.reversed()) {
+            if (higherStateIsFullyOverriding) {
+                inactiveLayers.add(stateBlendLayer);
+            }
+            if (stateBlendLayer.isIsFullyActive) {
+                higherStateIsFullyOverriding = true;
+            }
+        }
+        this.stateBlendLayerStack.removeAll(inactiveLayers);
+
+
+        // Tick each state's pose function input.
+        // If there is a transition currently occurring, and its target matches the current iterator, tick the state input with an evaluation state marked for reset.
+        // Otherwise, tick the state as normal.
+        for (S stateIdentifier : this.getStatesInLayerStack()) {
+            PoseFunction<?> statePoseFunction = this.states.get(stateIdentifier).inputFunction;
+            potentialStateTransition.ifPresentOrElse(stateTransition -> {
+                if (stateTransition.target() == stateIdentifier && this.states.get(stateIdentifier).resetUponEntry) {
+                    statePoseFunction.tick(evaluationState.markedForReset());
+                } else {
+                    statePoseFunction.tick(evaluationState);
+                }
+            }, () -> statePoseFunction.tick(evaluationState));
+        }
+
+
+        //LocomotionMain.LOGGER.info(this.stateBlendLayerStack);
+        /*
+        if (this.activeStates.getLast() instanceof FirstPersonPlayerJointAnimator.GroundMovementStates) {
+            LocomotionMain.LOGGER.info("{}\t{}\t{}\t{}\t{}",
+                    this.activeStates.getLast(),
+                    potentialStateTransition.isPresent(),
+                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.FALLING).weight.getPreviousValue(),
+                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.FALLING).weight.getCurrentValue(),
+                    this.activeStates);
+        }
+         */
+
+    }
+
+    private Optional<StateTransition<S>> getPotentialTransitionFromCurrentState(FunctionEvaluationState evaluationState) {
         // Get the current active state
-        S currentActiveStateIdentifier = this.activeStates.getLast();
+        S currentActiveStateIdentifier = this.stateBlendLayerStack.getLast().identifier;
         State<S> currentActiveState = this.states.get(currentActiveStateIdentifier);
-
 
         // Filter each potential state transition by whether it's valid, then filter by whether its condition predicate is true,
         // then shuffle it in order to make equal priority transitions randomized and re-order the valid transitions by filter order.
-        Optional<StateTransition<S>> potentialStateTransition = currentActiveState.outboundTransitions.stream()
+        return currentActiveState.outboundTransitions.stream()
                 .filter(stateTransition -> {
                     boolean transitionTargetIncludedInThisMachine = this.states.containsKey(stateTransition.target());
                     boolean targetIsNotCurrentActiveState = stateTransition.target() != currentActiveStateIdentifier;
@@ -100,7 +155,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                         StateTransition.TransitionContext transitionContext = StateTransition.TransitionContext.of(
                                 evaluationState.dataContainer(),
                                 TimeSpan.ofTicks(this.ticksElapsed.getCurrentValue()),
-                                this.states.get(currentActiveStateIdentifier).weight.getCurrentValue(),
+                                this.stateBlendLayerStack.getLast().weight.getCurrentValue(),
                                 this.states.get(currentActiveStateIdentifier).inputFunction,
                                 stateTransition.transition().duration()
                         );
@@ -115,46 +170,12 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                 .stream()
                 .sorted()
                 .findFirst();
+    }
 
-        // Set all states to inactive except the new destination state. Also set the transition to all states for when they're ticked
-        potentialStateTransition.ifPresent(stateTransition -> {
-            this.resetTime();
-            this.states.forEach((stateIdentifier, state) -> {
-                state.currentTransition = stateTransition;
-                state.isActive = state == this.states.get(stateTransition.target());
-            });
-
-            // Update the active states array
-            // Make sure there already isn't this state present in active states
-
-            this.activeStates.remove(stateTransition.target());
-            this.activeStates.addLast(stateTransition.target());
-
-        });
-
-        // Tick each state
-        this.states.forEach((stateIdentifier, state) -> potentialStateTransition.ifPresentOrElse(
-                stateTransition -> state.tick(evaluationState, state == this.states.get(stateTransition.target())),
-                () -> state.tick(evaluationState, false)
-        ));
-
-        // Evaluated last, remove states from the active state list that have a weight of 0.
-        List<S> statesToRemove = this.activeStates.stream()
-                .filter((stateIdentifier) -> this.states.get(stateIdentifier).weight.getPreviousValue() == 0 && this.states.get(stateIdentifier).weight.getCurrentValue() == 0)
-                .toList();
-        this.activeStates.removeAll(statesToRemove);
-
-        /*
-        if (this.activeStates.getLast() instanceof FirstPersonPlayerJointAnimator.GroundMovementStates) {
-            LocomotionMain.LOGGER.info("{}\t{}\t{}\t{}\t{}",
-                    this.activeStates.getLast(),
-                    potentialStateTransition.isPresent(),
-                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.FALLING).weight.getPreviousValue(),
-                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.FALLING).weight.getCurrentValue(),
-                    this.activeStates);
-        }
-         */
-
+    private Set<S> getStatesInLayerStack() {
+        Set<S> set = new HashSet<>();
+        this.stateBlendLayerStack.forEach(stateBlendLayer -> set.add(stateBlendLayer.identifier));
+        return set;
     }
 
     @Override
@@ -170,14 +191,43 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     @Override
     public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
-        // Search for an animation player in the active states from most active to least active.
-        for (int iteration = this.activeStates.size() - 1; iteration >= 0; iteration--) {
-            var potentialPlayer = this.states.get(activeStates.get(iteration)).inputFunction.testForMostRelevantAnimationPlayer();
+        // Search for an animation player in the state blend layer stack from most active to least active.
+        for (StateBlendLayer stateBlendLayer : this.stateBlendLayerStack.reversed()) {
+            var potentialPlayer = this.states.get(stateBlendLayer.identifier).inputFunction.testForMostRelevantAnimationPlayer();
             if (potentialPlayer.isPresent()) {
                 return potentialPlayer;
             }
         }
         return Optional.empty();
+    }
+
+    private class StateBlendLayer {
+        private final S identifier;
+        private final StateTransition<S> entranceTransition;
+        private final VariableDriver<Float> weight;
+        private final float weightIncrement;
+        private boolean isIsFullyActive;
+
+        private StateBlendLayer(S identifier, StateTransition<S> entranceTransition) {
+            this.identifier = identifier;
+            this.entranceTransition = entranceTransition;
+            this.weight = VariableDriver.ofFloat(() -> 0f);
+            this.weightIncrement = 1 / Math.max(this.entranceTransition.transition().duration().inTicks(), 0.01f);
+            this.isIsFullyActive = false;
+        }
+
+        private void tick() {
+            this.weight.pushCurrentToPrevious();
+            this.weight.modifyValue(currentValue -> Math.min(1, currentValue + weightIncrement));
+            if (this.weight.getCurrentValue() == 1 && this.weight.getPreviousValue() == 1) {
+                this.isIsFullyActive = true;
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "StateBlendLayer{" + identifier + " " + weight.getCurrentValue() + "}";
+        }
     }
 
     public static <S extends Enum<S>> Builder<S> builder(Function<OnTickDriverContainer, S> initialState) {
@@ -233,8 +283,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                 for (S originState : stateAlias.originStates()) {
                     if (this.states.containsKey(originState)) {
                         State.Builder<S> stateBuilder = State.builder(this.states.get(originState));
-                        stateBuilder.addOutboundTransitions(stateAlias.outboundTransitions());
-                        this.states.put(originState, stateBuilder.build());
+                        this.states.put(originState, stateBuilder.addOutboundTransitions(stateAlias.outboundTransitions()).build());
                     } else {
                         LocomotionMain.LOGGER.error("Failed to apply state alias for state {}, as it hasn't been added to the state machine builder.", originState);
                     }
