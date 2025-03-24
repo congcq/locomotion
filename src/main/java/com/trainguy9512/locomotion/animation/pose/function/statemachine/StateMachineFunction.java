@@ -88,7 +88,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         Optional<StateTransition<S>> potentialStateTransition = this.getPotentialTransitionFromCurrentState(evaluationState);
 
-        // If there is a transition occuring, add a new state blend layer instance to the layer stack, and resets the elapsed time in the state machine.
+        // If there is a transition occurring, add a new state blend layer instance to the layer stack, and resets the elapsed time in the state machine.
         potentialStateTransition.ifPresent(stateTransition -> {
             this.stateBlendLayerStack.addLast(new StateBlendLayer(stateTransition.target(), stateTransition));
             this.resetTime();
@@ -103,8 +103,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         for (StateBlendLayer stateBlendLayer : this.stateBlendLayerStack.reversed()) {
             if (higherStateIsFullyOverriding) {
                 inactiveLayers.add(stateBlendLayer);
-            }
-            if (stateBlendLayer.isIsFullyActive) {
+            } else if (stateBlendLayer.isIsFullyActive) {
                 higherStateIsFullyOverriding = true;
             }
         }
