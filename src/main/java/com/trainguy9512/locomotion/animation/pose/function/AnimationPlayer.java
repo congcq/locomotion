@@ -1,5 +1,6 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
+import com.trainguy9512.locomotion.animation.pose.function.statemachine.StateMachineFunction;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import net.minecraft.util.Tuple;
 
