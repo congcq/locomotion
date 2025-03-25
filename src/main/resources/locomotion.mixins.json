@@ -15,8 +15,7 @@
     "MixinLivingEntityRenderer",
     "MixinLivingEntityRenderState",
     "MixinMinecraft",
-    "MixinModelPart",
-    "debug.MixinPlayerSkin"
+    "MixinModelPart"
   ],
   "injectors": {
     "defaultRequire": 1
