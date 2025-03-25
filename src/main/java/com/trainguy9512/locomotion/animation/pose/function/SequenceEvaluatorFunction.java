@@ -27,6 +27,10 @@ public class SequenceEvaluatorFunction implements PoseFunction<LocalSpacePose> {
         return new SequenceEvaluatorFunction(animationSequenceLocation, context -> sequenceTime);
     }
 
+    public static SequenceEvaluatorFunction of(ResourceLocation animationSequenceLocation) {
+        return new SequenceEvaluatorFunction(animationSequenceLocation, context -> TimeSpan.ofTicks(0));
+    }
+
     @Override
     public @NotNull LocalSpacePose compute(FunctionInterpolationContext context) {
         TimeSpan time = this.sequenceTimeFunction.apply(context);

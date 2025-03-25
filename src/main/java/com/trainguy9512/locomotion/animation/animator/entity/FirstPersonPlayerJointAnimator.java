@@ -21,6 +21,7 @@ import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
@@ -29,6 +30,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator<LocalPlayer, PlayerRenderState> {
@@ -45,28 +47,19 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final String LEFT_HAND_JOINT = "hand_L_jnt";
     public static final String LEFT_ITEM_JOINT = "item_L_jnt";
 
-    public static final Set<String> ARM_BUFFER_JOINTS = Set.of(
+
+    public static final Set<String> RIGHT_SIDE_JOINTS = Set.of(
             RIGHT_ARM_BUFFER_JOINT,
-            LEFT_ARM_BUFFER_JOINT
+            RIGHT_ARM_JOINT,
+            RIGHT_HAND_JOINT,
+            RIGHT_ITEM_JOINT
     );
 
-    public static final Set<String> ARM_JOINTS = Set.of(
-            RIGHT_ARM_JOINT,
-            LEFT_ARM_JOINT,
-            RIGHT_ARM_BUFFER_JOINT,
+    public static final Set<String> LEFT_SIDE_JOINTS = Set.of(
             LEFT_ARM_BUFFER_JOINT,
-            RIGHT_HAND_JOINT,
-            LEFT_HAND_JOINT
-    );
-
-    public static final Set<String> ARM_POSE_JOINTS = Set.of(
-            RIGHT_ARM_JOINT,
-            LEFT_ARM_JOINT
-    );
-
-    public static final Set<String> HAND_JOINTS = Set.of(
-            RIGHT_HAND_JOINT,
-            LEFT_HAND_JOINT
+            LEFT_ARM_JOINT,
+            LEFT_HAND_JOINT,
+            LEFT_ITEM_JOINT
     );
 
     public static final String ADDITIVE_GROUND_MOVEMENT_CACHE = "additive_ground_movement";
@@ -109,10 +102,16 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     @Override
     public PoseFunction<LocalSpacePose> constructPoseFunction(CachedPoseContainer cachedPoseContainer) {
-
         cachedPoseContainer.register(ADDITIVE_GROUND_MOVEMENT_CACHE, constructAdditiveGroundMovementPoseFunction(cachedPoseContainer));
-        PoseFunction<LocalSpacePose> placeholderHandPose = SequenceEvaluatorFunction.of(POSE_TEST, TimeSpan.of30FramesPerSecond(70));
-        PoseFunction<LocalSpacePose> handPoseWithAdditive = ApplyAdditiveFunction.of(placeholderHandPose, cachedPoseContainer.getOrThrow(ADDITIVE_GROUND_MOVEMENT_CACHE));
+
+        PoseFunction<LocalSpacePose> mainHandPose = this.constructHandPoseFunction(cachedPoseContainer, InteractionHand.MAIN_HAND);
+        PoseFunction<LocalSpacePose> offHandPose = this.constructHandPoseFunction(cachedPoseContainer, InteractionHand.OFF_HAND);
+
+        PoseFunction<LocalSpacePose> combinedHandPose = BlendFunction.builder(mainHandPose)
+                .addBlendInput(MirrorFunction.of(offHandPose), evaluationState -> 1f, LEFT_SIDE_JOINTS)
+                .build();
+
+        PoseFunction<LocalSpacePose> handPoseWithAdditive = ApplyAdditiveFunction.of(combinedHandPose, cachedPoseContainer.getOrThrow(ADDITIVE_GROUND_MOVEMENT_CACHE));
 
         PoseFunction<LocalSpacePose> mirroredBasedOnHandednessPose = MirrorFunction.of(handPoseWithAdditive, context -> context.dataContainer().getDriverValue(IS_LEFT_HANDED, context.partialTicks()));
 
@@ -137,7 +136,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
 
     public enum HandPoseStates {
-        LOWERED,
         EMPTY,
         EMPTY_RAISE,
         EMPTY_LOWER,
@@ -156,30 +154,30 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
-        DriverKey<VariableDriver<ItemStack>> handItem;
-        Predicate<StateTransition.TransitionContext> switchHandsCondition = switch (interactionHand) {
-            case MAIN_HAND -> context ->
-                context.dataContainer().getDriverValue(MAIN_HAND_ITEM) != context.dataContainer().getDriverValue(RENDERED_MAIN_HAND_ITEM);
-            case OFF_HAND -> context ->
-                context.dataContainer().getDriverValue(OFF_HAND_ITEM) != context.dataContainer().getDriverValue(RENDERED_OFF_HAND_ITEM);
+        DriverKey<VariableDriver<ItemStack>> handItemDriver = switch (interactionHand) {
+            case MAIN_HAND -> MAIN_HAND_ITEM;
+            case OFF_HAND -> OFF_HAND_ITEM;
         };
+        DriverKey<VariableDriver<ItemStack>> renderedHandItemDriver = switch (interactionHand) {
+            case MAIN_HAND -> RENDERED_MAIN_HAND_ITEM;
+            case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
+        };
+        Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> context.dataContainer().getDriverValue(handItemDriver) != context.dataContainer().getDriverValue(renderedHandItemDriver);
+        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedHandItemDriver).setValue(evaluationState.dataContainer().getDriverValue(handItemDriver));
 
-        PoseFunction<LocalSpacePose> handPoseStateMachine;
-        handPoseStateMachine = StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER)
-                .addState(State.builder(HandPoseStates.LOWERED, SequenceEvaluatorFunction.of(HAND_LOWERED_POSE, TimeSpan.ofSeconds(0)))
-                        .build())
-                .addState(State.builder(HandPoseStates.EMPTY, SequenceEvaluatorFunction.of(HAND_EMPTY_POSE, TimeSpan.ofSeconds(0)))
-                        .build())
-                .addState(State.builder(HandPoseStates.EMPTY_RAISE, SequencePlayerFunction.builder(HAND_EMPTY_RAISE).build())
-                        .resetUponEntry(true)
-                        .build())
-                .addState(State.builder(HandPoseStates.EMPTY_LOWER, SequencePlayerFunction.builder(HAND_EMPTY_LOWER).build())
-                        .resetUponEntry(true)
-                        .build())
+        StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER)
                 .addState(State.builder(HandPoseStates.TOOL, SequenceEvaluatorFunction.of(HAND_TOOL_POSE, TimeSpan.ofSeconds(0)))
+                        .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL_LOWER)
+                                .isTakenIfTrue(switchHandsCondition)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
+                                .build())
                         .build())
                 .addState(State.builder(HandPoseStates.TOOL_RAISE, SequencePlayerFunction.builder(HAND_TOOL_RAISE).build())
                         .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
+                                .build())
                         .build())
                 .addState(State.builder(HandPoseStates.TOOL_LOWER, SequencePlayerFunction.builder(HAND_TOOL_LOWER).build())
                         .resetUponEntry(true)
@@ -189,14 +187,67 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         HandPoseStates.TOOL_LOWER
                 ))
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY_RAISE)
+                                .isTakenIfTrue(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING)
+                                .setTiming(Transition.INSTANT)
+                                .setPriority(30)
+                                .bindToOnTransitionTaken(updateRenderedItem)
+                                .build())
+                        .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL_RAISE)
                                 .isTakenIfTrue(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING
+                                        .and(context -> context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.PICKAXES)
+                                                || context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.AXES)
+                                                || context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.SHOVELS)
+                                                || context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.HOES)
+                                                || context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.SWORDS)
+                                        )
                                 )
                                 .setTiming(Transition.INSTANT)
+                                .setPriority(40)
+                                .bindToOnTransitionTaken(updateRenderedItem)
                                 .build())
-                        .build())
-                .build();
+                        .build());
 
-        return handPoseStateMachine;
+        switch (interactionHand) {
+            case MAIN_HAND ->
+                    handPoseStateMachineBuilder
+                            .addState(State.builder(HandPoseStates.EMPTY, SequenceEvaluatorFunction.of(HAND_EMPTY_POSE))
+                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY_LOWER)
+                                            .isTakenIfTrue(switchHandsCondition)
+                                            .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
+                                            .build())
+                                    .build())
+                            .addState(State.builder(HandPoseStates.EMPTY_RAISE, SequencePlayerFunction.builder(HAND_EMPTY_RAISE).build())
+                                    .resetUponEntry(true)
+                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
+                                            .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
+                                            .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
+                                            .build())
+                                    .build())
+                            .addState(State.builder(HandPoseStates.EMPTY_LOWER, SequencePlayerFunction.builder(HAND_EMPTY_LOWER).build())
+                                    .resetUponEntry(true)
+                                    .build());
+            case OFF_HAND ->
+                    handPoseStateMachineBuilder
+                            .addState(State.builder(HandPoseStates.EMPTY, SequenceEvaluatorFunction.of(HAND_LOWERED_POSE))
+                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY_LOWER)
+                                            .isTakenIfTrue(switchHandsCondition)
+                                            .setTiming(Transition.INSTANT)
+                                            .build())
+                                    .build())
+                            .addState(State.builder(HandPoseStates.EMPTY_RAISE, SequencePlayerFunction.builder(HAND_LOWERED_POSE).build())
+                                    .resetUponEntry(true)
+                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
+                                            .isTakenIfMostRelevantAnimationPlayerFinishing(0f)
+                                            .setTiming(Transition.INSTANT)
+                                            .build())
+                                    .build())
+                            .addState(State.builder(HandPoseStates.EMPTY_LOWER, SequencePlayerFunction.builder(HAND_LOWERED_POSE).build())
+                                    .resetUponEntry(true)
+                                    .build());
+
+        }
+
+        return handPoseStateMachineBuilder.build();
     }
 
     public enum GroundMovementStates {
@@ -387,8 +438,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
 
-        driverContainer.getDriver(RENDERED_MAIN_HAND_ITEM).setValue(driverContainer.getDriverValue(MAIN_HAND_ITEM));
-        driverContainer.getDriver(RENDERED_OFF_HAND_ITEM).setValue(driverContainer.getDriverValue(OFF_HAND_ITEM));
+        // Debug
+        //driverContainer.getDriver(RENDERED_MAIN_HAND_ITEM).setValue(driverContainer.getDriverValue(MAIN_HAND_ITEM));
+        //driverContainer.getDriver(RENDERED_OFF_HAND_ITEM).setValue(driverContainer.getDriverValue(OFF_HAND_ITEM));
 
         driverContainer.getDriver(IS_MOVING).setValue(dataReference.input.keyPresses.forward() || dataReference.input.keyPresses.backward() || dataReference.input.keyPresses.left() || dataReference.input.keyPresses.right());
         driverContainer.getDriver(IS_GROUNDED).setValue(dataReference.onGround());

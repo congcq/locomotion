@@ -33,6 +33,14 @@ public class TimeSpan implements Comparable<TimeSpan> {
     }
 
     /**
+     * Creates a timespan from a time measured in frames, at 60 frames per second.
+     * @return      Timespan
+     */
+    public static TimeSpan of60FramesPerSecond(float timeIn60FramesPerSecond){
+        return TimeSpan.ofSeconds(timeIn60FramesPerSecond / 60f);
+    }
+
+    /**
      * Creates a timespan from a time measured in frames, at 30 frames per second.
      * @return      Timespan
      */
