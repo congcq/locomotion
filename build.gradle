@@ -16,6 +16,7 @@ repositories {
 		name = 'ParchmentMC'
 		url = 'https://maven.parchmentmc.org'
 	}
+	maven { url "https://maven.terraformersmc.com/"}
 	maven { url 'https://maven.isxander.dev/releases' }
 	maven { url "https://api.modrinth.com/maven" }
 
@@ -38,7 +39,7 @@ dependencies {
 
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	modImplementation "dev.isxander:yet-another-config-lib:${project.yacl_version}"
-	modImplementation "maven.modrinth:modmenu:${project.modmenu_version}"
+	modImplementation("com.terraformersmc:modmenu:${project.modmenu_version}")
 
 
 

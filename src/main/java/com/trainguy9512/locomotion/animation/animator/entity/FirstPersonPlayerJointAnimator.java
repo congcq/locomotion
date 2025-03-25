@@ -456,7 +456,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 velocity.dot(new Vector3f(0, 1, 0).rotate(rotation)),
                 velocity.dot(new Vector3f(0, 0, -1).rotate(rotation))
         );
-        movementDirection.mul(dataReference.isSprinting() ? 5f : 3f);
+        movementDirection.mul(dataReference.isSprinting() ? 4f : 3f);
         driverContainer.getDriver(MOVEMENT_DIRECTION_OFFSET).setValue(movementDirection);
         driverContainer.getDriver(CAMERA_ROTATION_DAMPING).setValue(new Vector3f(dataReference.getXRot(), dataReference.getYRot(), dataReference.getYRot()).mul(Mth.DEG_TO_RAD));
 
