@@ -34,16 +34,6 @@ public class VariableDriver<D> implements Driver<D> {
 
     @Override
     public D getValueInterpolated(float partialTicks) {
-        boolean valueHasNotChanged = this.currentValue.equals(this.previousValue);
-        boolean gettingValueFromCurrentTick = partialTicks == 1;
-        boolean gettingValueFromPreviousTick = partialTicks == 0;
-
-        if (valueHasNotChanged || gettingValueFromCurrentTick) {
-            return this.currentValue;
-        }
-        if(gettingValueFromPreviousTick){
-            return this.previousValue;
-        }
         return interpolator.interpolate(this.previousValue, this.currentValue, partialTicks);
     }
 
@@ -133,7 +123,7 @@ public class VariableDriver<D> implements Driver<D> {
      * @param defaultValue      Default value set from the start and set upon resetting the driver.
      */
     public static VariableDriver<Vector3f> ofVector(Supplier<Vector3f> defaultValue) {
-        return VariableDriver.ofInterpolatable(defaultValue, Interpolator.VECTOR);
+        return VariableDriver.ofInterpolatable(defaultValue, Interpolator.VECTOR_FLOAT);
     }
 
     @Override

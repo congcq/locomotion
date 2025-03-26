@@ -6,7 +6,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.trainguy9512.locomotion.LocomotionMain;
-import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.util.Interpolator;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import com.trainguy9512.locomotion.util.Timeline;
@@ -22,7 +21,6 @@ import org.joml.Vector3f;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
@@ -137,7 +135,7 @@ public class AnimationSequenceDataLoader implements SimpleResourceReloadListener
 
                         Timeline<Vector3f> translationTimeline = createTimelineFromJSONChannel(
                                 jointJSON.getAsJsonObject("translation").asMap(),
-                                Interpolator.VECTOR,
+                                Interpolator.VECTOR_FLOAT,
                                 sequenceLength,
                                 AnimationSequenceDataLoader::extractVectorKeyframeValue
                         );
@@ -149,7 +147,7 @@ public class AnimationSequenceDataLoader implements SimpleResourceReloadListener
                         );
                         Timeline<Vector3f> scaleTimeline = createTimelineFromJSONChannel(
                                 jointJSON.getAsJsonObject("scale").asMap(),
-                                Interpolator.VECTOR,
+                                Interpolator.VECTOR_FLOAT,
                                 sequenceLength,
                                 AnimationSequenceDataLoader::extractVectorKeyframeValue
                         );
