@@ -250,6 +250,42 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         return handPoseStateMachineBuilder.build();
     }
 
+//    public void addStatesForHandPose(
+//            StateMachineFunction.Builder<HandPoseStates> stateMachineBuilder,
+//            StateAlias.Builder<HandPoseStates> fromLoweringAliasBuilder,
+//            HandPoseStates poseState,
+//            HandPoseStates loweringState,
+//            HandPoseStates raisingState,
+//            PoseFunction<LocalSpacePose> posePoseFunction,
+//            PoseFunction<LocalSpacePose> loweringPoseFunction,
+//            PoseFunction<LocalSpacePose> raisingPoseFunction,
+//            Predicate<StateTransition.TransitionContext> switchHandsCondition,
+//            Predicate<ItemStack> usePoseIfItemStackMatches,
+//            DriverKey<VariableDriver<ItemStack>> itemDriverKey
+//            ) {
+//        stateMachineBuilder
+//                .addState(State.builder(poseState, posePoseFunction)
+//                        .addOutboundTransition(StateTransition.builder(loweringState)
+//                                .isTakenIfTrue(switchHandsCondition)
+//                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
+//                                .build())
+//                        .build())
+//                .addState(State.builder(raisingState, loweringPoseFunction)
+//                        .resetUponEntry(true)
+//                        .addOutboundTransition(StateTransition.builder(poseState)
+//                                .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
+//                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
+//                                .build())
+//                        .build())
+//                .addState(State.builder(loweringState, raisingPoseFunction)
+//                        .resetUponEntry(true)
+//                        .build());
+//        fromLoweringAliasBuilder
+//                .addOutboundTransition(StateTransition.builder(raisingState)
+//                        .isTakenIfTrue(context -> usePoseIfItemStackMatches.test(context.dataContainer().getDriverValue(itemDriverKey)))
+//                        .build());
+//    }
+
     public enum GroundMovementStates {
         IDLE,
         WALKING,

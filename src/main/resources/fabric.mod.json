@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "animation_overhaul",
+  "id": "locomotion",
   "version": "${version}",
 
   "name": "Locomotion",
