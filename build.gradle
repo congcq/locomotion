@@ -6,8 +6,9 @@ plugins {
 sourceCompatibility = JavaVersion.VERSION_21
 targetCompatibility = JavaVersion.VERSION_21
 
-version = project.mod_version
+version = project.minecraft_version+'-'+project.mod_version
 group = project.maven_group
+archives_base_name = project.archives_base_name
 
 repositories {
 
