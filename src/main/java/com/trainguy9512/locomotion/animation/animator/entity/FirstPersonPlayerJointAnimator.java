@@ -1,5 +1,6 @@
 package com.trainguy9512.locomotion.animation.animator.entity;
 
+import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.*;
 import com.trainguy9512.locomotion.animation.driver.SpringDriver;
@@ -28,10 +29,15 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -299,6 +305,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                     SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
                     SequencePlayerFunction.builder(HAND_TOOL_MINE_LOOP)
                             .looping(true)
+                            .setPlayRate(evaluationState -> evaluationState.dataContainer().getDriverValue(MINING_SPEED_PLAY_RATE))
                             .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(10))
                             .build(),
                     Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT),
@@ -520,7 +527,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Boolean>> IS_MINING = DriverKey.of("is_mining", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Float>> MINING_SPEED_PLAY_RATE = DriverKey.of("mining_speed_play_rate", () -> VariableDriver.ofFloat(() -> 1f));
 
-
     @Override
     public void extractAnimationData(LocalPlayer dataReference, OnTickDriverContainer driverContainer){
 
@@ -531,12 +537,26 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
 
-//        LocomotionMain.LOGGER.info(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM).getDestroySpeed());
-//        if (driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM).getComponents().has(DataComponents.TOOL)) {
-//            driverContainer.getDriver(MINING_SPEED_PLAY_RATE).setValue(Objects.requireNonNull(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM).getComponents().get(DataComponents.TOOL)).getMiningSpeed());
-//        } else {
-//            driverContainer.getDriver(MINING_SPEED_PLAY_RATE).setValue(1f);
-//        }
+
+        ItemStack item = driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM);
+        float miningSpeed = 2f;
+        if (item.is(ItemTags.PICKAXES)) {
+            miningSpeed = item.getDestroySpeed(Blocks.STONE.defaultBlockState());
+        }
+        if (item.is(ItemTags.AXES)) {
+            miningSpeed = item.getDestroySpeed(Blocks.OAK_PLANKS.defaultBlockState());
+        }
+        if (item.is(ItemTags.SHOVELS)) {
+            miningSpeed = item.getDestroySpeed(Blocks.DIRT.defaultBlockState());
+        }
+        if (item.is(ItemTags.HOES)) {
+            miningSpeed = item.getDestroySpeed(Blocks.HAY_BLOCK.defaultBlockState());
+        }
+        miningSpeed -= 2f;
+        miningSpeed *= 0.075f;
+        miningSpeed += 1f;
+        driverContainer.getDriver(MINING_SPEED_PLAY_RATE).setValue(miningSpeed);
+
 
         // Debug
         //driverContainer.getDriver(RENDERED_MAIN_HAND_ITEM).setValue(driverContainer.getDriverValue(MAIN_HAND_ITEM));
