@@ -130,19 +130,19 @@ public record MontageConfiguration(
             return this;
         }
 
-        public MontageConfiguration build() {
-            return new MontageConfiguration(
-                    this.slot,
-                    this.animationSequence,
-                    this.playRate,
-                    this.timeMarkerBindings,
-                    this.startTimeOffset,
-                    this.endTimeOffset,
-                    this.transitionInDuration,
-                    this.transitionOutDuration,
-                    this.transitionInEasing,
-                    this.transitionOutEasing
-            );
-        }
+//        public MontageConfiguration build() {
+//            return new MontageConfiguration(
+//                    this.slot,
+//                    this.animationSequence,
+//                    this.playRate,
+//                    this.timeMarkerBindings,
+//                    this.startTimeOffset,
+//                    this.endTimeOffset,
+//                    this.transitionInDuration,
+//                    this.transitionOutDuration,
+//                    this.transitionInEasing,
+//                    this.transitionOutEasing
+//            );
+//        }
     }
 }
