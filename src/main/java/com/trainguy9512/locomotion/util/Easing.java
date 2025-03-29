@@ -8,7 +8,7 @@ import net.minecraft.util.Mth;
 @FunctionalInterface
 public interface Easing {
 
-    public float ease(float time);
+    float ease(float time);
 
     Easing LINEAR = time -> time;
     Easing CONSTANT = time -> 1;
@@ -83,8 +83,8 @@ public interface Easing {
          * Returns an ease-in elastic function using the given bounce factor.
          * <p>
          * Bounce factor preview graph: <a href="https://www.desmos.com/calculator/rtycpc7igu">Desmos</a>
-         * @param falloffExponent   Exponent that controls how sharp the falloff is. The higher the exponent, the faster the falloff. Default is 2.
          * @param bounceFactor      Value that controls the number of waves in the elastic shape.
+         * @param falloffExponent   Exponent that controls how sharp the falloff is. The higher the exponent, the faster the falloff. Default is 2.
          */
         public static Elastic easeInOf(float bounceFactor, float falloffExponent){
             return new Elastic(bounceFactor, falloffExponent);

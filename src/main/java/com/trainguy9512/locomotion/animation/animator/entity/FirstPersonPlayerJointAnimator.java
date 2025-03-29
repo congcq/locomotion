@@ -167,7 +167,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedHandItemDriver).setValue(evaluationState.dataContainer().getDriverValue(handItemDriver));
 
         StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER)
-                .addState(State.builder(HandPoseStates.TOOL, interactionHand == InteractionHand.MAIN_HAND ? this.miningLoopPoseFunction(cachedPoseContainer) : SequenceEvaluatorFunction.of(HAND_TOOL_POSE))
+                .addState(State.builder(HandPoseStates.TOOL, this.handToolPoseFunction(cachedPoseContainer, interactionHand))
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL_LOWER)
                                 .isTakenIfTrue(switchHandsCondition)
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
@@ -287,30 +287,47 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 //                        .build());
 //    }
 
+    public PoseFunction<LocalSpacePose> handToolPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
+        return switch (interactionHand) {
+            case MAIN_HAND -> miningLoopPoseFunction(
+                    cachedPoseContainer,
+                    SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
+                    SequencePlayerFunction.builder(HAND_TOOL_MINE_LOOP)
+                            .looping(true)
+                            .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(10))
+                            .build(),
+                    Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT),
+                    Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.CUBIC_IN_OUT)
+            );
+            case OFF_HAND -> SequenceEvaluatorFunction.of(HAND_TOOL_POSE);
+        };
+    }
+
     public enum MiningStates {
         IDLE,
         MINING
     }
 
-    public PoseFunction<LocalSpacePose> miningLoopPoseFunction(CachedPoseContainer cachedPoseContainer) {
-        PoseFunction<LocalSpacePose> idleAnimationPlayer = SequenceEvaluatorFunction.of(HAND_TOOL_POSE);
-        PoseFunction<LocalSpacePose> miningAnimationPlayer = SequencePlayerFunction.builder(HAND_TOOL_MINE_LOOP)
-                .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(10))
-                .looping(true)
-                .build();
+    public PoseFunction<LocalSpacePose> miningLoopPoseFunction(
+            CachedPoseContainer cachedPoseContainer,
+            PoseFunction<LocalSpacePose> idlePoseFunction,
+            PoseFunction<LocalSpacePose> miningPoseFunction,
+            Transition idleToMiningTiming,
+            Transition miningToIdleTiming
+    ) {
 
         return StateMachineFunction.builder(evaluationState -> MiningStates.IDLE)
-                .addState(State.builder(MiningStates.IDLE, idleAnimationPlayer)
+                .addState(State.builder(MiningStates.IDLE, idlePoseFunction)
                         .addOutboundTransition(StateTransition.builder(MiningStates.MINING)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).and(StateTransition.CURRENT_TRANSITION_FINISHED))
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                .setTiming(idleToMiningTiming)
                                 .build())
                         .build())
-                .addState(State.builder(MiningStates.MINING, miningAnimationPlayer)
+                .addState(State.builder(MiningStates.MINING, miningPoseFunction)
                         .resetUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(MiningStates.IDLE)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                .setTiming(miningToIdleTiming)
                                 .build())
                         .build())
                 .build();
