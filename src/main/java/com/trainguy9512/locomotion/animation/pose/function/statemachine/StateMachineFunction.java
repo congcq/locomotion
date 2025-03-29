@@ -2,6 +2,7 @@ package com.trainguy9512.locomotion.animation.pose.function.statemachine;
 
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
+import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
@@ -34,11 +35,17 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     private final Function<FunctionEvaluationState, S> initialState;
     private final List<StateBlendLayer> stateBlendLayerStack;
 
-    private StateMachineFunction(Map<S, State<S>> states, Function<FunctionEvaluationState, S> initialState) {
+    private long lastUpdateTick;
+    private final boolean resetUponRelevant;
+
+    private StateMachineFunction(Map<S, State<S>> states, Function<FunctionEvaluationState, S> initialState, boolean resetUponRelevant) {
         super(evaluationState -> true, evaluationState -> 1f, 0);
         this.states = states;
         this.initialState = initialState;
         this.stateBlendLayerStack = new ArrayList<>();
+
+        this.lastUpdateTick = 0;
+        this.resetUponRelevant = resetUponRelevant;
     }
 
     @Override
@@ -77,7 +84,9 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         super.tick(evaluationState);
 
         // If the state machine has no active states, initialize it using the initial state function.
-        if(this.stateBlendLayerStack.isEmpty()){
+        // If the state machine is just now becoming relevant again after not being relevant, re-initialize it.
+        if(this.stateBlendLayerStack.isEmpty() || (evaluationState.currentTick() - 1 > this.lastUpdateTick && this.resetUponRelevant)){
+            this.stateBlendLayerStack.clear();
             S initialStateIdentifier = this.initialState.apply(evaluationState);
             if (this.states.containsKey(initialStateIdentifier)) {
                 this.stateBlendLayerStack.addLast(new StateBlendLayer(initialStateIdentifier, StateTransition.builder(initialStateIdentifier).setTiming(Transition.INSTANT).build()));
@@ -85,6 +94,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                 throw new IllegalStateException("Initial state " + initialStateIdentifier + " not found to be present in the state machine");
             }
         }
+        this.lastUpdateTick = evaluationState.currentTick();
 
         Optional<StateTransition<S>> potentialStateTransition = this.getPotentialTransitionFromCurrentState(evaluationState);
 
@@ -182,6 +192,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
         Builder<S> builder = StateMachineFunction.builder(this.initialState);
+        builder.resetUponRelevant(this.resetUponRelevant);
         this.states.forEach((identifier, state) ->
                 builder.addState(
                         State.builder(state).wrapUniquePoseFunction().build()
@@ -241,10 +252,14 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         private final Map<S, State<S>> states;
         private final List<StateAlias<S>> stateAliases;
 
+        private boolean resetUponRelevant;
+
         protected Builder(Function<FunctionEvaluationState, S> initialState) {
             this.initialState = initialState;
             this.states = Maps.newHashMap();
             this.stateAliases = new ArrayList<>();
+
+            this.resetUponRelevant = false;
         }
 
         /**
@@ -257,6 +272,14 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             } else {
                 this.states.put(state.identifier, state);
             }
+            return this;
+        }
+
+        /**
+         * Sets this state machine to reset to the initial state every time the state machine goes from being irrelevant to relevant.
+         */
+        public Builder<S> resetUponRelevant(boolean resetUponRelevant) {
+            this.resetUponRelevant = resetUponRelevant;
             return this;
         }
 
@@ -304,7 +327,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                     LocomotionMain.LOGGER.warn("State {} in state machine contains no outbound transitions. If this state is entered, it will have no valid path out without re-initializing the state!", state.identifier);
                 }
             }
-            return new StateMachineFunction<>(this.states, this.initialState);
+            return new StateMachineFunction<>(this.states, this.initialState, this.resetUponRelevant);
         }
     }
 

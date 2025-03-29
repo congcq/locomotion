@@ -4,23 +4,22 @@ import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import com.trainguy9512.locomotion.util.Easing;
 import com.trainguy9512.locomotion.util.TimeSpan;
+import com.trainguy9512.locomotion.util.Transition;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * Configuration for a triggerable animation, otherwise known
+ * Configuration for a triggerable animation, otherwise known as a Montage in Unreal Engine.
  * @param slot
  * @param animationSequence
  * @param playRate
  * @param timeMarkerBindings
  * @param startTimeOffset
  * @param endTimeOffset
- * @param transitionInDuration
- * @param transitionOutDuration
- * @param transitionInEasing
- * @param transitionOutEasing
+ * @param transitionIn
+ * @param transitionOut
  */
 public record MontageConfiguration(
         String slot,
@@ -29,10 +28,8 @@ public record MontageConfiguration(
         Map<String, Consumer<PoseFunction.FunctionEvaluationState>> timeMarkerBindings,
         TimeSpan startTimeOffset,
         TimeSpan endTimeOffset,
-        TimeSpan transitionInDuration,
-        TimeSpan transitionOutDuration,
-        Easing transitionInEasing,
-        Easing transitionOutEasing
+        Transition transitionIn,
+        Transition transitionOut
 ) {
 
     public static Builder builder(String targetTrack, ResourceLocation animationSequence) {

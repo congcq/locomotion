@@ -161,7 +161,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation HAND_TOOL_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_pose");
     public static final ResourceLocation HAND_TOOL_LOWER = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_lower");
     public static final ResourceLocation HAND_TOOL_RAISE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_raise");
-    public static final ResourceLocation HAND_TOOL_MINE_LOOP = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_loop");
 
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
@@ -298,18 +297,21 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 //                        .build());
 //    }
 
+    public static final ResourceLocation HAND_TOOL_MINE_SWING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_swing");
+    public static final ResourceLocation HAND_TOOL_MINE_IMPACT = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_impact");
+    public static final ResourceLocation HAND_TOOL_MINE_FINISH = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_finish");
+
     public PoseFunction<LocalSpacePose> handToolPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
         return switch (interactionHand) {
             case MAIN_HAND -> miningLoopPoseFunction(
                     cachedPoseContainer,
                     SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
-                    SequencePlayerFunction.builder(HAND_TOOL_MINE_LOOP)
-                            .looping(true)
+                    SequencePlayerFunction.builder(HAND_TOOL_MINE_SWING)
                             .setPlayRate(evaluationState -> evaluationState.dataContainer().getDriverValue(MINING_SPEED_PLAY_RATE))
-                            .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(10))
                             .build(),
-                    Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT),
-                    Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.CUBIC_IN_OUT)
+                    SequencePlayerFunction.builder(HAND_TOOL_MINE_IMPACT).build(),
+                    SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
+                    Transition.of(TimeSpan.of60FramesPerSecond(20), Easing.SINE_OUT)
             );
             case OFF_HAND -> SequenceEvaluatorFunction.of(HAND_TOOL_POSE);
         };
@@ -317,29 +319,58 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public enum MiningStates {
         IDLE,
-        MINING
+        SWING,
+        IMPACT,
+        FINISH
     }
 
     public PoseFunction<LocalSpacePose> miningLoopPoseFunction(
             CachedPoseContainer cachedPoseContainer,
             PoseFunction<LocalSpacePose> idlePoseFunction,
-            PoseFunction<LocalSpacePose> miningPoseFunction,
-            Transition idleToMiningTiming,
-            Transition miningToIdleTiming
+            PoseFunction<LocalSpacePose> swingPoseFunction,
+            PoseFunction<LocalSpacePose> impactPoseFunction,
+            PoseFunction<LocalSpacePose> finishPoseFunction,
+            Transition idleToMiningTiming
     ) {
 
         return StateMachineFunction.builder(evaluationState -> MiningStates.IDLE)
+                .resetUponRelevant(true)
                 .addState(State.builder(MiningStates.IDLE, idlePoseFunction)
-                        .addOutboundTransition(StateTransition.builder(MiningStates.MINING)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).and(StateTransition.CURRENT_TRANSITION_FINISHED))
+                        .addOutboundTransition(StateTransition.builder(MiningStates.SWING)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING))
                                 .setTiming(idleToMiningTiming)
                                 .build())
                         .build())
-                .addState(State.builder(MiningStates.MINING, miningPoseFunction)
+                .addState(State.builder(MiningStates.SWING, swingPoseFunction)
+                        .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(MiningStates.IMPACT)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(0)
+                                .setTiming(Transition.INSTANT)
+                                .bindToOnTransitionTaken(evaluationState -> evaluationState.dataContainer().getDriver(IS_BREAKING).setValue(true))
+                                .build())
+                        .build())
+                .addState(State.builder(MiningStates.IMPACT, impactPoseFunction)
+                        .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(MiningStates.SWING)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
+                                .setTiming(Transition.SINGLE_TICK)
+                                .build())
+                        .addOutboundTransition(StateTransition.builder(MiningStates.FINISH)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
+                                .setTiming(Transition.SINGLE_TICK)
+                                .build())
+                        .build())
+                .addState(State.builder(MiningStates.FINISH, finishPoseFunction)
                         .resetUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(MiningStates.IDLE)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
-                                .setTiming(miningToIdleTiming)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1)
+                                .setPriority(50)
+                                .setTiming(Transition.SINGLE_TICK)
+                                .build())
+                        .addOutboundTransition(StateTransition.builder(MiningStates.SWING)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).and(StateTransition.CURRENT_TRANSITION_FINISHED))
+                                .setPriority(60)
+                                .setTiming(idleToMiningTiming)
                                 .build())
                         .build())
                 .build();
@@ -526,6 +557,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public static final DriverKey<VariableDriver<Boolean>> IS_MINING = DriverKey.of("is_mining", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Float>> MINING_SPEED_PLAY_RATE = DriverKey.of("mining_speed_play_rate", () -> VariableDriver.ofFloat(() -> 1f));
+    public static final DriverKey<VariableDriver<Boolean>> IS_BREAKING = DriverKey.of("is_breaking", () -> VariableDriver.ofBoolean(() -> false));
 
     @Override
     public void extractAnimationData(LocalPlayer dataReference, OnTickDriverContainer driverContainer){
@@ -536,6 +568,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().getSelectedSlot());
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
+
+        driverContainer.getDriver(IS_BREAKING).setValue(false);
 
 
         ItemStack item = driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM);
