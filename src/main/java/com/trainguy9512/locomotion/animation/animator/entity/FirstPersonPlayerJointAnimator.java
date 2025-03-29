@@ -151,6 +151,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation HAND_TOOL_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_pose");
     public static final ResourceLocation HAND_TOOL_LOWER = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_lower");
     public static final ResourceLocation HAND_TOOL_RAISE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_raise");
+    public static final ResourceLocation HAND_TOOL_MINE_LOOP = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_loop");
 
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
@@ -166,7 +167,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedHandItemDriver).setValue(evaluationState.dataContainer().getDriverValue(handItemDriver));
 
         StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER)
-                .addState(State.builder(HandPoseStates.TOOL, SequenceEvaluatorFunction.of(HAND_TOOL_POSE, TimeSpan.ofSeconds(0)))
+                .addState(State.builder(HandPoseStates.TOOL, interactionHand == InteractionHand.MAIN_HAND ? this.miningLoopPoseFunction(cachedPoseContainer) : SequenceEvaluatorFunction.of(HAND_TOOL_POSE))
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL_LOWER)
                                 .isTakenIfTrue(switchHandsCondition)
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
@@ -285,6 +286,35 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 //                        .isTakenIfTrue(context -> usePoseIfItemStackMatches.test(context.dataContainer().getDriverValue(itemDriverKey)))
 //                        .build());
 //    }
+
+    public enum MiningStates {
+        IDLE,
+        MINING
+    }
+
+    public PoseFunction<LocalSpacePose> miningLoopPoseFunction(CachedPoseContainer cachedPoseContainer) {
+        PoseFunction<LocalSpacePose> idleAnimationPlayer = SequenceEvaluatorFunction.of(HAND_TOOL_POSE);
+        PoseFunction<LocalSpacePose> miningAnimationPlayer = SequencePlayerFunction.builder(HAND_TOOL_MINE_LOOP)
+                .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(10))
+                .looping(true)
+                .build();
+
+        return StateMachineFunction.builder(evaluationState -> MiningStates.IDLE)
+                .addState(State.builder(MiningStates.IDLE, idleAnimationPlayer)
+                        .addOutboundTransition(StateTransition.builder(MiningStates.MINING)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).and(StateTransition.CURRENT_TRANSITION_FINISHED))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                .build())
+                        .build())
+                .addState(State.builder(MiningStates.MINING, miningAnimationPlayer)
+                        .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(MiningStates.IDLE)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                .build())
+                        .build())
+                .build();
+    }
 
     public enum GroundMovementStates {
         IDLE,
@@ -463,6 +493,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Boolean>> IS_GROUNDED = DriverKey.of("is_grounded", () -> VariableDriver.ofBoolean(() -> true));
     public static final DriverKey<VariableDriver<Boolean>> IS_JUMPING = DriverKey.of("is_jumping", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Boolean>> IS_LEFT_HANDED = DriverKey.of("is_left_handed", () -> VariableDriver.ofBoolean(() -> false));
+
+    public static final DriverKey<VariableDriver<Boolean>> IS_MINING = DriverKey.of("is_mining", () -> VariableDriver.ofBoolean(() -> false));
 
 
     @Override

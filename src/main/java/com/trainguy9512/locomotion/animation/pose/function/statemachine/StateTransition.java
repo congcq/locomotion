@@ -24,7 +24,7 @@ public record StateTransition<S extends Enum<S>>(
         boolean isAutomaticTransition
 ) implements Comparable<StateTransition<S>> {
 
-    public static final Predicate<TransitionContext> CURRENT_TRANSITION_FINISHED = transitionContext -> transitionContext.currentStateWeight() == 1;
+    public static final Predicate<TransitionContext> CURRENT_TRANSITION_FINISHED = transitionContext -> transitionContext.currentStateWeight() == 1 && transitionContext.previousStateWeight() == 1;
     public static final Predicate<TransitionContext> MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING = makeMostRelevantAnimationPlayerFinishedCondition(1f);
     public static final Predicate<TransitionContext> MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED = makeMostRelevantAnimationPlayerFinishedCondition(0f);
 
@@ -164,11 +164,12 @@ public record StateTransition<S extends Enum<S>>(
             OnTickDriverContainer dataContainer,
             TimeSpan timeElapsedInCurrentState,
             float currentStateWeight,
+            float previousStateWeight,
             PoseFunction<LocalSpacePose> currentStateInput,
             TimeSpan transitionDuration
     ) {
-        public static TransitionContext of(OnTickDriverContainer dataContainer, TimeSpan timeElapsedInCurrentState, float currentStateWeight, PoseFunction<LocalSpacePose> currentStateInput, TimeSpan transitionDuration) {
-            return new TransitionContext(dataContainer, timeElapsedInCurrentState, currentStateWeight, currentStateInput, transitionDuration);
+        public static TransitionContext of(OnTickDriverContainer dataContainer, TimeSpan timeElapsedInCurrentState, float currentStateWeight, float previousStateWeight, PoseFunction<LocalSpacePose> currentStateInput, TimeSpan transitionDuration) {
+            return new TransitionContext(dataContainer, timeElapsedInCurrentState, currentStateWeight, previousStateWeight, currentStateInput, transitionDuration);
         }
     }
 }

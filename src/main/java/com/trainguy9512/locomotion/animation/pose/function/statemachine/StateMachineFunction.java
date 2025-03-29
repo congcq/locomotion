@@ -156,6 +156,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                                 evaluationState.dataContainer(),
                                 TimeSpan.ofTicks(this.ticksElapsed.getCurrentValue()),
                                 this.stateBlendLayerStack.getLast().weight.getCurrentValue(),
+                                this.stateBlendLayerStack.getLast().weight.getPreviousValue(),
                                 this.states.get(currentActiveStateIdentifier).inputFunction,
                                 stateTransition.transition().duration()
                         );

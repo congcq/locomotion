@@ -2,6 +2,7 @@ package com.trainguy9512.locomotion.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
+import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -34,27 +35,34 @@ public abstract class MixinMinecraft {
         }
     }
 
-    /*
+//    @Inject(method = "startAttack", at = @At("HEAD"))
+//    public void injectOnStartAttack(CallbackInfoReturnable<Boolean> cir){
+//        FirstPersonPlayerJointAnimator.INSTANCE.localAnimationDataContainer.setValue(FirstPersonPlayerJointAnimator.IS_ATTACKING, true);
+//    }
+//
+//    @Inject(method = "startUseItem", at = @At("HEAD"))
+//    public void injectOnStartUseItem(CallbackInfo ci){
+//        FirstPersonPlayerJointAnimator.INSTANCE.localAnimationDataContainer.setValue(FirstPersonPlayerJointAnimator.IS_USING_ITEM, true);
+//    }
 
-    @Inject(method = "startAttack", at = @At("HEAD"))
-    public void injectOnStartAttack(CallbackInfoReturnable<Boolean> cir){
-        FirstPersonPlayerJointAnimator.INSTANCE.localAnimationDataContainer.setValue(FirstPersonPlayerJointAnimator.IS_ATTACKING, true);
-    }
 
-    @Inject(method = "startUseItem", at = @At("HEAD"))
-    public void injectOnStartUseItem(CallbackInfo ci){
-        FirstPersonPlayerJointAnimator.INSTANCE.localAnimationDataContainer.setValue(FirstPersonPlayerJointAnimator.IS_USING_ITEM, true);
-    }
-
+    /**
+     * Sets the first person player's IS_MINING driver to be false if there is no attacked block.
+     */
     @Inject(method = "continueAttack", at = @At("HEAD"))
     public void injectOnContinueAttackIsNotMining(boolean bl, CallbackInfo ci){
-        FirstPersonPlayerJointAnimator.INSTANCE.localAnimationDataContainer.setValue(FirstPersonPlayerJointAnimator.IS_MINING, false);
+        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
+            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(false);
+        });
     }
 
+    /**
+     * Sets the first person player's IS_MINING driver to be true if the attacked blcok is being broken.
+     */
     @Inject(method = "continueAttack", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/ParticleEngine;crack(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)V"))
     public void injectOnContinueAttackIsMining(boolean bl, CallbackInfo ci){
-        FirstPersonPlayerJointAnimator.INSTANCE.localAnimationDataContainer.setValue(FirstPersonPlayerJointAnimator.IS_MINING, true);
+        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
+            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
+        });
     }
-
-     */
 }
