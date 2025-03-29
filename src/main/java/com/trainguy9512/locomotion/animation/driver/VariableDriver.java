@@ -86,6 +86,13 @@ public class VariableDriver<D> implements Driver<D> {
     }
 
     /**
+     * Returns whether the value has changed since the previous tick or not.
+     */
+    public boolean hasValueChanged() {
+        return !this.currentValue.equals(this.previousValue);
+    }
+
+    /**
      * Creates a driver of the given data type that can be interpolated between ticks.
      * @param defaultValue      Default value set from the start and set upon resetting the driver.
      * @param interpolator      Interpolation function for the data type
