@@ -11,6 +11,7 @@ import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.*;
 import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;
 import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.pose.function.montage.MontageManager;
 import com.trainguy9512.locomotion.animation.pose.function.statemachine.State;
 import com.trainguy9512.locomotion.animation.pose.function.statemachine.StateAlias;
 import com.trainguy9512.locomotion.animation.pose.function.statemachine.StateMachineFunction;
@@ -560,7 +561,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Boolean>> IS_BREAKING = DriverKey.of("is_breaking", () -> VariableDriver.ofBoolean(() -> false));
 
     @Override
-    public void extractAnimationData(LocalPlayer dataReference, OnTickDriverContainer driverContainer){
+    public void extractAnimationData(LocalPlayer dataReference, OnTickDriverContainer driverContainer, MontageManager montageManager){
 
         driverContainer.getDriver(MODIFIED_WALK_SPEED).setValue(dataReference.walkAnimation.speed());
         driverContainer.getDriver(HORIZONTAL_MOVEMENT_SPEED).setValue(new Vector3f((float) (dataReference.getX() - dataReference.xo), 0.0f, (float) (dataReference.getZ() - dataReference.zo)).length());

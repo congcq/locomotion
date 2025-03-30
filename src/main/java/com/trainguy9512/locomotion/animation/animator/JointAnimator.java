@@ -5,6 +5,7 @@ import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;
+import com.trainguy9512.locomotion.animation.pose.function.montage.MontageManager;
 
 /**
  * Uses a data reference and a joint skeleton to calculate a pose once per tick.
@@ -22,8 +23,9 @@ public interface JointAnimator<T> {
      * Uses an object for data reference and updates the animation data container. Called once per tick, prior to pose samplers updating and pose calculation.
      * @param dataReference                 Object used as reference for updating the animation data container
      * @param dataContainer                 Data container from the previous tick
+     * @param montageManager                Controls data used for getting and playing animation montages.
      */
-    void extractAnimationData(T dataReference, OnTickDriverContainer dataContainer);
+    void extractAnimationData(T dataReference, OnTickDriverContainer dataContainer, MontageManager montageManager);
 
     /**
      * Creates the pose function that will return an animation pose for the joint animator.

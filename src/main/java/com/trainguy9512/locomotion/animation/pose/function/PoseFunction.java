@@ -3,6 +3,8 @@ package com.trainguy9512.locomotion.animation.pose.function;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.data.PoseCalculationDataContainer;
 import com.trainguy9512.locomotion.animation.pose.AnimationPose;
+import com.trainguy9512.locomotion.animation.pose.function.montage.MontageManager;
+import com.trainguy9512.locomotion.util.TimeSpan;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -43,10 +45,10 @@ public interface PoseFunction<P extends AnimationPose> {
      */
     Optional<AnimationPlayer> testForMostRelevantAnimationPlayer();
 
-    record FunctionEvaluationState(OnTickDriverContainer dataContainer, boolean resetting, long currentTick) {
+    record FunctionEvaluationState(OnTickDriverContainer dataContainer, MontageManager montageManager, boolean resetting, long currentTick) {
 
-        public static FunctionEvaluationState of(OnTickDriverContainer dataContainer, boolean resetting, long currentTick) {
-            return new FunctionEvaluationState(dataContainer, resetting, currentTick);
+        public static FunctionEvaluationState of(OnTickDriverContainer dataContainer, MontageManager montageManager, boolean resetting, long currentTick) {
+            return new FunctionEvaluationState(dataContainer, montageManager, resetting, currentTick);
         }
 
         /**
@@ -55,24 +57,15 @@ public interface PoseFunction<P extends AnimationPose> {
          * <p>A hard reset is an animation reset that immediately resets with no blending.</p>
          */
         public FunctionEvaluationState markedForReset() {
-            return FunctionEvaluationState.of(this.dataContainer, true, this.currentTick);
-        }
-
-        /**
-         * Creates a copy of the evaluation state that is marked for a soft reset.
-         *
-         * <p>A soft reset is an animation reset that resets with one tick of blending.</p>
-         */
-        public FunctionEvaluationState markedForSoftReset() {
-            return FunctionEvaluationState.of(this.dataContainer, this.resetting, this.currentTick);
+            return FunctionEvaluationState.of(this.dataContainer, this.montageManager, true, this.currentTick);
         }
 
         public FunctionEvaluationState cleared() {
-            return FunctionEvaluationState.of(this.dataContainer, false, this.currentTick);
+            return FunctionEvaluationState.of(this.dataContainer, this.montageManager, false, this.currentTick);
         }
 
         /**
-         * Runs the provided runnable if this evaluation state is marked for hard reset.
+         * Runs the provided function if this evaluation state is marked for hard reset.
          */
         public void ifMarkedForReset(Runnable runnable) {
             if (this.resetting) {
@@ -81,9 +74,9 @@ public interface PoseFunction<P extends AnimationPose> {
         }
     }
 
-    record FunctionInterpolationContext(PoseCalculationDataContainer dataContainer, float partialTicks, float gameTimeSeconds) {
-        public static FunctionInterpolationContext of(PoseCalculationDataContainer dataContainer, float partialTicks, float gameTimeSeconds){
-            return new FunctionInterpolationContext(dataContainer, partialTicks, gameTimeSeconds);
+    record FunctionInterpolationContext(PoseCalculationDataContainer dataContainer, MontageManager montageManager, float partialTicks, TimeSpan gameTime) {
+        public static FunctionInterpolationContext of(PoseCalculationDataContainer dataContainer, MontageManager montageManager, float partialTicks, TimeSpan gameTime){
+            return new FunctionInterpolationContext(dataContainer, montageManager, partialTicks, gameTime);
         }
     }
 }

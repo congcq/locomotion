@@ -9,7 +9,9 @@ import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;
+import com.trainguy9512.locomotion.animation.pose.function.montage.MontageManager;
 import com.trainguy9512.locomotion.util.Interpolator;
+import com.trainguy9512.locomotion.util.TimeSpan;
 
 import java.util.Map;
 
@@ -18,6 +20,7 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
     private final Map<DriverKey<? extends Driver<?>>, Driver<?>> drivers;
     private final CachedPoseContainer savedCachedPoseContainer;
     private final PoseFunction<LocalSpacePose> poseFunction;
+    private final MontageManager montageManager;
 
     private final JointSkeleton jointSkeleton;
     private final DriverKey<VariableDriver<LocalSpacePose>> perTickCalculatedPoseDriverKey;
@@ -27,6 +30,7 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
         this.drivers = Maps.newHashMap();
         this.savedCachedPoseContainer = CachedPoseContainer.of();
         this.poseFunction = jointAnimator.constructPoseFunction(savedCachedPoseContainer).wrapUnique();
+        this.montageManager = MontageManager.of();
 
         this.jointSkeleton = jointAnimator.buildSkeleton();
         this.perTickCalculatedPoseDriverKey = DriverKey.of("per_tick_calculated_pose", () -> VariableDriver.ofInterpolatable(() -> LocalSpacePose.of(jointSkeleton), Interpolator.LOCAL_SPACE_POSE));
@@ -38,6 +42,27 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
         return new AnimationDataContainer(jointAnimator);
     }
 
+    public void tick() {
+        this.drivers.values().forEach(Driver::tick);
+        this.getDriver(this.gameTimeTicksDriverKey).setValue(this.getDriver(this.gameTimeTicksDriverKey).getCurrentValue() + 1);
+        this.poseFunction.tick(PoseFunction.FunctionEvaluationState.of(
+                this,
+                this.montageManager,
+                false,
+                this.getDriver(this.gameTimeTicksDriverKey).getCurrentValue()
+        ));
+    }
+
+    public LocalSpacePose computePose(float partialTicks) {
+        this.savedCachedPoseContainer.clearCaches();
+        return this.poseFunction.compute(PoseFunction.FunctionInterpolationContext.of(
+                this,
+                this.montageManager,
+                partialTicks,
+                TimeSpan.ofTicks(this.getDriverValue(gameTimeTicksDriverKey, 1) + partialTicks)
+        ));
+    }
+
     @Override
     public JointSkeleton getJointSkeleton() {
         return this.jointSkeleton;
@@ -47,19 +72,8 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
         return this.perTickCalculatedPoseDriverKey;
     }
 
-    public void tick() {
-        this.drivers.values().forEach(Driver::tick);
-        this.getDriver(this.gameTimeTicksDriverKey).setValue(this.getDriver(this.gameTimeTicksDriverKey).getCurrentValue() + 1);
-        this.poseFunction.tick(PoseFunction.FunctionEvaluationState.of(this, false, this.getDriver(this.gameTimeTicksDriverKey).getCurrentValue()));
-    }
-
-    public LocalSpacePose computePose(float partialTicks) {
-        this.savedCachedPoseContainer.clearCaches();
-        return this.poseFunction.compute(PoseFunction.FunctionInterpolationContext.of(
-                this,
-                partialTicks,
-                (this.getDriverValue(gameTimeTicksDriverKey, 1) - (1 - partialTicks)) / 20f
-        ));
+    public MontageManager getMontageManager() {
+        return this.montageManager;
     }
 
     public Map<DriverKey<? extends Driver<?>>, Driver<?>> getAllDrivers() {
