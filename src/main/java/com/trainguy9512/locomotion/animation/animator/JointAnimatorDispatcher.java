@@ -68,7 +68,7 @@ public class JointAnimatorDispatcher {
      */
     private <T> void tickJointAnimator(JointAnimator<T> jointAnimator, T dataReference, AnimationDataContainer dataContainer){
         dataContainer.prepareForNextTick();
-        jointAnimator.extractAnimationData(dataReference, dataContainer);
+        jointAnimator.extractAnimationData(dataReference, dataContainer, dataContainer.getMontageManager());
         dataContainer.tick();
         if(jointAnimator.getPoseCalulationFrequency() == JointAnimator.PoseCalculationFrequency.CALCULATE_ONCE_PER_TICK){
             //AnimationPose animationPose = jointAnimator.calculatePose(dataContainer, dataContainer.getJointSkeleton(), 1);

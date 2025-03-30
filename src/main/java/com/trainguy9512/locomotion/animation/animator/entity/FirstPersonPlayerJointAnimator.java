@@ -1,6 +1,5 @@
 package com.trainguy9512.locomotion.animation.animator.entity;
 
-import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.*;
 import com.trainguy9512.locomotion.animation.driver.SpringDriver;
@@ -11,7 +10,9 @@ import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.*;
 import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;
 import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.pose.function.montage.MontageConfiguration;
 import com.trainguy9512.locomotion.animation.pose.function.montage.MontageManager;
+import com.trainguy9512.locomotion.animation.pose.function.montage.MontageSlotFunction;
 import com.trainguy9512.locomotion.animation.pose.function.statemachine.State;
 import com.trainguy9512.locomotion.animation.pose.function.statemachine.StateAlias;
 import com.trainguy9512.locomotion.animation.pose.function.statemachine.StateMachineFunction;
@@ -19,27 +20,19 @@ import com.trainguy9512.locomotion.animation.pose.function.statemachine.StateTra
 import com.trainguy9512.locomotion.util.Easing;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import com.trainguy9512.locomotion.util.Transition;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
-import net.minecraft.core.component.DataComponentType;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -301,18 +294,23 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation HAND_TOOL_MINE_SWING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_swing");
     public static final ResourceLocation HAND_TOOL_MINE_IMPACT = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_impact");
     public static final ResourceLocation HAND_TOOL_MINE_FINISH = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_finish");
+    public static final ResourceLocation HAND_TOOL_ATTACK_PICKAXE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_attack_pickaxe");
+
 
     public PoseFunction<LocalSpacePose> handToolPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
         return switch (interactionHand) {
-            case MAIN_HAND -> miningLoopPoseFunction(
-                    cachedPoseContainer,
-                    SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
-                    SequencePlayerFunction.builder(HAND_TOOL_MINE_SWING)
-                            .setPlayRate(evaluationState -> evaluationState.dataContainer().getDriverValue(MINING_SPEED_PLAY_RATE))
-                            .build(),
-                    SequencePlayerFunction.builder(HAND_TOOL_MINE_IMPACT).build(),
-                    SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
-                    Transition.of(TimeSpan.of60FramesPerSecond(20), Easing.SINE_OUT)
+            case MAIN_HAND -> MontageSlotFunction.of(
+                    miningLoopPoseFunction(
+                            cachedPoseContainer,
+                            SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
+                            SequencePlayerFunction.builder(HAND_TOOL_MINE_SWING)
+                                    .setPlayRate(evaluationState -> evaluationState.dataContainer().getDriverValue(MINING_SPEED_PLAY_RATE))
+                                    .build(),
+                            SequencePlayerFunction.builder(HAND_TOOL_MINE_IMPACT).build(),
+                            SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
+                            Transition.of(TimeSpan.of60FramesPerSecond(20), Easing.SINE_OUT)
+                    ),
+                    "attack"
             );
             case OFF_HAND -> SequenceEvaluatorFunction.of(HAND_TOOL_POSE);
         };
@@ -347,7 +345,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .addOutboundTransition(StateTransition.builder(MiningStates.IMPACT)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(0)
                                 .setTiming(Transition.INSTANT)
-                                .bindToOnTransitionTaken(evaluationState -> evaluationState.dataContainer().getDriver(IS_BREAKING).setValue(true))
+                                .bindToOnTransitionTaken(evaluationState -> evaluationState.dataContainer().getDriver(IS_MINING_IMPACTING).setValue(true))
                                 .build())
                         .build())
                 .addState(State.builder(MiningStates.IMPACT, impactPoseFunction)
@@ -558,7 +556,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public static final DriverKey<VariableDriver<Boolean>> IS_MINING = DriverKey.of("is_mining", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Float>> MINING_SPEED_PLAY_RATE = DriverKey.of("mining_speed_play_rate", () -> VariableDriver.ofFloat(() -> 1f));
-    public static final DriverKey<VariableDriver<Boolean>> IS_BREAKING = DriverKey.of("is_breaking", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<VariableDriver<Boolean>> IS_MINING_IMPACTING = DriverKey.of("is_mining_impacting", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<VariableDriver<Boolean>> IS_ATTACKING = DriverKey.of("is_attacking", () -> VariableDriver.ofBoolean(() -> false));
+
+    public static final MontageConfiguration HAND_TOOL_ATTACK_PICKAXE_MONTAGE = MontageConfiguration.builder("hand_tool_attack_pickaxe_montage", HAND_TOOL_ATTACK_PICKAXE)
+            .playsInSlot("attack")
+            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
+            .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(15), Easing.SINE_IN_OUT))
+            .build();
 
     @Override
     public void extractAnimationData(LocalPlayer dataReference, OnTickDriverContainer driverContainer, MontageManager montageManager){
@@ -569,8 +574,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().getSelectedSlot());
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
+        driverContainer.getDriver(IS_MINING_IMPACTING).setValue(false);
 
-        driverContainer.getDriver(IS_BREAKING).setValue(false);
+        if (driverContainer.getDriver(IS_ATTACKING).getCurrentValue()) {
+            montageManager.playMontage(HAND_TOOL_ATTACK_PICKAXE_MONTAGE, driverContainer);
+            driverContainer.getDriver(IS_ATTACKING).setValue(false);
+        }
 
 
         ItemStack item = driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM);

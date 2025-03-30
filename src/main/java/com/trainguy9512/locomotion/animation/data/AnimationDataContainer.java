@@ -43,6 +43,7 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
     }
 
     public void tick() {
+        this.montageManager.tick();
         this.drivers.values().forEach(Driver::tick);
         this.getDriver(this.gameTimeTicksDriverKey).setValue(this.getDriver(this.gameTimeTicksDriverKey).getCurrentValue() + 1);
         this.poseFunction.tick(PoseFunction.FunctionEvaluationState.of(

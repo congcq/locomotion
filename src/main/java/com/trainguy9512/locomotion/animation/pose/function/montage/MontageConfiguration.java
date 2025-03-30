@@ -29,12 +29,11 @@ public record MontageConfiguration(
         float transitionOutCrossfadeWeight
 ) {
 
-    public static Builder builder(String targetTrack, ResourceLocation animationSequence) {
-        return new Builder(targetTrack, animationSequence);
+    public static Builder builder(String identifier, ResourceLocation animationSequence) {
+        return new Builder(identifier, animationSequence);
     }
 
     public static class Builder {
-
 
         private final String identifier;
         private final ResourceLocation animationSequence;

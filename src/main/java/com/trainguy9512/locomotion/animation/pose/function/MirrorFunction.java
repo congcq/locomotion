@@ -48,6 +48,6 @@ public class MirrorFunction implements PoseFunction<LocalSpacePose> {
 
     @Override
     public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
-        return Optional.empty();
+        return this.input.testForMostRelevantAnimationPlayer();
     }
 }

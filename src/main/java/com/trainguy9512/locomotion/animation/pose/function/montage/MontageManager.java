@@ -3,9 +3,13 @@ package com.trainguy9512.locomotion.animation.pose.function.montage;
 import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
+import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
+import com.trainguy9512.locomotion.util.TimeSpan;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class MontageManager {
 
@@ -24,11 +28,59 @@ public class MontageManager {
         return new MontageManager();
     }
 
+    /**
+     * Plays a montage of the given configuration.
+     * @param configuration         Montage configuration to use as the template for the montage.
+     * @param driverContainer       Driver container to use for getting the play rate.
+     */
     public void playMontage(MontageConfiguration configuration, OnTickDriverContainer driverContainer) {
         this.montageStack.addLast(MontageInstance.of(configuration, driverContainer));
     }
 
+    /**
+     * Returns whether a montage of the provided identifier is playing or not.
+     * @param identifier            Montage configuration identifier
+     */
+    public boolean isMontagePlaying(String identifier) {
+        for (MontageInstance montageInstance : this.montageStack) {
+            if (montageInstance.configuration.identifier().equals(identifier)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns whether any montage is playing in the provided slot
+     * @param slot                  Slot identifier
+     */
     public boolean isAnythingPlayingInSlot(String slot) {
+        for (MontageInstance montageInstance : this.montageStack) {
+            if (montageInstance.configuration.slots().contains(slot)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public LocalSpacePose getLayeredSlotPose(LocalSpacePose basePose, String slot, JointSkeleton jointSkeleton, float partialTicks) {
+        LocalSpacePose slotPose = LocalSpacePose.of(basePose);
+        for (MontageInstance montageInstance : this.montageStack) {
+            if (montageInstance.configuration.slots().contains(slot)) {
+                slotPose = slotPose.interpolated(montageInstance.getPose(jointSkeleton, partialTicks), montageInstance.getInterpolatedWeight(partialTicks));
+            }
+        }
+        return slotPose;
+    }
+
+    public boolean areAnyMontagesInSlotFullyOverriding(String slot) {
+        for (MontageInstance montageInstance : this.montageStack) {
+            if (montageInstance.configuration.slots().contains(slot)) {
+                if (montageInstance.weight.getCurrentValue() == 1) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -42,12 +94,11 @@ public class MontageManager {
 
         private MontageInstance(MontageConfiguration configuration, OnTickDriverContainer driverContainer) {
             this.weight = VariableDriver.ofFloat(() -> 0f);
-            this.ticksElapsed = VariableDriver.ofFloat(() -> 0f);
+            this.ticksElapsed = VariableDriver.ofFloat(() -> configuration.startTimeOffset().inTicks());
             this.configuration = configuration;
 
             this.playRate = configuration.playRateFunction().apply(driverContainer);
             this.tickLength = AnimationSequenceData.INSTANCE.getOrThrow(configuration.animationSequence()).length().inTicks();
-            this.tick();
         }
 
         private static MontageInstance of(MontageConfiguration configuration, OnTickDriverContainer driverContainer) {
@@ -57,16 +108,37 @@ public class MontageManager {
         private void tick() {
             this.ticksElapsed.pushCurrentToPrevious();
             this.ticksElapsed.modifyValue(currentValue -> currentValue + this.playRate);
+            this.weight.pushCurrentToPrevious();
+            this.weight.setValue(this.getWeight(this.ticksElapsed.getCurrentValue()));
         }
 
-        private float getWeight(float ticksElapsed){
-            float offsetEndTransitionStartTime = this.tickLength - this.configuration.transitionOut().duration().inTicks();
-            if(this.ticksElapsed.getCurrentValue() < this.transitionInDuration){
-                return this.transitionInEasing.ease(timeElapsed / this.transitionInDuration);
-            } else if(timeElapsed > offsetEndTransitionStartTime){
-                return this.transitionOutEasing.ease(1 - ((timeElapsed - offsetEndTransitionStartTime) / this.transitionOutDuration));
+        private float getWeight(float ticksElapsed) {
+            float offsetEndTransitionStartTime = this.tickLength - (this.configuration.transitionOut().duration().inTicks() * this.configuration.transitionOutCrossfadeWeight());
+            float startTimeOffsetTicks = this.configuration.startTimeOffset().inTicks();
+
+            if (ticksElapsed < this.configuration.transitionIn().duration().inTicks() + startTimeOffsetTicks) {
+                return (ticksElapsed - startTimeOffsetTicks) / this.configuration.transitionIn().duration().inTicks();
+            } else if (ticksElapsed > offsetEndTransitionStartTime) {
+                return Math.max(1f - ((ticksElapsed - offsetEndTransitionStartTime) / this.configuration.transitionOut().duration().inTicks()), 0f);
             }
             return 1;
+        }
+
+        private LocalSpacePose getPose(JointSkeleton jointSkeleton, float partialTicks) {
+            return LocalSpacePose.fromAnimationSequence(jointSkeleton, this.configuration.animationSequence(), TimeSpan.ofTicks(this.ticksElapsed.getValueInterpolated(partialTicks)), false);
+        }
+
+        private float getInterpolatedWeight(float partialTicks) {
+            float weight = this.weight.getValueInterpolated(partialTicks);
+            float startTimeOffsetTicks = this.configuration.startTimeOffset().inTicks();
+
+            if (weight == 1 || weight == 0) {
+                return weight;
+            } else if (this.ticksElapsed.getValueInterpolated(partialTicks) < this.configuration.transitionIn().duration().inTicks() + startTimeOffsetTicks) {
+                return this.configuration.transitionIn().applyEasement(weight);
+            } else {
+                return 1 - this.configuration.transitionOut().applyEasement(1 - weight);
+            }
         }
     }
 }

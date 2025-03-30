@@ -17,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft {
@@ -40,16 +41,37 @@ public abstract class MixinMinecraft {
         }
     }
 
-//    @Inject(method = "startAttack", at = @At("HEAD"))
-//    public void injectOnStartAttack(CallbackInfoReturnable<Boolean> cir){
-//        FirstPersonPlayerJointAnimator.INSTANCE.localAnimationDataContainer.setValue(FirstPersonPlayerJointAnimator.IS_ATTACKING, true);
-//    }
+    @Inject(
+            method = "startAttack",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;startDestroyBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)Z"))
+    public void injectStartAttackHitBlock(CallbackInfoReturnable<Boolean> cir){
+        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
+            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
+        });
+    }
+
+    @Inject(
+            method = "startAttack",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;attack(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/entity/Entity;)V"))
+    public void injectStartAttackHitEntity(CallbackInfoReturnable<Boolean> cir){
+        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
+            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_ATTACKING).setValue(true);
+        });
+    }
+
+    @Inject(
+            method = "startAttack",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;resetAttackStrengthTicker()V"))
+    public void injectStartAttackMiss(CallbackInfoReturnable<Boolean> cir){
+        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
+            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_ATTACKING).setValue(true);
+        });
+    }
 //
 //    @Inject(method = "startUseItem", at = @At("HEAD"))
 //    public void injectOnStartUseItem(CallbackInfo ci){
 //        FirstPersonPlayerJointAnimator.INSTANCE.localAnimationDataContainer.setValue(FirstPersonPlayerJointAnimator.IS_USING_ITEM, true);
 //    }
-
 
     /**
      * Sets the first person player's IS_MINING driver to be false if there is no attacked block.
@@ -80,7 +102,7 @@ public abstract class MixinMinecraft {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/ParticleEngine;crack(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)V"))
     public void onlySpawnBreakParticlesOnPickaxeImpact(ParticleEngine instance, BlockPos pos, Direction side) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-            if (dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.IS_BREAKING) || !LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
+            if (dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.IS_MINING_IMPACTING) || !LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
                 for (float i = 0; i < 8; i++) {
                     instance.crack(pos, side);
                 }
