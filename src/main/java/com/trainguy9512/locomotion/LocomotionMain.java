@@ -5,13 +5,12 @@ import com.trainguy9512.locomotion.animation.animator.JointAnimatorRegistry;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import com.trainguy9512.locomotion.animation.data.AnimationSequenceDataLoader;
 import com.trainguy9512.locomotion.config.LocomotionConfig;
-import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.server.packs.PackType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class LocomotionMain implements ModInitializer {
+public class LocomotionMain {
 
 
 	public static final String MOD_ID = "locomotion";
@@ -19,7 +18,7 @@ public class LocomotionMain implements ModInitializer {
 	public static final LocomotionConfig CONFIG = new LocomotionConfig();
 
 
-	public static void onClientInit() {
+	public static void initialize() {
 		CONFIG.load();
 
 		registerTimelineGroupLoader();
@@ -42,11 +41,6 @@ public class LocomotionMain implements ModInitializer {
 
 	private static void registerTimelineGroupLoader(){
 		ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new AnimationSequenceDataLoader());
-	}
-
-	@Override
-	public void onInitialize() {
-		onClientInit();
 	}
 
 

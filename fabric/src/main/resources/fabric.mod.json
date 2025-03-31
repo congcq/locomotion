@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${mod_version}",
+
+  "name": "${mod_name}",
+  "description": "${mod_description}",
+  "authors": [
+    "Trainguy9512"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Trainguy9512/trainguys-animation-overhaul/",
+    "sources": "https://github.com/Trainguy9512/trainguys-animation-overhaul/"
+  },
+
+  "license": "LGPLv3",
+  "icon": "assets/${mod_id}/icon.png",
+
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.trainguy9512.locomotion.LocomotionFabric"
+    ],
+    "modmenu": [
+      "com.trainguy9512.locomotion.config.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "${mod_id}-common.mixins.json",
+    "${mod_id}-fabric.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "fabric-api": "*",
+    "minecraft": ">=${minecraft_version}"
+  }
+}

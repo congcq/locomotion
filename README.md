@@ -37,11 +37,11 @@ Locomotion is a mod/animation API for Minecraft centered around giving the game'
 - Moonflower Discord: https://www.moonflower.gg/discord
 
 ## 📘 Credits
-- Lead Development, Rigging, Animation
+- Development, Rigging, Animation
   - [James Pelter (Trainguy9512)](https://x.com/Trainguy9512)
-- Timeline and easing system
-  - [Marvin Schürz](https://twitter.com/minetoblend)
 - Contributors
+  - [Marvin Schürz](https://twitter.com/minetoblend) - Timeline and easing system
+  - [The Panda Oliver](https://github.com/ThePandaOliver) - Multi-loader template
   - [TomB-134](https://github.com/TomB-134)
   - [AlphaKR93](https://github.com/AlphaKR93)
   - [LizIsTired](https://github.com/LizIsTired)
