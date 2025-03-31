@@ -41,7 +41,7 @@ Locomotion is a mod/animation API for Minecraft centered around giving the game'
   - [James Pelter (Trainguy9512)](https://x.com/Trainguy9512)
 - Contributors
   - [Marvin Schürz](https://twitter.com/minetoblend) - Timeline and easing system
-  - [The Panda Oliver](https://github.com/ThePandaOliver) - Multi-loader template
+  - [The Panda Oliver](https://github.com/ThePandaOliver) - [Multi-loader template](https://github.com/ThePandaOliver/Multiloader-Template)
   - [TomB-134](https://github.com/TomB-134)
   - [AlphaKR93](https://github.com/AlphaKR93)
   - [LizIsTired](https://github.com/LizIsTired)
