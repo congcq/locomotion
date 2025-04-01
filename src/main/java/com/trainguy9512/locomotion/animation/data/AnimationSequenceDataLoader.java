@@ -10,6 +10,7 @@ import com.trainguy9512.locomotion.util.Interpolator;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import com.trainguy9512.locomotion.util.Timeline;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
@@ -31,6 +32,12 @@ public class AnimationSequenceDataLoader {
     private static final Integer FORMAT_VERSION_1 = 1;
     private static final Integer FORMAT_VERSION_4 = 4;
 
+    public static CompletableFuture<Void> reload(PreparableReloadListener.PreparationBarrier barrier, ResourceManager manager, Executor backgroundExecutor, Executor gameExecutor) {
+        return load(manager, backgroundExecutor).thenCompose(barrier::wait).thenCompose(
+                (o) -> apply(o, manager, gameExecutor)
+        );
+    }
+
     public static CompletableFuture<Map<ResourceLocation, JsonElement>> load(ResourceManager resourceManager, Executor executor) {
         Gson gson = new Gson();
 
@@ -50,64 +57,6 @@ public class AnimationSequenceDataLoader {
             });
             return jsonData;
         }, executor);
-
-        /*
-        return CompletableFuture.supplyAsync(() -> {
-            Map<ResourceLocation, JsonElement> map = Maps.newHashMap();
-            for(ResourceLocation resourceLocation : passedFiles.keySet()){
-                String resourceLocationPath = resourceLocation.getPath();
-                try {
-                    Optional<Resource> resourceOptional = resourceManager.getResource(resourceLocation);
-                    Resource resource = resourceOptional.orElse(null);
-                    try {
-                        InputStream inputStream = resource.open();
-                        try {
-                            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-                            try {
-                                JsonElement jsonElement = GsonHelper.fromJson(gson, reader, JsonElement.class);
-                                if (jsonElement != null) {
-                                    map.put(resourceLocation, jsonElement);
-                                } else {
-                                    LocomotionMain.LOGGER.error("Couldn't load data file {} as it's null or empty", resourceLocation);
-                                }
-                            } catch (Throwable bufferedReaderThrowable) {
-                                try {
-                                    reader.close();
-                                } catch (Throwable var16) {
-                                    bufferedReaderThrowable.addSuppressed(var16);
-                                }
-                                throw bufferedReaderThrowable;
-                            }
-                            reader.close();
-                        } catch (Throwable inputStreamThrowable) {
-                            if (inputStream != null) {
-                                try {
-                                    inputStream.close();
-                                } catch (Throwable closeInputStreamThrowable) {
-                                    inputStreamThrowable.addSuppressed(closeInputStreamThrowable);
-                                }
-                            }
-                            throw inputStreamThrowable;
-                        }
-                        inputStream.close();
-                    } catch (Throwable resourceThrowable) {
-                        if (resource != null) {
-                            try {
-                                //resource.close();
-                            } catch (Throwable closeResourceThrowable) {
-                                resourceThrowable.addSuppressed(closeResourceThrowable);
-                            }
-                        }
-                        throw resourceThrowable;
-                    }
-                    //resource.close();
-                } catch (IOException e) {
-                    LocomotionMain.LOGGER.error("Error parsing data upon grabbing resource for resourceLocation " + resourceLocation);
-                }
-            }
-            return map;
-        }, executor);
-         */
     }
 
     public static CompletableFuture<Void> apply(Map<ResourceLocation, JsonElement> jsonData, ResourceManager resourceManager, Executor executor) {
