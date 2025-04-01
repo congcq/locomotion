@@ -14,7 +14,7 @@
   },
 
   "license": "LGPLv3",
-  "icon": "assets/${mod_id}/icon.png",
+  "icon": "assets/locomotion/icon.png",
 
   "environment": "*",
   "entrypoints": {
@@ -22,7 +22,7 @@
       "com.trainguy9512.locomotion.LocomotionFabric"
     ],
     "modmenu": [
-      "com.trainguy9512.locomotion.config.ModMenuIntegration"
+      "com.trainguy9512.locomotion.integration.ModMenuIntegration"
     ]
   },
   "mixins": [

@@ -1,7 +1,8 @@
-package com.trainguy9512.locomotion.config;
+package com.trainguy9512.locomotion.integration;
 
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
+import com.trainguy9512.locomotion.config.LocomotionConfigScreen;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.AlertScreen;

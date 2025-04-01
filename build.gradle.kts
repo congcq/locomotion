@@ -73,9 +73,7 @@ dependencies {
 	modImplementation("net.fabricmc:fabric-loader:${versionProp("fabric_loader")}")
 
 	// Mod implementations
-	modImplementation("net.fabricmc.fabric-api:fabric-api:${versionProp("fabric_api_version")}")
-	modImplementation("dev.isxander:yet-another-config-lib:${versionProp("yacl_version")}")
-	modImplementation("com.terraformersmc:modmenu:${versionProp("modmenu_version")}")
+	modImplementation("dev.isxander:yet-another-config-lib:${versionProp("yacl_fabric_version")}")
 }
 
 tasks.processResources {

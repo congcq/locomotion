@@ -9,7 +9,6 @@ import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.util.Interpolator;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import com.trainguy9512.locomotion.util.Timeline;
-import net.fabricmc.fabric.api.resource.SimpleResourceReloadListener;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -25,15 +24,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
-public class AnimationSequenceDataLoader implements SimpleResourceReloadListener<Map<ResourceLocation, JsonElement>> {
+public class AnimationSequenceDataLoader {
 
     //<Map<ResourceLocation, JsonElement>>
 
     private static final Integer FORMAT_VERSION_1 = 1;
     private static final Integer FORMAT_VERSION_4 = 4;
 
-    @Override
-    public CompletableFuture<Map<ResourceLocation, JsonElement>> load(ResourceManager resourceManager, Executor executor) {
+    public static CompletableFuture<Map<ResourceLocation, JsonElement>> load(ResourceManager resourceManager, Executor executor) {
         Gson gson = new Gson();
 
         Map<ResourceLocation, Resource> passedFiles = resourceManager.listResources("sequences", (string) -> string.toString().endsWith(".json"));
@@ -112,8 +110,7 @@ public class AnimationSequenceDataLoader implements SimpleResourceReloadListener
          */
     }
 
-    @Override
-    public CompletableFuture<Void> apply(Map<ResourceLocation, JsonElement> jsonData, ResourceManager resourceManager, Executor executor) {
+    public static CompletableFuture<Void> apply(Map<ResourceLocation, JsonElement> jsonData, ResourceManager resourceManager, Executor executor) {
         return CompletableFuture.runAsync(() -> {
             LocomotionMain.LOGGER.info("Loading {} animation sequences...", jsonData.size());
             AnimationSequenceData data = new AnimationSequenceData();
@@ -211,10 +208,5 @@ public class AnimationSequenceDataLoader implements SimpleResourceReloadListener
                 components.get(1).getAsFloat() * Mth.DEG_TO_RAD,
                 components.get(0).getAsFloat() * Mth.DEG_TO_RAD
         );
-    }
-
-    @Override
-    public ResourceLocation getFabricId() {
-        return ResourceLocation.fromNamespaceAndPath(LocomotionMain.MOD_ID, "animation_sequence_loader");
     }
 }

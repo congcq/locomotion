@@ -20,8 +20,6 @@ public class LocomotionMain {
 
 	public static void initialize() {
 		CONFIG.load();
-
-		registerTimelineGroupLoader();
 		registerEntityAnimators();
 		//registerBlockRenderers();
 	}
@@ -37,11 +35,6 @@ public class LocomotionMain {
 	}
 
 	 */
-
-
-	private static void registerTimelineGroupLoader(){
-		ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new AnimationSequenceDataLoader());
-	}
 
 
 	private static void registerEntityAnimators(){
