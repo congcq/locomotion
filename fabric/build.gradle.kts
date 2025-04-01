@@ -72,6 +72,10 @@ configurations {
 
 repositories {
     maven("https://maven.parchmentmc.org/")
+
+    maven("https://maven.terraformersmc.com/")
+    maven("https://maven.isxander.dev/releases")
+    maven("https://api.modrinth.com/maven")
 }
 
 dependencies {
@@ -84,6 +88,11 @@ dependencies {
 
     commonBundle(project(common.path, "namedElements")) { isTransitive = false }
     shadowBundle(project(common.path, "transformProductionFabric")) { isTransitive = false }
+
+    // Mod implementations
+    modImplementation("net.fabricmc.fabric-api:fabric-api:${versionProp("fabric_api_version")}")
+    modImplementation("dev.isxander:yet-another-config-lib:${versionProp("yacl_version")}")
+    modImplementation("com.terraformersmc:modmenu:${versionProp("modmenu_version")}")
 }
 
 tasks.processResources {
