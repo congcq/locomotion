@@ -6,6 +6,7 @@ import com.google.gson.GsonBuilder;
 import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
 
 import java.io.BufferedWriter;
 import java.io.FileReader;
@@ -16,7 +17,10 @@ import java.nio.file.Path;
 
 public class LocomotionConfig {
 
+
     private static final Path CONFIG_FILE_PATH = FabricLoader.getInstance().getConfigDir().resolve(LocomotionMain.MOD_ID + ".json");
+    //private static final Path CONFIG_FILE_PATH = Minecraft.getInstance().gameDirectory.toPath().resolve(LocomotionMain.MOD_ID + ".json");
+
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)

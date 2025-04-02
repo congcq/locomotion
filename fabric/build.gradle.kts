@@ -135,3 +135,10 @@ tasks.register<Copy>("buildAndCollect") {
     into(rootProject.layout.buildDirectory.file("libs/${prop("mod.version")}/$loader"))
     dependsOn("build")
 }
+
+stonecutter {
+    // Constants should be given a key and a boolean value
+    const("fabric", loader == "fabric")
+    const("forge", loader == "forge")
+    const("neoforge", loader == "neoforge")
+}

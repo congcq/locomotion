@@ -3,10 +3,7 @@ package com.trainguy9512.locomotion;
 
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorRegistry;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
-import com.trainguy9512.locomotion.animation.data.AnimationSequenceDataLoader;
 import com.trainguy9512.locomotion.config.LocomotionConfig;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.minecraft.server.packs.PackType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,7 +16,7 @@ public class LocomotionMain {
 
 
 	public static void initialize() {
-		CONFIG.load();
+		//CONFIG.load();
 		registerEntityAnimators();
 		//registerBlockRenderers();
 	}

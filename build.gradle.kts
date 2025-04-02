@@ -8,7 +8,8 @@ plugins {
 
 val minecraft = stonecutter.current.version
 
-version = "${prop("mod.version")}+$minecraft"
+// Added playtesting prefix for playtesting builds
+version = "playtesting-${prop("mod.version")}+$minecraft"
 base {
 	archivesName.set("${prop("mod.id")}-common")
 }
