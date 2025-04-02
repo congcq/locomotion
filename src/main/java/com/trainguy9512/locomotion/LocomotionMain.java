@@ -16,7 +16,7 @@ public class LocomotionMain {
 
 
 	public static void initialize() {
-		//CONFIG.load();
+		CONFIG.load();
 		registerEntityAnimators();
 		//registerBlockRenderers();
 	}
