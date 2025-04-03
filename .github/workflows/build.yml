@@ -30,6 +30,8 @@ jobs:
         run: chmod +x ./gradlew
       - name: build
         run: ./gradlew chiseledBuild
+      - name: merge
+        run: ./gradlew mergeJars
       - name: capture build artifacts
         if: ${{ runner.os == 'Linux' && matrix.java == '21' }}
         uses: actions/upload-artifact@v4
