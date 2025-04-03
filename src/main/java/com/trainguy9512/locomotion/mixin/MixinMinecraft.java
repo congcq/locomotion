@@ -76,7 +76,10 @@ public abstract class MixinMinecraft {
     /**
      * Sets the first person player's IS_MINING driver to be false if there is no attacked block.
      */
-    @Inject(method = "continueAttack", at = @At("HEAD"))
+    @Inject(
+            method = "continueAttack",
+            at = @At("HEAD")
+    )
     public void injectOnContinueAttackIsNotMining(boolean bl, CallbackInfo ci){
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
             dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(false);
@@ -86,7 +89,10 @@ public abstract class MixinMinecraft {
     /**
      * Sets the first person player's IS_MINING driver to be true if the attacked blcok is being broken.
      */
-    @Inject(method = "continueAttack", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/ParticleEngine;crack(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)V"))
+    @Inject(
+            method = "continueAttack",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;swing(Lnet/minecraft/world/InteractionHand;)V")
+    )
     public void injectOnContinueAttackIsMining(boolean bl, CallbackInfo ci){
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
             dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
@@ -97,16 +103,17 @@ public abstract class MixinMinecraft {
      * Play the block cracking particles only if the mining animation has entered its impact state.
      * Play the cracking particles as normal if the first person renderer config is disabled.
      */
-    @Redirect(
-            method = "continueAttack",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/ParticleEngine;crack(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)V"))
-    public void onlySpawnBreakParticlesOnPickaxeImpact(ParticleEngine instance, BlockPos pos, Direction side) {
-        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-            if (dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.IS_MINING_IMPACTING) || !LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
-                for (float i = 0; i < 8; i++) {
-                    instance.crack(pos, side);
-                }
-            }
-        });
-    }
+//    TODO: If this is going to be re-implemented, NeoForge needs an alternative implementation.
+//    @Redirect(
+//            method = "continueAttack",
+//            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/ParticleEngine;crack(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)V"))
+//    public void onlySpawnBreakParticlesOnPickaxeImpact(ParticleEngine instance, BlockPos pos, Direction side) {
+//        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
+//            if (dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.IS_MINING_IMPACTING) || !LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
+//                for (float i = 0; i < 8; i++) {
+//                    instance.crack(pos, side);
+//                }
+//            }
+//        });
+//    }
 }

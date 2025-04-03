@@ -15,7 +15,7 @@ base {
 }
 
 forgix {
-	val version = "${prop("mod.version")}+${minecraft}"
+	//val version = "${prop("mod.version")}+${minecraft}"
 	group = "${prop("mod.group")}.${prop("mod.id")}"
 	mergedJarName = "${prop("mod.id")}-${version}.jar"
 	outputDir = "build/libs/merged"
