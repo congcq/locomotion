@@ -91,7 +91,7 @@ dependencies {
 
     // Mod implementations
     modImplementation("net.fabricmc.fabric-api:fabric-api:${versionProp("fabric_api_version")}")
-    modImplementation("dev.isxander:yet-another-config-lib:${versionProp("yacl_fabric_version")}")
+    modImplementation("dev.isxander:yet-another-config-lib:${versionProp("yacl_version")}-fabric")
     modImplementation("com.terraformersmc:modmenu:${versionProp("modmenu_version")}")
 }
 

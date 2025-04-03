@@ -45,7 +45,7 @@ dependencies {
 	modImplementation("net.fabricmc:fabric-loader:${versionProp("fabric_loader")}")
 
 	// Mod implementations
-	modImplementation("dev.isxander:yet-another-config-lib:${versionProp("yacl_fabric_version")}")
+	modCompileOnly("dev.isxander:yet-another-config-lib:${versionProp("yacl_version")}-fabric")
 }
 
 tasks.processResources {

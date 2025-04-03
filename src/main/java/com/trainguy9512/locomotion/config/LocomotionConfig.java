@@ -5,7 +5,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.AlertScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -18,6 +17,7 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class LocomotionConfig {
 
@@ -86,12 +86,9 @@ public class LocomotionConfig {
         }
     }
 
-    public Function<Screen, Screen> getConfigScreen() {
-        boolean isYACLLoaded = false;
+    public Function<Screen, Screen> getConfigScreen(Predicate<String> ifModLoaded) {
 
-        isYACLLoaded = FabricLoader.getInstance().isModLoaded("yet_another_config_lib_v3");
-
-        if (isYACLLoaded) {
+        if (ifModLoaded.test("yet_another_config_lib_v3")) {
             return LocomotionConfigScreen::createConfigScreen;
         } else {
             return parent -> new AlertScreen(

@@ -73,6 +73,9 @@ configurations {
 repositories {
     maven("https://maven.parchmentmc.org/")
     maven("https://maven.neoforged.net/releases/")
+
+    maven("https://maven.isxander.dev/releases")
+    maven("https://api.modrinth.com/maven")
 }
 
 dependencies {
@@ -85,6 +88,9 @@ dependencies {
 
     commonBundle(project(common.path, "namedElements")) { isTransitive = false }
     shadowBundle(project(common.path, "transformProductionNeoForge")) { isTransitive = false }
+
+    // Mod implementations
+    //runtimeOnly("dev.isxander:yet-another-config-lib:${versionProp("yacl_version")}-neoforge")
 }
 
 tasks.processResources {
