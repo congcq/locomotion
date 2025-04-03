@@ -3,42 +3,13 @@
 plugins {
 	id("dev.architectury.loom")
 	id("architectury-plugin")
-	id("io.github.pacifistmc.forgix")
 }
 
 val minecraft = stonecutter.current.version
 
-// Added playtesting prefix for playtesting builds
-version = "playtesting-${prop("mod.version")}+$minecraft"
+version = "${prop("mod.version")}+$minecraft"
 base {
 	archivesName.set("${prop("mod.id")}-common")
-}
-
-forgix {
-	//val version = "${prop("mod.version")}+${minecraft}"
-	group = "${prop("mod.group")}.${prop("mod.id")}"
-	mergedJarName = "${prop("mod.id")}-${version}.jar"
-	outputDir = "build/libs/merged"
-
-	if (findProject(":fabric") != null) {
-		fabricContainer = FabricContainer().apply {
-			jarLocation = "versions/${minecraft}/build/libs/${prop("mod.id")}-fabric-${version}.jar"
-		}
-	}
-
-	if (findProject(":forge") != null) {
-		forgeContainer = ForgeContainer().apply {
-			jarLocation = "versions/${minecraft}/build/libs/${prop("mod.id")}-forge-${version}.jar"
-		}
-	}
-
-	if (findProject(":neoforge") != null) {
-		neoForgeContainer = NeoForgeContainer().apply {
-			jarLocation = "versions/${minecraft}/build/libs/${prop("mod.id")}-neoforge-${version}.jar"
-		}
-	}
-
-	removeDuplicate("${prop("mod.group")}.${prop("mod.id")}")
 }
 
 architectury.common(stonecutter.tree.branches.mapNotNull {
