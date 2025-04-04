@@ -3,6 +3,7 @@ package com.trainguy9512.locomotion.animation.data;
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.animation.animator.JointAnimator;
 import com.trainguy9512.locomotion.animation.driver.Driver;
+import com.trainguy9512.locomotion.animation.driver.TriggerDriver;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.driver.DriverKey;
 import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
@@ -42,6 +43,10 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
         return new AnimationDataContainer(jointAnimator);
     }
 
+    public void preTick() {
+        this.drivers.values().forEach(Driver::pushCurrentToPrevious);
+    }
+
     public void tick() {
         this.montageManager.tick();
         this.drivers.values().forEach(Driver::tick);
@@ -52,6 +57,10 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
                 false,
                 this.getDriver(this.gameTimeTicksDriverKey).getCurrentValue()
         ));
+    }
+
+    public void postTick() {
+        this.drivers.values().forEach(Driver::postTick);
     }
 
     public LocalSpacePose computePose(float partialTicks) {
@@ -89,10 +98,6 @@ public class AnimationDataContainer implements PoseCalculationDataContainer, OnT
     @Override
     public <D, R extends Driver<D>> D getDriverValue(DriverKey<R> driverKey) {
         return this.getDriverValue(driverKey, 1);
-    }
-
-    public void prepareForNextTick(){
-        this.drivers.values().forEach(Driver::pushCurrentToPrevious);
     }
 
     @SuppressWarnings("unchecked")

@@ -2,7 +2,7 @@ package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.animation.joint.Transformer;
-import com.trainguy9512.locomotion.animation.pose.AnimationPose;
+import com.trainguy9512.locomotion.animation.pose.Pose;
 import com.trainguy9512.locomotion.animation.pose.ComponentSpacePose;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import org.jetbrains.annotations.NotNull;
@@ -12,7 +12,7 @@ import org.joml.Vector3f;
 import java.util.Optional;
 import java.util.function.Function;
 
-public class JointTransformerFunction<P extends AnimationPose> implements PoseFunction<P> {
+public class JointTransformerFunction<P extends Pose> implements PoseFunction<P> {
 
     private final PoseFunction<P> input;
     private final String joint;
@@ -30,7 +30,7 @@ public class JointTransformerFunction<P extends AnimationPose> implements PoseFu
         this.weightFunction = weightFunction;
     }
 
-    private static <P extends AnimationPose> JointTransformerFunction<P> of(Builder<P> builder){
+    private static <P extends Pose> JointTransformerFunction<P> of(Builder<P> builder){
         return new JointTransformerFunction<>(builder.input, builder.joint, builder.translationConfiguration, builder.rotationConfiguration, builder.scaleConfiguration, builder.weightFunction);
     }
 
@@ -85,7 +85,7 @@ public class JointTransformerFunction<P extends AnimationPose> implements PoseFu
         return new Builder<>(poseFunction, joint);
     }
 
-    public static class Builder<P extends AnimationPose> {
+    public static class Builder<P extends Pose> {
 
         private final PoseFunction<P> input;
         private final String joint;

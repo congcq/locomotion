@@ -70,6 +70,11 @@ public class VariableDriver<D> implements Driver<D> {
         this.previousValue = this.currentValue;
     }
 
+    @Override
+    public void postTick() {
+
+    }
+
     /**
      * Loads the driver with the driver's default value.
      */

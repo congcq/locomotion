@@ -1,12 +1,12 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
-import com.trainguy9512.locomotion.animation.pose.AnimationPose;
+import com.trainguy9512.locomotion.animation.pose.Pose;
 import com.trainguy9512.locomotion.util.TimeSpan;
 
 import java.util.function.Function;
 
-public abstract class TimeBasedPoseFunction<P extends AnimationPose> implements PoseFunction<P> {
+public abstract class TimeBasedPoseFunction<P extends Pose> implements PoseFunction<P> {
 
     protected final Function<FunctionEvaluationState, Boolean> isPlayingFunction;
     protected final Function<FunctionEvaluationState, Float> playRateFunction;

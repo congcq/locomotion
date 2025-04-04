@@ -8,13 +8,13 @@ import org.joml.*;
 
 import java.util.*;
 
-public abstract class AnimationPose {
+public abstract class Pose {
 
     protected final JointSkeleton jointSkeleton;
     protected final Map<String, JointChannel> jointChannels;
     private final Map<String, Matrix4f> jointParentMatrices;
 
-    protected AnimationPose(JointSkeleton jointSkeleton){
+    protected Pose(JointSkeleton jointSkeleton){
         this.jointSkeleton = jointSkeleton;
         this.jointChannels = Maps.newHashMap();
         this.jointParentMatrices = Maps.newHashMap();
@@ -24,10 +24,10 @@ public abstract class AnimationPose {
         }
     }
 
-    protected AnimationPose(AnimationPose animationPose){
-        this.jointSkeleton = animationPose.jointSkeleton;
-        this.jointChannels = new HashMap<>(animationPose.jointChannels);
-        this.jointParentMatrices = new HashMap<>(animationPose.jointParentMatrices);
+    protected Pose(Pose pose){
+        this.jointSkeleton = pose.jointSkeleton;
+        this.jointChannels = new HashMap<>(pose.jointChannels);
+        this.jointParentMatrices = new HashMap<>(pose.jointParentMatrices);
     }
 
     /**

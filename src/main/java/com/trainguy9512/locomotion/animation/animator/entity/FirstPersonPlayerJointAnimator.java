@@ -3,6 +3,7 @@ package com.trainguy9512.locomotion.animation.animator.entity;
 import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.*;
 import com.trainguy9512.locomotion.animation.driver.SpringDriver;
+import com.trainguy9512.locomotion.animation.driver.TriggerDriver;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.driver.DriverKey;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
@@ -193,6 +194,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
                                 .build())
+                        .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL)
+                                .isTakenIfTrue(
+                                        StateTransition.booleanDriverPredicate(IS_MINING)
+                                                .or(StateTransition.booleanDriverPredicate(IS_ATTACKING)))
+                                .setTiming(Transition.of(TimeSpan.ofTicks(4), Easing.SINE_IN_OUT))
+                                .build())
                         .build())
                 .addState(State.builder(HandPoseStates.TOOL_LOWER, SequencePlayerFunction.builder(HAND_TOOL_LOWER).build())
                         .resetUponEntry(true)
@@ -315,12 +322,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                             SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
                             SequencePlayerFunction.builder(HAND_TOOL_MINE_SWING)
                                     .looping(true)
-                                    .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(12))
+                                    .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(16))
                                     .setPlayRate(evaluationState -> evaluationState.dataContainer().getDriverValue(MINING_SPEED_PLAY_RATE))
                                     .build(),
                             SequencePlayerFunction.builder(HAND_TOOL_MINE_IMPACT).build(),
                             SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
-                            Transition.of(TimeSpan.of60FramesPerSecond(8), Easing.SINE_OUT)
+                            Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)
                     ),
                     "attack"
             );
@@ -561,12 +568,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Boolean>> IS_MINING = DriverKey.of("is_mining", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Float>> MINING_SPEED_PLAY_RATE = DriverKey.of("mining_speed_play_rate", () -> VariableDriver.ofFloat(() -> 1f));
     public static final DriverKey<VariableDriver<Boolean>> IS_MINING_IMPACTING = DriverKey.of("is_mining_impacting", () -> VariableDriver.ofBoolean(() -> false));
-    public static final DriverKey<VariableDriver<Boolean>> IS_ATTACKING = DriverKey.of("is_attacking", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<TriggerDriver> IS_ATTACKING = DriverKey.of("is_attacking", TriggerDriver::of);
 
     public static final MontageConfiguration HAND_TOOL_ATTACK_PICKAXE_MONTAGE = MontageConfiguration.builder("hand_tool_attack_pickaxe_montage", HAND_TOOL_ATTACK_PICKAXE)
             .playsInSlot("attack")
-            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
-            .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(15), Easing.SINE_IN_OUT))
+            .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
+            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_IN_OUT))
+            .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
             .build();
 
     @Override
@@ -585,10 +593,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         //?} else
         /*driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().selected);*/
 
-        if (driverContainer.getDriver(IS_ATTACKING).getCurrentValue()) {
-            montageManager.playMontage(HAND_TOOL_ATTACK_PICKAXE_MONTAGE, driverContainer);
-            driverContainer.getDriver(IS_ATTACKING).setValue(false);
-        }
+        driverContainer.getDriver(IS_ATTACKING).ifTriggered(() -> montageManager.playMontage(HAND_TOOL_ATTACK_PICKAXE_MONTAGE, driverContainer));
 
         float baseMiningPlayRate = 0.75f;
         float miningPlayRateGradient = 0.05f;

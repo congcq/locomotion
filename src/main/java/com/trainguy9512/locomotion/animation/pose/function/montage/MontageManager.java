@@ -9,6 +9,7 @@ import com.trainguy9512.locomotion.util.TimeSpan;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class MontageManager {
@@ -34,6 +35,13 @@ public class MontageManager {
      * @param driverContainer       Driver container to use for getting the play rate.
      */
     public void playMontage(MontageConfiguration configuration, OnTickDriverContainer driverContainer) {
+        for (MontageInstance instance : this.montageStack) {
+            if (Objects.equals(instance.configuration.identifier(), configuration.identifier())) {
+                if (instance.ticksElapsed.getCurrentValue() < configuration.cooldownDuration().inTicks()) {
+                    return;
+                }
+            }
+        }
         this.montageStack.addLast(MontageInstance.of(configuration, driverContainer));
     }
 

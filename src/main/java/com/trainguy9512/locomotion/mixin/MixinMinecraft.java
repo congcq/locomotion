@@ -4,12 +4,16 @@ import com.llamalad7.mixinextras.sugar.Local;
 import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
+import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.ParticleEngine;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -18,6 +22,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.concurrent.CompletableFuture;
 
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft {
@@ -29,8 +35,14 @@ public abstract class MixinMinecraft {
 
     @Shadow protected abstract boolean isLevelRunningNormally();
 
+    @Shadow public abstract CompletableFuture<Void> delayTextureReload();
+
+    @Shadow @Nullable public LocalPlayer player;
+
+    @Shadow protected abstract boolean startAttack();
+
     @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiling/ProfilerFiller;popPush(Ljava/lang/String;)V", ordinal = 5))
-    public void tickJointAnimators(CallbackInfo ci, @Local ProfilerFiller profilerFiller){
+    public void tickJointAnimators(CallbackInfo ci, @Local ProfilerFiller profilerFiller) {
         profilerFiller.popPush("jointAnimatorTick");
         if (!this.pause && this.isLevelRunningNormally()) {
             // There's a condition in Minecraft.java that only allows this to run if the level != null, but the mixin does not know this.
@@ -44,7 +56,7 @@ public abstract class MixinMinecraft {
     @Inject(
             method = "startAttack",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;startDestroyBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)Z"))
-    public void injectStartAttackHitBlock(CallbackInfoReturnable<Boolean> cir){
+    public void injectStartAttackHitBlock(CallbackInfoReturnable<Boolean> cir, @Local BlockPos blockPos) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
             dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
         });
@@ -53,18 +65,18 @@ public abstract class MixinMinecraft {
     @Inject(
             method = "startAttack",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;attack(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/entity/Entity;)V"))
-    public void injectStartAttackHitEntity(CallbackInfoReturnable<Boolean> cir){
+    public void injectStartAttackHitEntity(CallbackInfoReturnable<Boolean> cir) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_ATTACKING).setValue(true);
+            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_ATTACKING).trigger();
         });
     }
 
     @Inject(
             method = "startAttack",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;resetAttackStrengthTicker()V"))
-    public void injectStartAttackMiss(CallbackInfoReturnable<Boolean> cir){
+    public void injectStartAttackMiss(CallbackInfoReturnable<Boolean> cir) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_ATTACKING).setValue(true);
+            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_ATTACKING).trigger();
         });
     }
 //
@@ -78,11 +90,14 @@ public abstract class MixinMinecraft {
      */
     @Inject(
             method = "continueAttack",
-            at = @At("HEAD")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;stopDestroyBlock()V")
     )
-    public void injectOnContinueAttackIsNotMining(boolean bl, CallbackInfo ci){
+    public void injectOnContinueAttackIsNotMining(boolean bl, CallbackInfo ci) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(false);
+            var driver = dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING);
+            if (driver.getPreviousValue()) {
+                driver.setValue(false);
+            }
         });
     }
 
@@ -93,7 +108,7 @@ public abstract class MixinMinecraft {
             method = "continueAttack",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;swing(Lnet/minecraft/world/InteractionHand;)V")
     )
-    public void injectOnContinueAttackIsMining(boolean bl, CallbackInfo ci){
+    public void injectOnContinueAttackIsMining(boolean bl, CallbackInfo ci) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
             dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
         });

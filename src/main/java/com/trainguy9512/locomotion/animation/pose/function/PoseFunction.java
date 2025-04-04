@@ -2,14 +2,14 @@ package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.data.PoseCalculationDataContainer;
-import com.trainguy9512.locomotion.animation.pose.AnimationPose;
+import com.trainguy9512.locomotion.animation.pose.Pose;
 import com.trainguy9512.locomotion.animation.pose.function.montage.MontageManager;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
 
-public interface PoseFunction<P extends AnimationPose> {
+public interface PoseFunction<P extends Pose> {
 
     /**
      * Computes and returns an animation pose using its inputs.

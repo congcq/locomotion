@@ -6,7 +6,7 @@ import com.trainguy9512.locomotion.access.LivingEntityRenderStateAccess;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorRegistry;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import com.trainguy9512.locomotion.animation.animator.entity.EntityJointAnimator;
-import com.trainguy9512.locomotion.animation.pose.AnimationPose;
+import com.trainguy9512.locomotion.animation.pose.Pose;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.*;
@@ -14,7 +14,6 @@ import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Pose;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -53,7 +52,7 @@ public abstract class MixinLivingEntityRenderer<S extends EntityRenderState, R e
     @Redirect(method = "render(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/EntityModel;setupAnim(Lnet/minecraft/client/renderer/entity/state/EntityRenderState;)V"))
     private void redirectSetupAnim(EntityModel<S> entityModel, S livingEntityRenderState){
         // Unchecked cast, but I can make assumptions given this is always called after extractRenderState within the same renderer class.
-        Optional<AnimationPose> animationPoseOptional = ((LivingEntityRenderStateAccess)livingEntityRenderState).animationOverhaul$getInterpolatedAnimationPose();
+        Optional<Pose> animationPoseOptional = ((LivingEntityRenderStateAccess)livingEntityRenderState).animationOverhaul$getInterpolatedAnimationPose();
         Optional<EntityJointAnimator<?, ?>> entityJointAnimatorOptional = ((LivingEntityRenderStateAccess)livingEntityRenderState).animationOverhaul$getEntityJointAnimator();
 
         animationPoseOptional.ifPresentOrElse(
@@ -87,7 +86,7 @@ public abstract class MixinLivingEntityRenderer<S extends EntityRenderState, R e
             poseStack.pushPose();
 
 
-            if(livingEntityRenderState.pose == Pose.SLEEPING){
+            if(livingEntityRenderState.pose == net.minecraft.world.entity.Pose.SLEEPING){
 
                 Direction i = livingEntityRenderState.bedOrientation;
                 float j = i != null ? sleepDirectionToRotation(i) : livingEntityRenderState.bodyRot;

@@ -8,13 +8,13 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.Set;
 
-public class LocalSpacePose extends AnimationPose {
+public class LocalSpacePose extends Pose {
 
     private LocalSpacePose(JointSkeleton jointSkeleton) {
         super(jointSkeleton);
     }
 
-    private LocalSpacePose(AnimationPose pose) {
+    private LocalSpacePose(Pose pose) {
         super(pose);
     }
 
@@ -29,7 +29,7 @@ public class LocalSpacePose extends AnimationPose {
     }
 
 
-    public static LocalSpacePose of(AnimationPose pose) {
+    public static LocalSpacePose of(Pose pose) {
         return new LocalSpacePose(pose);
     }
 

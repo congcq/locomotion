@@ -3,7 +3,6 @@ package com.trainguy9512.locomotion.animation.pose.function.montage;
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
-import com.trainguy9512.locomotion.util.Easing;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import com.trainguy9512.locomotion.util.Transition;
 import net.minecraft.resources.ResourceLocation;
@@ -26,7 +25,8 @@ public record MontageConfiguration(
         Transition transitionIn,
         Transition transitionOut,
         TimeSpan startTimeOffset,
-        float transitionOutCrossfadeWeight
+        float transitionOutCrossfadeWeight,
+        TimeSpan cooldownDuration
 ) {
 
     public static Builder builder(String identifier, ResourceLocation animationSequence) {
@@ -44,6 +44,7 @@ public record MontageConfiguration(
         private Transition transitionOut;
         private TimeSpan startTimeOffset;
         private float transitionOutCrossfadeWeight;
+        private TimeSpan cooldownDuration;
 
         private Builder(String identifier, ResourceLocation animationSequence) {
             this.identifier = identifier;
@@ -55,6 +56,7 @@ public record MontageConfiguration(
             this.transitionOut = Transition.SINGLE_TICK;
             this.startTimeOffset = TimeSpan.ofSeconds(0);
             this.transitionOutCrossfadeWeight = 1f;
+            this.cooldownDuration = TimeSpan.ofTicks(0);
         }
 
         /**
@@ -144,6 +146,19 @@ public record MontageConfiguration(
             return this;
         }
 
+        /**
+         * Sets the duration of this montage's cooldown. Anytime a montage of this configuration is triggered, it will only play if
+         * there is no montage with an elapsed time less than the cooldown duration.
+         *
+         * <p>Note: This value is scaled by the play rate of the montage. If a montage is playing at twice speed, the cooldown will be halved.</p>
+         *
+         * @param duration              Duration of the cooldown period
+         */
+        public Builder setCooldownDuration(TimeSpan duration) {
+            this.cooldownDuration = duration;
+            return this;
+        }
+
         public MontageConfiguration build() {
             return new MontageConfiguration(
                     this.identifier,
@@ -154,7 +169,8 @@ public record MontageConfiguration(
                     this.transitionIn,
                     this.transitionOut,
                     this.startTimeOffset,
-                    this.transitionOutCrossfadeWeight
+                    this.transitionOutCrossfadeWeight,
+                    this.cooldownDuration
             );
         }
     }

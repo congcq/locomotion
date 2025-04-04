@@ -4,7 +4,7 @@ import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.access.MatrixModelPart;
 import com.trainguy9512.locomotion.animation.animator.entity.EntityJointAnimator;
 import com.trainguy9512.locomotion.animation.data.AnimationDataContainer;
-import com.trainguy9512.locomotion.animation.pose.AnimationPose;
+import com.trainguy9512.locomotion.animation.pose.Pose;
 import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.ComponentSpacePose;
 import net.minecraft.client.Minecraft;
@@ -67,15 +67,13 @@ public class JointAnimatorDispatcher {
      * @param dataContainer         Animation data container
      */
     private <T> void tickJointAnimator(JointAnimator<T> jointAnimator, T dataReference, AnimationDataContainer dataContainer){
-        dataContainer.prepareForNextTick();
+        dataContainer.preTick();
         jointAnimator.extractAnimationData(dataReference, dataContainer, dataContainer.getMontageManager());
         dataContainer.tick();
         if(jointAnimator.getPoseCalulationFrequency() == JointAnimator.PoseCalculationFrequency.CALCULATE_ONCE_PER_TICK){
-            //AnimationPose animationPose = jointAnimator.calculatePose(dataContainer, dataContainer.getJointSkeleton(), 1);
-            //AnimationOverhaulMain.LOGGER.info("{}", animationPose.getJointTransform(FirstPersonPlayerJointAnimator.RIGHT_ARM_JOINT).getRotation());
-
             dataContainer.getDriver(dataContainer.getPerTickCalculatedPoseDriverKey()).setValue(dataContainer.computePose(1));
         }
+        dataContainer.postTick();
     }
 
     public <T extends Entity> Optional<AnimationDataContainer> getEntityAnimationDataContainer(T entity){
@@ -116,14 +114,14 @@ public class JointAnimatorDispatcher {
         };
     }
 
-    public <S extends EntityRenderState> void setupAnimWithAnimationPose(EntityModel<S> entityModel, S entityRenderState, AnimationPose animationPose, EntityJointAnimator<?, S> entityJointAnimator){
+    public <S extends EntityRenderState> void setupAnimWithAnimationPose(EntityModel<S> entityModel, S entityRenderState, Pose pose, EntityJointAnimator<?, S> entityJointAnimator){
         entityModel.resetPose();
-        JointSkeleton jointSkeleton = animationPose.getJointSkeleton();
+        JointSkeleton jointSkeleton = pose.getJointSkeleton();
         jointSkeleton.getJoints()
                 .forEach(joint -> {
                     if(jointSkeleton.getJointConfiguration(joint).usesModelPart()){
                         entityModel.getAnyDescendantWithName(jointSkeleton.getJointConfiguration(joint).modelPartIdentifier()).ifPresent(
-                                modelPart -> ((MatrixModelPart)(Object) modelPart).locomotion$setMatrix(animationPose.getJointChannel(joint).getTransform())
+                                modelPart -> ((MatrixModelPart)(Object) modelPart).locomotion$setMatrix(pose.getJointChannel(joint).getTransform())
                         );
                     }
                 });

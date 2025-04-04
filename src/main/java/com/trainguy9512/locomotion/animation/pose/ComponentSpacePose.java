@@ -4,13 +4,13 @@ import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import org.joml.Matrix4f;
 
-public class ComponentSpacePose extends AnimationPose {
+public class ComponentSpacePose extends Pose {
 
     private ComponentSpacePose(JointSkeleton jointSkeleton) {
         super(jointSkeleton);
     }
 
-    private ComponentSpacePose(AnimationPose pose){
+    private ComponentSpacePose(Pose pose){
         super(pose);
     }
 
@@ -25,7 +25,7 @@ public class ComponentSpacePose extends AnimationPose {
     }
 
 
-    public static ComponentSpacePose of(AnimationPose pose){
+    public static ComponentSpacePose of(Pose pose){
         return new ComponentSpacePose(pose);
     }
 

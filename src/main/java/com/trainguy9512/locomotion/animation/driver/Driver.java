@@ -23,4 +23,9 @@ public interface Driver<D> {
      * Prepares the driver for the next tick after it's finished being used in the current tick, which is usually setting the current value to the previous value
      */
     void pushCurrentToPrevious();
+
+    /**
+     * Called once per tick after data extraction and after pose function tick.
+     */
+    void postTick();
 }
