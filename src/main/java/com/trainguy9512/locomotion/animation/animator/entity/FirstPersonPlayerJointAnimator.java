@@ -135,13 +135,15 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     }
 
     public enum HandPose {
-        EMPTY (HAND_EMPTY_POSE),
-        TOOL (HAND_TOOL_POSE);
+        EMPTY (HAND_EMPTY_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE),
+        TOOL (HAND_TOOL_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE);
 
         public final ResourceLocation basePoseLocation;
+        public final MontageConfiguration attackMontage;
 
-        HandPose(ResourceLocation basePoseLocation) {
+        HandPose(ResourceLocation basePoseLocation, MontageConfiguration attackMontage) {
             this.basePoseLocation = basePoseLocation;
+            this.attackMontage = attackMontage;
         }
 
         private static HandPose fromItem(ItemStack itemStack) {
@@ -185,7 +187,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedHandItemDriver).setValue(evaluationState.dataContainer().getDriverValue(handItemDriver));
         Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(ATTACK_SLOT);
-        BiPredicate<StateTransition.TransitionContext, HandPose> handPoseMatches = (context, handPose) -> handPose == HandPose.fromItem(context.dataContainer().getDriver(handItemDriver).getCurrentValue());
+        BiPredicate<StateTransition.TransitionContext, HandPose> handPoseMatches = (context, handPose) -> handPose == HandPose.fromItem(context.dataContainer().getDriverValue(handItemDriver));
         Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> {
             if (interactionHand == InteractionHand.MAIN_HAND) {
                 if (context.dataContainer().getDriver(HOTBAR_SLOT).hasValueChanged()) {
@@ -246,7 +248,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         switch (interactionHand) {
             case MAIN_HAND ->
                     handPoseStateMachineBuilder
-                            .addState(State.builder(HandPoseStates.EMPTY, SequenceEvaluatorFunction.of(HAND_EMPTY_POSE))
+                            .addState(State.builder(HandPoseStates.EMPTY, MontageSlotFunction.of(
+                                            SequenceEvaluatorFunction.of(HAND_EMPTY_POSE),
+                                            ATTACK_SLOT
+                                    ))
                                     .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY_LOWER)
                                             .isTakenIfTrue(switchHandsCondition)
                                             .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
@@ -257,6 +262,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
                                             .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
                                             .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
+                                            .build())
+                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
+                                            .isTakenIfTrue(
+                                                    StateTransition.booleanDriverPredicate(IS_MINING)
+                                                            .or(StateTransition.booleanDriverPredicate(IS_ATTACKING)))
+                                            .setTiming(Transition.of(TimeSpan.ofTicks(4), Easing.SINE_IN_OUT))
                                             .build())
                                     .build())
                             .addState(State.builder(HandPoseStates.EMPTY_LOWER, SequencePlayerFunction.builder(HAND_EMPTY_LOWER).build())
@@ -596,7 +607,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_IN_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
-            .makeAdditive(driverContainer -> HAND_TOOL_POSE)
+            .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)).basePoseLocation)
             .build();
 
     @Override
@@ -615,7 +626,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         //?} else
         /*driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().selected);*/
 
-        driverContainer.getDriver(IS_ATTACKING).ifTriggered(() -> montageManager.playMontage(HAND_TOOL_ATTACK_PICKAXE_MONTAGE, driverContainer));
+        driverContainer.getDriver(IS_ATTACKING).ifTriggered(() -> montageManager.playMontage(HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage, driverContainer));
 
         float baseMiningPlayRate = 0.75f;
         float miningPlayRateGradient = 0.05f;
