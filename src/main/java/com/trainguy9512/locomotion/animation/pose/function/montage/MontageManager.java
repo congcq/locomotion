@@ -3,9 +3,11 @@ package com.trainguy9512.locomotion.animation.pose.function.montage;
 import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
+import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.util.TimeSpan;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +45,14 @@ public class MontageManager {
             }
         }
         this.montageStack.addLast(MontageInstance.of(configuration, driverContainer));
+    }
+
+    /**
+     * Immediately stops and removes any montages currently playing within the provided slot.
+     * @param slot                  Slot identifier
+     */
+    public void interruptMontagesInSlot(String slot) {
+        this.montageStack.removeIf(instance -> instance.configuration.slots().contains(slot));
     }
 
     /**
@@ -100,6 +110,10 @@ public class MontageManager {
         private final float playRate;
         private final float tickLength;
 
+        private final ResourceLocation additiveBasePoseLocation;
+        private LocalSpacePose additiveBasePose;
+        private LocalSpacePose additiveSubtractionPose;
+
         private MontageInstance(MontageConfiguration configuration, OnTickDriverContainer driverContainer) {
             this.weight = VariableDriver.ofFloat(() -> 0f);
             this.ticksElapsed = VariableDriver.ofFloat(() -> configuration.startTimeOffset().inTicks());
@@ -107,6 +121,14 @@ public class MontageManager {
 
             this.playRate = configuration.playRateFunction().apply(driverContainer);
             this.tickLength = AnimationSequenceData.INSTANCE.getOrThrow(configuration.animationSequence()).length().inTicks();
+
+            if (configuration.isAdditive()) {
+                this.additiveBasePoseLocation = configuration.additiveBasePoseProvider().apply(driverContainer);
+            } else {
+                this.additiveBasePoseLocation = null;
+            }
+            this.additiveBasePose = null;
+            this.additiveSubtractionPose = null;
         }
 
         private static MontageInstance of(MontageConfiguration configuration, OnTickDriverContainer driverContainer) {
@@ -133,7 +155,36 @@ public class MontageManager {
         }
 
         private LocalSpacePose getPose(JointSkeleton jointSkeleton, float partialTicks) {
-            return LocalSpacePose.fromAnimationSequence(jointSkeleton, this.configuration.animationSequence(), TimeSpan.ofTicks(this.ticksElapsed.getValueInterpolated(partialTicks)), false);
+            LocalSpacePose pose = LocalSpacePose.fromAnimationSequence(
+                    jointSkeleton,
+                    this.configuration.animationSequence(),
+                    TimeSpan.ofTicks(this.ticksElapsed.getValueInterpolated(partialTicks)),
+                    false
+            );
+            if (this.configuration.isAdditive()) {
+                // If the additive base pose and the additive subtraction poses are null, initialize them (only initialized when needed.
+                if (this.additiveBasePose == null) {
+                    this.additiveBasePose = LocalSpacePose.fromAnimationSequence(
+                            jointSkeleton,
+                            this.additiveBasePoseLocation,
+                            TimeSpan.ofTicks(0),
+                            false
+                    );
+                }
+                if (this.additiveSubtractionPose == null) {
+                    this.additiveSubtractionPose = LocalSpacePose.fromAnimationSequence(
+                            jointSkeleton,
+                            this.configuration.animationSequence(),
+                            this.configuration.startTimeOffset(),
+                            false
+                    );
+                    this.additiveSubtractionPose.invert();
+                }
+
+                pose.multiply(this.additiveSubtractionPose, JointChannel.TransformSpace.COMPONENT);
+                pose.multiply(this.additiveBasePose, JointChannel.TransformSpace.COMPONENT);
+            }
+            return pose;
         }
 
         private float getInterpolatedWeight(float partialTicks) {

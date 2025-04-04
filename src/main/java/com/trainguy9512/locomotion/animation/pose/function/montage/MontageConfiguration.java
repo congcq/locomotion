@@ -15,6 +15,20 @@ import java.util.function.Function;
 
 /**
  * Configuration for a triggerable animation, otherwise known as a Montage in Unreal Engine.
+ *
+ * @param identifier                        Identifier for this montage configuration.
+ * @param slots                             List of slots that the montage will be reflected on during pose evaluation.
+ * @param animationSequence                 Animation sequence to play
+ * @param playRateFunction                  Function that provides the play rate every time a montage of this configuration is fired.
+ * @param timeMarkerBindings                Bound function calls assigned to time markers.
+ * @param transitionIn                      In transition timing.
+ * @param transitionOut                     Out transition timing.
+ * @param startTimeOffset                   The point in time the animation starts at when the montage is fired.
+ * @param transitionOutCrossfadeWeight      How much the out transition cross-fades from the playing animation.
+ * @param cooldownDuration                  The minimum amount of time allowed between firing montages of this configuration.
+ * @param isAdditive                        Whether the montage is additive. If additive, the montage will subtract the start frame from the
+ *                                          animation and then add it to the start frame of the provided additive base pose resource location.
+ * @param additiveBasePoseProvider          Base pose provider added back to the additive animation.
  */
 public record MontageConfiguration(
         String identifier,
@@ -26,7 +40,10 @@ public record MontageConfiguration(
         Transition transitionOut,
         TimeSpan startTimeOffset,
         float transitionOutCrossfadeWeight,
-        TimeSpan cooldownDuration
+        TimeSpan cooldownDuration,
+        boolean isAdditive,
+        Function<OnTickDriverContainer, ResourceLocation> additiveBasePoseProvider
+
 ) {
 
     public static Builder builder(String identifier, ResourceLocation animationSequence) {
@@ -45,6 +62,9 @@ public record MontageConfiguration(
         private TimeSpan startTimeOffset;
         private float transitionOutCrossfadeWeight;
         private TimeSpan cooldownDuration;
+        private boolean isAdditive;
+        private Function<OnTickDriverContainer, ResourceLocation> additiveBasePoseProvider;
+
 
         private Builder(String identifier, ResourceLocation animationSequence) {
             this.identifier = identifier;
@@ -57,6 +77,8 @@ public record MontageConfiguration(
             this.startTimeOffset = TimeSpan.ofSeconds(0);
             this.transitionOutCrossfadeWeight = 1f;
             this.cooldownDuration = TimeSpan.ofTicks(0);
+            this.isAdditive = false;
+            this.additiveBasePoseProvider = null;
         }
 
         /**
@@ -159,6 +181,18 @@ public record MontageConfiguration(
             return this;
         }
 
+        /**
+         * Makes this montage configuration additive, meaning it will subtract the first frame of animation from the montage's
+         * animation, making it additive, and then it will add it to the first frame of the provided base pose provider.
+         *
+         * @param additiveBasePoseProvider          Base pose provider, retrieved every time a montage of this configuration is fired.
+         */
+        public Builder makeAdditive(Function<OnTickDriverContainer, ResourceLocation> additiveBasePoseProvider) {
+            this.isAdditive = true;
+            this.additiveBasePoseProvider = additiveBasePoseProvider;
+            return this;
+        }
+
         public MontageConfiguration build() {
             return new MontageConfiguration(
                     this.identifier,
@@ -170,7 +204,9 @@ public record MontageConfiguration(
                     this.transitionOut,
                     this.startTimeOffset,
                     this.transitionOutCrossfadeWeight,
-                    this.cooldownDuration
+                    this.cooldownDuration,
+                    this.isAdditive,
+                    this.additiveBasePoseProvider
             );
         }
     }

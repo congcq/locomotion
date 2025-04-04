@@ -26,16 +26,19 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.util.List;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -98,14 +101,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         return PoseCalculationFrequency.CALCULATE_EVERY_FRAME;
     }
 
-    public static final ResourceLocation POSE_TEST = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "pose_test");
-
-
-    public enum TestStates {
-        IDLE,
-        MOVING
-    }
-
     @Override
     public PoseFunction<LocalSpacePose> constructPoseFunction(CachedPoseContainer cachedPoseContainer) {
         cachedPoseContainer.register(ADDITIVE_GROUND_MOVEMENT_CACHE, constructAdditiveGroundMovementPoseFunction(cachedPoseContainer));
@@ -139,7 +134,25 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         return movementDirectionOffsetTransformer;
     }
 
+    public enum HandPose {
+        EMPTY (HAND_EMPTY_POSE),
+        TOOL (HAND_TOOL_POSE);
 
+        public final ResourceLocation basePoseLocation;
+
+        HandPose(ResourceLocation basePoseLocation) {
+            this.basePoseLocation = basePoseLocation;
+        }
+
+        private static HandPose fromItem(ItemStack itemStack) {
+            for (TagKey<Item> tag : TOOL_ITEM_TAGS) {
+                if (itemStack.is(tag)) {
+                    return HandPose.TOOL;
+                }
+            }
+            return HandPose.EMPTY;
+        }
+    }
 
     public enum HandPoseStates {
         EMPTY,
@@ -150,13 +163,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         TOOL_LOWER
     }
 
-    public static final ResourceLocation HAND_LOWERED_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_lowered_pose");
-    public static final ResourceLocation HAND_EMPTY_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_empty_pose");
-    public static final ResourceLocation HAND_EMPTY_LOWER = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_empty_lower");
-    public static final ResourceLocation HAND_EMPTY_RAISE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_empty_raise");
-    public static final ResourceLocation HAND_TOOL_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_pose");
-    public static final ResourceLocation HAND_TOOL_LOWER = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_lower");
-    public static final ResourceLocation HAND_TOOL_RAISE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_raise");
+    public static final ResourceLocation HAND_LOWERED_POSE = makeAnimationSequenceResourceLocation("hand_lowered_pose");
+    public static final ResourceLocation HAND_EMPTY_POSE = makeAnimationSequenceResourceLocation("hand_empty_pose");
+    public static final ResourceLocation HAND_EMPTY_LOWER = makeAnimationSequenceResourceLocation("hand_empty_lower");
+    public static final ResourceLocation HAND_EMPTY_RAISE = makeAnimationSequenceResourceLocation("hand_empty_raise");
+    public static final ResourceLocation HAND_TOOL_POSE = makeAnimationSequenceResourceLocation("hand_tool_pose");
+    public static final ResourceLocation HAND_TOOL_LOWER = makeAnimationSequenceResourceLocation("hand_tool_lower");
+    public static final ResourceLocation HAND_TOOL_RAISE = makeAnimationSequenceResourceLocation("hand_tool_raise");
 
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
@@ -168,7 +181,11 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case MAIN_HAND -> RENDERED_MAIN_HAND_ITEM;
             case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
         };
+
+
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedHandItemDriver).setValue(evaluationState.dataContainer().getDriverValue(handItemDriver));
+        Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(ATTACK_SLOT);
+        BiPredicate<StateTransition.TransitionContext, HandPose> handPoseMatches = (context, handPose) -> handPose == HandPose.fromItem(context.dataContainer().getDriver(handItemDriver).getCurrentValue());
         Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> {
             if (interactionHand == InteractionHand.MAIN_HAND) {
                 if (context.dataContainer().getDriver(HOTBAR_SLOT).hasValueChanged()) {
@@ -213,19 +230,16 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .setTiming(Transition.INSTANT)
                                 .setPriority(30)
                                 .bindToOnTransitionTaken(updateRenderedItem)
+                                .bindToOnTransitionTaken(clearAttackMontages)
                                 .build())
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL_RAISE)
                                 .isTakenIfTrue(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING
-                                        .and(context -> context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.PICKAXES)
-                                                || context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.AXES)
-                                                || context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.SHOVELS)
-                                                || context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.HOES)
-                                                || context.dataContainer().getDriverValue(handItemDriver).is(ItemTags.SWORDS)
-                                        )
+                                        .and(context -> handPoseMatches.test(context, HandPose.TOOL))
                                 )
                                 .setTiming(Transition.INSTANT)
                                 .setPriority(40)
                                 .bindToOnTransitionTaken(updateRenderedItem)
+                                .bindToOnTransitionTaken(clearAttackMontages)
                                 .build())
                         .build());
 
@@ -308,10 +322,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 //                        .build());
 //    }
 
-    public static final ResourceLocation HAND_TOOL_MINE_SWING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_swing_v2");
-    public static final ResourceLocation HAND_TOOL_MINE_IMPACT = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_impact");
-    public static final ResourceLocation HAND_TOOL_MINE_FINISH = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_finish_v2");
-    public static final ResourceLocation HAND_TOOL_ATTACK_PICKAXE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_attack_pickaxe");
+    public static final ResourceLocation HAND_TOOL_MINE_SWING = makeAnimationSequenceResourceLocation("hand_tool_mine_swing_v2");
+    public static final ResourceLocation HAND_TOOL_MINE_IMPACT = makeAnimationSequenceResourceLocation("hand_tool_mine_impact");
+    public static final ResourceLocation HAND_TOOL_MINE_FINISH = makeAnimationSequenceResourceLocation("hand_tool_mine_finish_v2");
+    public static final ResourceLocation HAND_TOOL_ATTACK_PICKAXE = makeAnimationSequenceResourceLocation("hand_tool_attack_pickaxe");
 
 
     public PoseFunction<LocalSpacePose> handToolPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
@@ -329,7 +343,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                             SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
                             Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)
                     ),
-                    "attack"
+                    ATTACK_SLOT
             );
             case OFF_HAND -> SequenceEvaluatorFunction.of(HAND_TOOL_POSE);
         };
@@ -394,13 +408,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         SOFT_LAND
     }
 
-    public static final ResourceLocation GROUND_MOVEMENT_POSE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_pose");
-    public static final ResourceLocation GROUND_MOVEMENT_IDLE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_idle");
-    public static final ResourceLocation GROUND_MOVEMENT_WALKING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_walking");
-    public static final ResourceLocation GROUND_MOVEMENT_WALK_TO_STOP = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_walk_to_stop");
-    public static final ResourceLocation GROUND_MOVEMENT_JUMP = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_jump");
-    public static final ResourceLocation GROUND_MOVEMENT_FALLING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_falling");
-    public static final ResourceLocation GROUND_MOVEMENT_LAND = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "ground_movement_land");
+    public static final ResourceLocation GROUND_MOVEMENT_POSE = makeAnimationSequenceResourceLocation("ground_movement_pose");
+    public static final ResourceLocation GROUND_MOVEMENT_IDLE = makeAnimationSequenceResourceLocation("ground_movement_idle");
+    public static final ResourceLocation GROUND_MOVEMENT_WALKING = makeAnimationSequenceResourceLocation("ground_movement_walking");
+    public static final ResourceLocation GROUND_MOVEMENT_WALK_TO_STOP = makeAnimationSequenceResourceLocation("ground_movement_walk_to_stop");
+    public static final ResourceLocation GROUND_MOVEMENT_JUMP = makeAnimationSequenceResourceLocation("ground_movement_jump");
+    public static final ResourceLocation GROUND_MOVEMENT_FALLING = makeAnimationSequenceResourceLocation("ground_movement_falling");
+    public static final ResourceLocation GROUND_MOVEMENT_LAND = makeAnimationSequenceResourceLocation("ground_movement_land");
 
     public PoseFunction<LocalSpacePose> constructAdditiveGroundMovementPoseFunction(CachedPoseContainer cachedPoseContainer) {
 
@@ -546,8 +560,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         );
     }
 
-
-
+    private static final List<TagKey<Item>> TOOL_ITEM_TAGS = List.of(
+            ItemTags.PICKAXES,
+            ItemTags.AXES,
+            ItemTags.SHOVELS,
+            ItemTags.HOES,
+            ItemTags.SWORDS
+    );
 
     public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector3f(0.5f, 0.6f, 1f, Vector3f::new, false));
     public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_damping", () -> SpringDriver.ofVector3f(LocomotionMain.CONFIG.data().firstPersonPlayer.cameraRotationStiffnessFactor, LocomotionMain.CONFIG.data().firstPersonPlayer.cameraRotationDampingFactor, 1f, Vector3f::new, true));
@@ -570,11 +589,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Boolean>> IS_MINING_IMPACTING = DriverKey.of("is_mining_impacting", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<TriggerDriver> IS_ATTACKING = DriverKey.of("is_attacking", TriggerDriver::of);
 
+    public static final String ATTACK_SLOT = "attack";
+
     public static final MontageConfiguration HAND_TOOL_ATTACK_PICKAXE_MONTAGE = MontageConfiguration.builder("hand_tool_attack_pickaxe_montage", HAND_TOOL_ATTACK_PICKAXE)
-            .playsInSlot("attack")
+            .playsInSlot(ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_IN_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
+            .makeAdditive(driverContainer -> HAND_TOOL_POSE)
             .build();
 
     @Override
@@ -637,5 +659,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(MOVEMENT_DIRECTION_OFFSET).setValue(movementDirection);
         driverContainer.getDriver(CAMERA_ROTATION_DAMPING).setValue(new Vector3f(dataReference.getXRot(), dataReference.getYRot(), dataReference.getYRot()).mul(Mth.DEG_TO_RAD));
 
+    }
+
+    private static ResourceLocation makeAnimationSequenceResourceLocation(String path) {
+        return ResourceLocation.fromNamespaceAndPath(LocomotionMain.MOD_ID, "sequences/entity/player/first_person/".concat(path).concat(".json"));
     }
 }

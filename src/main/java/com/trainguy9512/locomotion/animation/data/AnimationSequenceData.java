@@ -14,8 +14,6 @@ public class AnimationSequenceData {
 
     public static AnimationSequenceData INSTANCE = new AnimationSequenceData();
 
-    public static String FIRST_PERSON_PLAYER_PATH = "sequences/entity/player/first_person/";
-
     //TODO: Set this as a class, (2025 update: ???)
 
     private final HashMap<ResourceLocation, AnimationSequence> animationSequences;
@@ -34,14 +32,6 @@ public class AnimationSequenceData {
         } else {
             throw new IllegalArgumentException("Tried to access animation sequence from resource location " + resourceLocation + ", but it was not found in the loaded data.");
         }
-    }
-
-    public static ResourceLocation getNativeResourceLocation(String path){
-        return getNativeResourceLocation(LocomotionMain.MOD_ID, path);
-    }
-
-    public static ResourceLocation getNativeResourceLocation(String path, String name){
-        return ResourceLocation.fromNamespaceAndPath(LocomotionMain.MOD_ID, path.concat(name).concat(".json"));
     }
 
     public AnimationSequence getOrThrow(String namespace, String path){
