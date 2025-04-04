@@ -7,7 +7,7 @@ plugins {
 
 val minecraft = stonecutter.current.version
 
-version = "${prop("mod.version")}+$minecraft"
+version = "${prop("mod.version")}+$minecraft-playtesting"
 base {
 	archivesName.set("${prop("mod.id")}-common")
 }

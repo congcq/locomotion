@@ -12,7 +12,7 @@ val common: Project = requireNotNull(stonecutter.node.sibling("")) {
     "No common project for $project"
 }.project
 
-version = "${prop("mod.version")}+$minecraft"
+version = "${prop("mod.version")}+$minecraft-playtesting"
 base {
     archivesName.set("${prop("mod.id")}-$loader")
 }

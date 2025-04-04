@@ -29,6 +29,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -167,8 +168,17 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
         };
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedHandItemDriver).setValue(evaluationState.dataContainer().getDriverValue(handItemDriver));
-        Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> (interactionHand == InteractionHand.MAIN_HAND && context.dataContainer().getDriver(HOTBAR_SLOT).hasValueChanged())
-                || context.dataContainer().getDriverValue(handItemDriver).getItem() != context.dataContainer().getDriverValue(renderedHandItemDriver).getItem();
+        Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> {
+            if (interactionHand == InteractionHand.MAIN_HAND) {
+                if (context.dataContainer().getDriver(HOTBAR_SLOT).hasValueChanged()) {
+                    if (!context.dataContainer().getDriverValue(handItemDriver).isEmpty() && !context.dataContainer().getDriverValue(renderedHandItemDriver).isEmpty()) {
+                        // If this hand pose function is the main hand item, and the selected hot bar slot has changed, and the old and new items are not empty, play the item switch animation
+                        return true;
+                    }
+                }
+            }
+            return context.dataContainer().getDriverValue(handItemDriver).getItem() != context.dataContainer().getDriverValue(renderedHandItemDriver).getItem();
+        };
 
         StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER)
                 .addState(State.builder(HandPoseStates.TOOL, this.handToolPoseFunction(cachedPoseContainer, interactionHand))
@@ -418,9 +428,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetUponEntry(false)
                         // Begin walking if the player is moving horizontally
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
-                                .isTakenIfTrue(
-                                        walkingCondition
-                                        .and(StateTransition.CURRENT_TRANSITION_FINISHED))
+                                .isTakenIfTrue(walkingCondition)
                                 .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_OUT))
                                 .build())
                         .build())
@@ -443,6 +451,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
+                                .build())
+                        .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
+                                .isTakenIfTrue(walkingCondition.and(StateTransition.CURRENT_TRANSITION_FINISHED))
                                 .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
                                 .build())
                         .build())
@@ -571,10 +583,15 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(MODIFIED_WALK_SPEED).setValue(dataReference.walkAnimation.speed());
         driverContainer.getDriver(HORIZONTAL_MOVEMENT_SPEED).setValue(new Vector3f((float) (dataReference.getX() - dataReference.xo), 0.0f, (float) (dataReference.getZ() - dataReference.zo)).length());
 
-        driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().getSelectedSlot());
+//        LocomotionMain.LOGGER.info(dataReference.getMainHandItem().getItem());
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
         driverContainer.getDriver(IS_MINING_IMPACTING).setValue(false);
+
+        //? if >= 1.21.5 {
+        driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().getSelectedSlot());
+        //?} else
+        /*driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().selected);*/
 
         if (driverContainer.getDriver(IS_ATTACKING).getCurrentValue()) {
             montageManager.playMontage(HAND_TOOL_ATTACK_PICKAXE_MONTAGE, driverContainer);

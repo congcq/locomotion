@@ -79,8 +79,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
                             boolean leftHanded = abstractClientPlayer.getMainArm() == HumanoidArm.LEFT;
 
-                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, poseStack, rightItemPose, buffer, combinedLight);
-                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_LEFT_HAND, poseStack, leftItemPose, buffer, combinedLight);
+                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, poseStack, rightItemPose, buffer, combinedLight, HumanoidArm.RIGHT);
+                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_LEFT_HAND, poseStack, leftItemPose, buffer, combinedLight, HumanoidArm.LEFT);
 
 
                             //this.renderItemInHand(abstractClientPlayer, ItemStack.EMPTY, poseStack, HumanoidArm.LEFT, animationPose, bufferSource, i);
@@ -116,19 +116,19 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             PoseStack poseStack,
             JointChannel jointChannel,
             MultiBufferSource buffer,
-            int combinedLight)
+            int combinedLight,
+            HumanoidArm side
+    )
     {
         if (!itemStack.isEmpty()) {
             poseStack.pushPose();
             jointChannel.transformPoseStack(poseStack, 16f);
 
-            //TODO: this code needs to be replaced with proper joint transforms
-            //poseStack.mulPose(Axis.XP.rotationDegrees(-90.0F));
-            //poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
-            //poseStack.translate((isLeftHand ? -0.5F : 0.5F) / 16.0F, 2F/16F, -10F/16F);
-
-
+            //? if >= 1.21.5 {
             this.itemRenderer.renderStatic(entity, itemStack, displayContext, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());
+            //?} else
+            /*this.itemRenderer.renderStatic(entity, itemStack, displayContext, side == HumanoidArm.LEFT, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());*/
+
             poseStack.popPose();
         }
     }
