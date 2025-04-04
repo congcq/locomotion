@@ -301,9 +301,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 //                        .build());
 //    }
 
-    public static final ResourceLocation HAND_TOOL_MINE_SWING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_swing");
+    public static final ResourceLocation HAND_TOOL_MINE_SWING = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_swing_v2");
     public static final ResourceLocation HAND_TOOL_MINE_IMPACT = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_impact");
-    public static final ResourceLocation HAND_TOOL_MINE_FINISH = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_finish");
+    public static final ResourceLocation HAND_TOOL_MINE_FINISH = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_mine_finish_v2");
     public static final ResourceLocation HAND_TOOL_ATTACK_PICKAXE = AnimationSequenceData.getNativeResourceLocation(AnimationSequenceData.FIRST_PERSON_PLAYER_PATH, "hand_tool_attack_pickaxe");
 
 
@@ -314,11 +314,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                             cachedPoseContainer,
                             SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
                             SequencePlayerFunction.builder(HAND_TOOL_MINE_SWING)
+                                    .looping(true)
+                                    .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(12))
                                     .setPlayRate(evaluationState -> evaluationState.dataContainer().getDriverValue(MINING_SPEED_PLAY_RATE))
                                     .build(),
                             SequencePlayerFunction.builder(HAND_TOOL_MINE_IMPACT).build(),
                             SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
-                            Transition.of(TimeSpan.of60FramesPerSecond(20), Easing.SINE_OUT)
+                            Transition.of(TimeSpan.of60FramesPerSecond(8), Easing.SINE_OUT)
                     ),
                     "attack"
             );
@@ -352,20 +354,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .build())
                 .addState(State.builder(MiningStates.SWING, swingPoseFunction)
                         .resetUponEntry(true)
-                        .addOutboundTransition(StateTransition.builder(MiningStates.IMPACT)
-                                .isTakenIfMostRelevantAnimationPlayerFinishing(0)
-                                .setTiming(Transition.INSTANT)
-                                .bindToOnTransitionTaken(evaluationState -> evaluationState.dataContainer().getDriver(IS_MINING_IMPACTING).setValue(true))
-                                .build())
-                        .build())
-                .addState(State.builder(MiningStates.IMPACT, impactPoseFunction)
-                        .resetUponEntry(true)
-                        .addOutboundTransition(StateTransition.builder(MiningStates.SWING)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
-                                .setTiming(Transition.SINGLE_TICK)
-                                .build())
                         .addOutboundTransition(StateTransition.builder(MiningStates.FINISH)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING).negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
+                                .isTakenIfTrue(
+                                        StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING.and(StateTransition.booleanDriverPredicate(IS_MINING).negate())
+                                )
                                 .setTiming(Transition.SINGLE_TICK)
                                 .build())
                         .build())
@@ -598,7 +590,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             driverContainer.getDriver(IS_ATTACKING).setValue(false);
         }
 
-
+        float baseMiningPlayRate = 0.75f;
+        float miningPlayRateGradient = 0.05f;
         ItemStack item = driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM);
         float miningSpeed = 2f;
         if (item.is(ItemTags.PICKAXES)) {
@@ -613,9 +606,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         if (item.is(ItemTags.HOES)) {
             miningSpeed = item.getDestroySpeed(Blocks.HAY_BLOCK.defaultBlockState());
         }
-        miningSpeed -= 2f;
-        miningSpeed *= 0.075f;
-        miningSpeed += 1f;
+        miningSpeed = (miningSpeed - 2f) * miningPlayRateGradient + baseMiningPlayRate;
         driverContainer.getDriver(MINING_SPEED_PLAY_RATE).setValue(miningSpeed);
 
 
