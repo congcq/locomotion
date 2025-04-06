@@ -131,6 +131,14 @@ public class VariableDriver<D> implements Driver<D> {
     }
 
     /**
+     * Creates a integer driver that will be not be interpolated between ticks.
+     * @param defaultValue      Default value set from the start and set upon resetting the driver.
+     */
+    public static VariableDriver<Integer> ofInteger(Supplier<Integer> defaultValue) {
+        return VariableDriver.ofConstant(defaultValue);
+    }
+
+    /**
      * Creates a vector driver that will be linearly interpolated between ticks.
      * @param defaultValue      Default value set from the start and set upon resetting the driver.
      */

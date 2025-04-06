@@ -38,7 +38,6 @@ import org.joml.Vector3f;
 
 import java.util.List;
 import java.util.Set;
-import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -346,7 +345,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             PoseFunction<LocalSpacePose> finishPoseFunction,
             Transition idleToMiningTiming
     ) {
-
         return StateMachineFunction.builder(evaluationState -> MiningStates.IDLE)
                 .resetUponRelevant(true)
                 .addState(State.builder(MiningStates.IDLE, idlePoseFunction)
@@ -560,8 +558,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public static final DriverKey<VariableDriver<Boolean>> IS_MINING = DriverKey.of("is_mining", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Float>> MINING_SPEED_PLAY_RATE = DriverKey.of("mining_speed_play_rate", () -> VariableDriver.ofFloat(() -> 1f));
-    public static final DriverKey<VariableDriver<Boolean>> IS_MINING_IMPACTING = DriverKey.of("is_mining_impacting", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<TriggerDriver> IS_ATTACKING = DriverKey.of("is_attacking", TriggerDriver::of);
+    public static final DriverKey<VariableDriver<Integer>> REMAINING_USE_TIME = DriverKey.of("remaining_use_time", () -> VariableDriver.ofInteger(() -> 0));
 
     public static final String ATTACK_SLOT = "attack";
 
@@ -582,14 +580,16 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 //        LocomotionMain.LOGGER.info(dataReference.getMainHandItem().getItem());
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
-        driverContainer.getDriver(IS_MINING_IMPACTING).setValue(false);
+
 
         //? if >= 1.21.5 {
         driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().getSelectedSlot());
         //?} else
         /*driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().selected);*/
 
-        driverContainer.getDriver(IS_ATTACKING).ifTriggered(() -> montageManager.playMontage(HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage, driverContainer));
+        driverContainer.getDriver(IS_ATTACKING).consumeTrigger(() -> montageManager.playMontage(HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage, driverContainer));
+        driverContainer.getDriver(REMAINING_USE_TIME).setValue(dataReference.getUseItemRemainingTicks());
+
 
         float baseMiningPlayRate = 0.75f;
         float miningPlayRateGradient = 0.05f;

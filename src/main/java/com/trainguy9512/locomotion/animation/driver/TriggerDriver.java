@@ -19,9 +19,14 @@ public class TriggerDriver implements Driver<Boolean> {
         this.triggered = true;
     }
 
-    public void ifTriggered(Runnable runnable) {
+    /**
+     * Runs a function if the driver has been triggered, and then resets the driver.
+     * @param runnable          Function to run if triggered.
+     */
+    public void consumeTrigger(Runnable runnable) {
         if (this.triggered) {
             runnable.run();
+            this.triggered = false;
         }
     }
 
@@ -42,7 +47,7 @@ public class TriggerDriver implements Driver<Boolean> {
 
     @Override
     public void postTick() {
-        this.triggered = false;
+        //this.triggered = false;
     }
 
     @Override
