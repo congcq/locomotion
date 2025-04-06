@@ -24,7 +24,7 @@ public record StateAlias<S extends Enum<S>>(Set<S> originStates, List<StateTrans
         private final List<StateTransition<S>> outboundTransitions;
 
         private Builder(Set<S> originStates) {
-            this.originStates = originStates;
+            this.originStates = new HashSet<>(originStates);
             this.outboundTransitions = new ArrayList<>();
         }
 

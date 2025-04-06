@@ -152,6 +152,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             this.attackMontage = attackMontage;
         }
 
+        private static final List<TagKey<Item>> TOOL_ITEM_TAGS = List.of(
+                ItemTags.PICKAXES,
+                ItemTags.AXES,
+                ItemTags.SHOVELS,
+                ItemTags.HOES,
+                ItemTags.SWORDS
+        );
+
         private static HandPose fromItem(ItemStack itemStack) {
             for (TagKey<Item> tag : TOOL_ITEM_TAGS) {
                 if (itemStack.is(tag)) {
@@ -181,129 +189,51 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
-        DriverKey<VariableDriver<ItemStack>> handItemDriver = switch (interactionHand) {
-            case MAIN_HAND -> MAIN_HAND_ITEM;
-            case OFF_HAND -> OFF_HAND_ITEM;
-        };
-        DriverKey<VariableDriver<ItemStack>> renderedHandItemDriver = switch (interactionHand) {
-            case MAIN_HAND -> RENDERED_MAIN_HAND_ITEM;
-            case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
-        };
+        StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER);
+        StateAlias.Builder<HandPoseStates> stateAliasBuilder = StateAlias.builder(Set.of(HandPoseStates.EMPTY_LOWER));
 
-
-        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedHandItemDriver).setValue(evaluationState.dataContainer().getDriverValue(handItemDriver));
-        Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(ATTACK_SLOT);
-        BiPredicate<StateTransition.TransitionContext, HandPose> handPoseMatches = (context, handPose) -> handPose == HandPose.fromItem(context.dataContainer().getDriverValue(handItemDriver));
-        Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> {
-            if (interactionHand == InteractionHand.MAIN_HAND) {
-                if (context.dataContainer().getDriver(HOTBAR_SLOT).hasValueChanged()) {
-                    if (!context.dataContainer().getDriverValue(handItemDriver).isEmpty() && !context.dataContainer().getDriverValue(renderedHandItemDriver).isEmpty()) {
-                        // If this hand pose function is the main hand item, and the selected hot bar slot has changed, and the old and new items are not empty, play the item switch animation
-                        return true;
-                    }
+        this.addStatesForHandPose(
+                handPoseStateMachineBuilder,
+                stateAliasBuilder,
+                interactionHand,
+                HandPose.TOOL,
+                this.handToolPoseFunction(cachedPoseContainer, interactionHand),
+                SequencePlayerFunction.builder(HAND_TOOL_LOWER).build(),
+                SequencePlayerFunction.builder(HAND_TOOL_RAISE).build(),
+                Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT),
+                Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT)
+        );
+        this.addStatesForHandPose(
+                handPoseStateMachineBuilder,
+                stateAliasBuilder,
+                interactionHand,
+                HandPose.EMPTY,
+                switch (interactionHand) {
+                    case MAIN_HAND -> MontageSlotFunction.of(SequenceEvaluatorFunction.of(HAND_EMPTY_POSE), ATTACK_SLOT);
+                    case OFF_HAND -> SequenceEvaluatorFunction.of(HAND_LOWERED_POSE);
+                },
+                switch (interactionHand) {
+                    case MAIN_HAND -> SequencePlayerFunction.builder(HAND_EMPTY_LOWER).build();
+                    case OFF_HAND -> SequencePlayerFunction.builder(HAND_LOWERED_POSE).build();
+                },
+                switch (interactionHand) {
+                    case MAIN_HAND -> SequencePlayerFunction.builder(HAND_EMPTY_RAISE).build();
+                    case OFF_HAND -> SequencePlayerFunction.builder(HAND_LOWERED_POSE).build();
+                },
+                switch (interactionHand) {
+                    case MAIN_HAND -> Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT);
+                    case OFF_HAND -> Transition.INSTANT;
+                },
+                switch (interactionHand) {
+                    case MAIN_HAND -> Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT);
+                    case OFF_HAND -> Transition.INSTANT;
                 }
-            }
-            return context.dataContainer().getDriverValue(handItemDriver).getItem() != context.dataContainer().getDriverValue(renderedHandItemDriver).getItem();
-        };
+        );
+        handPoseStateMachineBuilder.addStateAlias(stateAliasBuilder.build());
 
-        StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER)
-                .addState(State.builder(HandPoseStates.TOOL, this.handToolPoseFunction(cachedPoseContainer, interactionHand))
-                        .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL_LOWER)
-                                .isTakenIfTrue(switchHandsCondition)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
-                                .build())
-                        .build())
-                .addState(State.builder(HandPoseStates.TOOL_RAISE, SequencePlayerFunction.builder(HAND_TOOL_RAISE).build())
-                        .resetUponEntry(true)
-                        .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL)
-                                .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
-                                .build())
-                        .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL)
-                                .isTakenIfTrue(
-                                        StateTransition.booleanDriverPredicate(IS_MINING)
-                                                .or(StateTransition.booleanDriverPredicate(IS_ATTACKING)))
-                                .setTiming(Transition.of(TimeSpan.ofTicks(4), Easing.SINE_IN_OUT))
-                                .build())
-                        .build())
-                .addState(State.builder(HandPoseStates.TOOL_LOWER, SequencePlayerFunction.builder(HAND_TOOL_LOWER).build())
-                        .resetUponEntry(true)
-                        .build())
-                .addStateAlias(StateAlias.builder(Set.of(
-                        HandPoseStates.EMPTY_LOWER,
-                        HandPoseStates.TOOL_LOWER
-                ))
-                        .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY_RAISE)
-                                .isTakenIfTrue(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING)
-                                .setTiming(Transition.INSTANT)
-                                .setPriority(30)
-                                .bindToOnTransitionTaken(updateRenderedItem)
-                                .bindToOnTransitionTaken(clearAttackMontages)
-                                .build())
-                        .addOutboundTransition(StateTransition.builder(HandPoseStates.TOOL_RAISE)
-                                .isTakenIfTrue(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING
-                                        .and(context -> handPoseMatches.test(context, HandPose.TOOL))
-                                )
-                                .setTiming(Transition.INSTANT)
-                                .setPriority(40)
-                                .bindToOnTransitionTaken(updateRenderedItem)
-                                .bindToOnTransitionTaken(clearAttackMontages)
-                                .build())
-                        .build());
-
-        switch (interactionHand) {
-            case MAIN_HAND ->
-                    handPoseStateMachineBuilder
-                            .addState(State.builder(HandPoseStates.EMPTY, MontageSlotFunction.of(
-                                            SequenceEvaluatorFunction.of(HAND_EMPTY_POSE),
-                                            ATTACK_SLOT
-                                    ))
-                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY_LOWER)
-                                            .isTakenIfTrue(switchHandsCondition)
-                                            .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
-                                            .build())
-                                    .build())
-                            .addState(State.builder(HandPoseStates.EMPTY_RAISE, SequencePlayerFunction.builder(HAND_EMPTY_RAISE).build())
-                                    .resetUponEntry(true)
-                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
-                                            .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
-                                            .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
-                                            .build())
-                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
-                                            .isTakenIfTrue(
-                                                    StateTransition.booleanDriverPredicate(IS_MINING)
-                                                            .or(StateTransition.booleanDriverPredicate(IS_ATTACKING)))
-                                            .setTiming(Transition.of(TimeSpan.ofTicks(4), Easing.SINE_IN_OUT))
-                                            .build())
-                                    .build())
-                            .addState(State.builder(HandPoseStates.EMPTY_LOWER, SequencePlayerFunction.builder(HAND_EMPTY_LOWER).build())
-                                    .resetUponEntry(true)
-                                    .build());
-            case OFF_HAND ->
-                    handPoseStateMachineBuilder
-                            .addState(State.builder(HandPoseStates.EMPTY, SequenceEvaluatorFunction.of(HAND_LOWERED_POSE))
-                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY_LOWER)
-                                            .isTakenIfTrue(switchHandsCondition)
-                                            .setTiming(Transition.INSTANT)
-                                            .build())
-                                    .build())
-                            .addState(State.builder(HandPoseStates.EMPTY_RAISE, SequencePlayerFunction.builder(HAND_LOWERED_POSE).build())
-                                    .resetUponEntry(true)
-                                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
-                                            .isTakenIfMostRelevantAnimationPlayerFinishing(0f)
-                                            .setTiming(Transition.INSTANT)
-                                            .build())
-                                    .build())
-                            .addState(State.builder(HandPoseStates.EMPTY_LOWER, SequencePlayerFunction.builder(HAND_LOWERED_POSE).build())
-                                    .resetUponEntry(true)
-                                    .build());
-
-        }
 
         return handPoseStateMachineBuilder.build();
     }
-
-    Predicate<StateTransition.TransitionContext> SKIP_MAIN_HAND_RAISE_IF = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(IS_ATTACKING));
 
     public void addStatesForHandPose(
             StateMachineFunction.Builder<HandPoseStates> stateMachineBuilder,
@@ -314,9 +244,32 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             PoseFunction<LocalSpacePose> loweringPoseFunction,
             PoseFunction<LocalSpacePose> raisingPoseFunction,
             Transition poseToLoweringTiming,
-            Transition raisingToPoseTiming,
-            Predicate<StateTransition.TransitionContext> switchHandsCondition
+            Transition raisingToPoseTiming
     ) {
+        DriverKey<VariableDriver<ItemStack>> itemDriver = switch (interactionHand) {
+            case MAIN_HAND -> MAIN_HAND_ITEM;
+            case OFF_HAND -> OFF_HAND_ITEM;
+        };
+        DriverKey<VariableDriver<ItemStack>> renderedItemDriver = switch (interactionHand) {
+            case MAIN_HAND -> RENDERED_MAIN_HAND_ITEM;
+            case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
+        };
+        Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> {
+            if (interactionHand == InteractionHand.MAIN_HAND) {
+                if (context.dataContainer().getDriver(HOTBAR_SLOT).hasValueChanged()) {
+                    if (!context.dataContainer().getDriverValue(itemDriver).isEmpty() && !context.dataContainer().getDriverValue(renderedItemDriver).isEmpty()) {
+                        // If this hand pose function is the main hand item, and the selected hot bar slot has changed, and the old and new items are not empty, play the item switch animation
+                        return true;
+                    }
+                }
+            }
+            return context.dataContainer().getDriverValue(itemDriver).getItem() != context.dataContainer().getDriverValue(renderedItemDriver).getItem();
+        };
+        Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(IS_ATTACKING));
+
+        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedItemDriver).setValue(evaluationState.dataContainer().getDriverValue(itemDriver));
+        Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(ATTACK_SLOT);
+
         State.Builder<HandPoseStates> raisingStateBuilder = State.builder(handPose.raisingState, raisingPoseFunction)
                 .resetUponEntry(true)
                 .addOutboundTransition(StateTransition.builder(handPose.poseState)
@@ -324,15 +277,15 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .setTiming(raisingToPoseTiming)
                         .build());
         if (interactionHand == InteractionHand.MAIN_HAND) {
-            raisingStateBuilder
-                    .addOutboundTransition(StateTransition.builder(handPose.poseState)
-                            .isTakenIfTrue(SKIP_MAIN_HAND_RAISE_IF)
-                            .setTiming(Transition.of(TimeSpan.ofTicks(4), Easing.SINE_OUT))
-                            .build()
+            raisingStateBuilder.addOutboundTransition(StateTransition.builder(handPose.poseState)
+                    .isTakenIfTrue(skipRaiseAnimationCondition)
+                    .setTiming(Transition.of(TimeSpan.ofTicks(4), Easing.SINE_OUT))
+                    .build()
             );
         }
         stateMachineBuilder
                 .addState(State.builder(handPose.poseState, posePoseFunction)
+                        .resetUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(handPose.loweringState)
                                 .isTakenIfTrue(switchHandsCondition)
                                 .setTiming(poseToLoweringTiming)
@@ -346,8 +299,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .addOriginatingState(handPose.loweringState)
                 .addOutboundTransition(StateTransition.builder(handPose.raisingState)
                         .setTiming(Transition.INSTANT)
-                        .isTakenIfTrue(context -> HandPose.fromItem(context.dataContainer()
-                                .getDriverValue(interactionHand == InteractionHand.MAIN_HAND ? MAIN_HAND_ITEM : OFF_HAND_ITEM)) == handPose)
+                        .isTakenIfTrue(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING
+                                .and(context -> HandPose.fromItem(context.dataContainer().getDriverValue(itemDriver)) == handPose)
+                        )
                         .bindToOnTransitionTaken(updateRenderedItem)
                         .bindToOnTransitionTaken(clearAttackMontages)
                         .build());
@@ -368,9 +322,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                             SequencePlayerFunction.builder(HAND_TOOL_MINE_SWING)
                                     .looping(true)
                                     .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(16))
-                                    .setPlayRate(evaluationState -> evaluationState.dataContainer().getDriverValue(MINING_SPEED_PLAY_RATE))
+                                    .setPlayRate(evaluationState -> 1.15f)
                                     .build(),
-                            SequencePlayerFunction.builder(HAND_TOOL_MINE_IMPACT).build(),
                             SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
                             Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)
                     ),
@@ -383,7 +336,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public enum MiningStates {
         IDLE,
         SWING,
-        IMPACT,
         FINISH
     }
 
@@ -391,7 +343,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             CachedPoseContainer cachedPoseContainer,
             PoseFunction<LocalSpacePose> idlePoseFunction,
             PoseFunction<LocalSpacePose> swingPoseFunction,
-            PoseFunction<LocalSpacePose> impactPoseFunction,
             PoseFunction<LocalSpacePose> finishPoseFunction,
             Transition idleToMiningTiming
     ) {
@@ -590,14 +541,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0))
         );
     }
-
-    private static final List<TagKey<Item>> TOOL_ITEM_TAGS = List.of(
-            ItemTags.PICKAXES,
-            ItemTags.AXES,
-            ItemTags.SHOVELS,
-            ItemTags.HOES,
-            ItemTags.SWORDS
-    );
 
     public static final DriverKey<SpringDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> SpringDriver.ofVector3f(0.5f, 0.6f, 1f, Vector3f::new, false));
     public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_damping", () -> SpringDriver.ofVector3f(LocomotionMain.CONFIG.data().firstPersonPlayer.cameraRotationStiffnessFactor, LocomotionMain.CONFIG.data().firstPersonPlayer.cameraRotationDampingFactor, 1f, Vector3f::new, true));

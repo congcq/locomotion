@@ -137,16 +137,11 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
 
         //LocomotionMain.LOGGER.info(this.stateBlendLayerStack);
-        /*
-        if (this.activeStates.getLast() instanceof FirstPersonPlayerJointAnimator.GroundMovementStates) {
-            LocomotionMain.LOGGER.info("{}\t{}\t{}\t{}\t{}",
-                    this.activeStates.getLast(),
-                    potentialStateTransition.isPresent(),
-                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.FALLING).weight.getPreviousValue(),
-                    this.states.get(FirstPersonPlayerJointAnimator.GroundMovementStates.FALLING).weight.getCurrentValue(),
-                    this.activeStates);
-        }
-         */
+//        if (this.stateBlendLayerStack.getLast().identifier instanceof FirstPersonPlayerJointAnimator.HandPoseStates) {
+//            LocomotionMain.LOGGER.info("{}",
+//                    this.stateBlendLayerStack.getLast().identifier);
+//        }
+
 
     }
 
