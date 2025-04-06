@@ -135,13 +135,19 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     }
 
     public enum HandPose {
-        EMPTY (HAND_EMPTY_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE),
-        TOOL (HAND_TOOL_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE);
+        EMPTY (HandPoseStates.EMPTY_RAISE, HandPoseStates.EMPTY_LOWER, HandPoseStates.EMPTY, HAND_EMPTY_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE),
+        TOOL (HandPoseStates.TOOL_RAISE, HandPoseStates.TOOL_LOWER, HandPoseStates.TOOL, HAND_TOOL_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE);
 
+        public final HandPoseStates raisingState;
+        public final HandPoseStates loweringState;
+        public final HandPoseStates poseState;
         public final ResourceLocation basePoseLocation;
         public final MontageConfiguration attackMontage;
 
-        HandPose(ResourceLocation basePoseLocation, MontageConfiguration attackMontage) {
+        HandPose(HandPoseStates raisingState, HandPoseStates loweringState, HandPoseStates poseState, ResourceLocation basePoseLocation, MontageConfiguration attackMontage) {
+            this.raisingState = raisingState;
+            this.loweringState = loweringState;
+            this.poseState = poseState;
             this.basePoseLocation = basePoseLocation;
             this.attackMontage = attackMontage;
         }
@@ -304,47 +310,46 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             StateAlias.Builder<HandPoseStates> fromLoweringAliasBuilder,
             InteractionHand interactionHand,
             HandPose handPose,
-            HandPoseStates poseState,
-            HandPoseStates loweringState,
-            HandPoseStates raisingState,
             PoseFunction<LocalSpacePose> posePoseFunction,
             PoseFunction<LocalSpacePose> loweringPoseFunction,
             PoseFunction<LocalSpacePose> raisingPoseFunction,
-            Predicate<StateTransition.TransitionContext> switchHandsCondition,
-            DriverKey<VariableDriver<ItemStack>> itemDriverKey
-            ) {
-        State.Builder<HandPoseStates> raisingStateBuilder = State.builder(raisingState, loweringPoseFunction)
+            Transition poseToLoweringTiming,
+            Transition raisingToPoseTiming,
+            Predicate<StateTransition.TransitionContext> switchHandsCondition
+    ) {
+        State.Builder<HandPoseStates> raisingStateBuilder = State.builder(handPose.raisingState, raisingPoseFunction)
                 .resetUponEntry(true)
-                .addOutboundTransition(StateTransition.builder(poseState)
+                .addOutboundTransition(StateTransition.builder(handPose.poseState)
                         .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
-                        .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
+                        .setTiming(raisingToPoseTiming)
                         .build());
         if (interactionHand == InteractionHand.MAIN_HAND) {
             raisingStateBuilder
-                    .addOutboundTransition(StateTransition.builder(poseState)
+                    .addOutboundTransition(StateTransition.builder(handPose.poseState)
                             .isTakenIfTrue(SKIP_MAIN_HAND_RAISE_IF)
                             .setTiming(Transition.of(TimeSpan.ofTicks(4), Easing.SINE_OUT))
                             .build()
             );
         }
         stateMachineBuilder
-                .addState(State.builder(poseState, posePoseFunction)
-                        .addOutboundTransition(StateTransition.builder(loweringState)
+                .addState(State.builder(handPose.poseState, posePoseFunction)
+                        .addOutboundTransition(StateTransition.builder(handPose.loweringState)
                                 .isTakenIfTrue(switchHandsCondition)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
+                                .setTiming(poseToLoweringTiming)
                                 .build())
                         .build())
-                .addState(State.builder(raisingState, loweringPoseFunction)
+                .addState(State.builder(handPose.loweringState, loweringPoseFunction)
                         .resetUponEntry(true)
-                        .addOutboundTransition(StateTransition.builder(poseState)
-                                .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
-                                .build())
                         .build())
                 .addState(raisingStateBuilder.build());
         fromLoweringAliasBuilder
-                .addOutboundTransition(StateTransition.builder(raisingState)
-                        .isTakenIfTrue(context -> HandPose.fromItem(context.dataContainer().getDriverValue(itemDriverKey)) == handPose)
+                .addOriginatingState(handPose.loweringState)
+                .addOutboundTransition(StateTransition.builder(handPose.raisingState)
+                        .setTiming(Transition.INSTANT)
+                        .isTakenIfTrue(context -> HandPose.fromItem(context.dataContainer()
+                                .getDriverValue(interactionHand == InteractionHand.MAIN_HAND ? MAIN_HAND_ITEM : OFF_HAND_ITEM)) == handPose)
+                        .bindToOnTransitionTaken(updateRenderedItem)
+                        .bindToOnTransitionTaken(clearAttackMontages)
                         .build());
     }
 
@@ -544,8 +549,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 GroundMovementStates.WALKING,
                                 GroundMovementStates.STOPPING,
                                 GroundMovementStates.LAND,
-                                GroundMovementStates.SOFT_LAND
-                        ))
+                                GroundMovementStates.SOFT_LAND)
+                        )
                         // Transition to the jumping animation if the player is jumping.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.JUMP)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_JUMPING)

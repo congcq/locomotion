@@ -11,9 +11,11 @@ public record StateAlias<S extends Enum<S>>(Set<S> originStates, List<StateTrans
 
     /**
      * Creates a new state alias builder.
+     *
+     * @param originStates      States that the alias' transitions can originate from.
      */
-    public static <S extends Enum<S>> Builder<S> builder() {
-        return new Builder<>();
+    public static <S extends Enum<S>> Builder<S> builder(Set<S> originStates) {
+        return new Builder<>(originStates);
     }
 
     public static class Builder<S extends Enum<S>> {
@@ -21,17 +23,26 @@ public record StateAlias<S extends Enum<S>>(Set<S> originStates, List<StateTrans
         private final Set<S> originStates;
         private final List<StateTransition<S>> outboundTransitions;
 
-        private Builder() {
-            this.originStates = new HashSet<>();
+        private Builder(Set<S> originStates) {
+            this.originStates = originStates;
             this.outboundTransitions = new ArrayList<>();
         }
 
         /**
-         * List of states that the alias' transitions can originate from.
+         * Adds a set of states that the alias' transitions can originate from.
          * @param states        State identifiers
          */
-        public Builder<S> canOriginateFromStates(S... states) {
-            this.originStates.addAll(Set.of(states));
+        public final Builder<S> addOriginatingStates(Set<S> states) {
+            this.originStates.addAll(states);
+            return this;
+        }
+
+        /**
+         * Adds a state that the alias' transitions can originate from.
+         * @param state         State identifier
+         */
+        public final Builder<S> addOriginatingState(S state) {
+            this.originStates.add(state);
             return this;
         }
 
