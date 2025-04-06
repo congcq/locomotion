@@ -3,6 +3,7 @@ package com.trainguy9512.locomotion.animation.pose.function.statemachine;
 import com.trainguy9512.locomotion.LocomotionMain;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -10,11 +11,9 @@ public record StateAlias<S extends Enum<S>>(Set<S> originStates, List<StateTrans
 
     /**
      * Creates a new state alias builder.
-     *
-     * @param originStates List of origin states.
      */
-    public static <S extends Enum<S>> Builder<S> builder(Set<S> originStates) {
-        return new Builder<>(originStates);
+    public static <S extends Enum<S>> Builder<S> builder() {
+        return new Builder<>();
     }
 
     public static class Builder<S extends Enum<S>> {
@@ -22,15 +21,24 @@ public record StateAlias<S extends Enum<S>>(Set<S> originStates, List<StateTrans
         private final Set<S> originStates;
         private final List<StateTransition<S>> outboundTransitions;
 
-        private Builder(Set<S> originStates) {
-            this.originStates = originStates;
+        private Builder() {
+            this.originStates = new HashSet<>();
             this.outboundTransitions = new ArrayList<>();
+        }
+
+        /**
+         * List of states that the alias' transitions can originate from.
+         * @param states        State identifiers
+         */
+        public Builder<S> canOriginateFromStates(S... states) {
+            this.originStates.addAll(Set.of(states));
+            return this;
         }
 
         /**
          * Assigns a potential outbound transitions to this state alias.
          *
-         * @param transition Outbound transitions.
+         * @param transition    Outbound transitions.
          */
         public Builder<S> addOutboundTransition(StateTransition<S> transition) {
             if (this.originStates.contains(transition.target())) {

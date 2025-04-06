@@ -297,41 +297,56 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         return handPoseStateMachineBuilder.build();
     }
 
-//    public void addStatesForHandPose(
-//            StateMachineFunction.Builder<HandPoseStates> stateMachineBuilder,
-//            StateAlias.Builder<HandPoseStates> fromLoweringAliasBuilder,
-//            HandPoseStates poseState,
-//            HandPoseStates loweringState,
-//            HandPoseStates raisingState,
-//            PoseFunction<LocalSpacePose> posePoseFunction,
-//            PoseFunction<LocalSpacePose> loweringPoseFunction,
-//            PoseFunction<LocalSpacePose> raisingPoseFunction,
-//            Predicate<StateTransition.TransitionContext> switchHandsCondition,
-//            Predicate<ItemStack> usePoseIfItemStackMatches,
-//            DriverKey<VariableDriver<ItemStack>> itemDriverKey
-//            ) {
-//        stateMachineBuilder
-//                .addState(State.builder(poseState, posePoseFunction)
-//                        .addOutboundTransition(StateTransition.builder(loweringState)
-//                                .isTakenIfTrue(switchHandsCondition)
-//                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
-//                                .build())
-//                        .build())
-//                .addState(State.builder(raisingState, loweringPoseFunction)
-//                        .resetUponEntry(true)
-//                        .addOutboundTransition(StateTransition.builder(poseState)
-//                                .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
-//                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
-//                                .build())
-//                        .build())
-//                .addState(State.builder(loweringState, raisingPoseFunction)
-//                        .resetUponEntry(true)
-//                        .build());
-//        fromLoweringAliasBuilder
-//                .addOutboundTransition(StateTransition.builder(raisingState)
-//                        .isTakenIfTrue(context -> usePoseIfItemStackMatches.test(context.dataContainer().getDriverValue(itemDriverKey)))
-//                        .build());
-//    }
+    Predicate<StateTransition.TransitionContext> SKIP_MAIN_HAND_RAISE_IF = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(IS_ATTACKING));
+
+    public void addStatesForHandPose(
+            StateMachineFunction.Builder<HandPoseStates> stateMachineBuilder,
+            StateAlias.Builder<HandPoseStates> fromLoweringAliasBuilder,
+            InteractionHand interactionHand,
+            HandPose handPose,
+            HandPoseStates poseState,
+            HandPoseStates loweringState,
+            HandPoseStates raisingState,
+            PoseFunction<LocalSpacePose> posePoseFunction,
+            PoseFunction<LocalSpacePose> loweringPoseFunction,
+            PoseFunction<LocalSpacePose> raisingPoseFunction,
+            Predicate<StateTransition.TransitionContext> switchHandsCondition,
+            DriverKey<VariableDriver<ItemStack>> itemDriverKey
+            ) {
+        State.Builder<HandPoseStates> raisingStateBuilder = State.builder(raisingState, loweringPoseFunction)
+                .resetUponEntry(true)
+                .addOutboundTransition(StateTransition.builder(poseState)
+                        .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
+                        .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
+                        .build());
+        if (interactionHand == InteractionHand.MAIN_HAND) {
+            raisingStateBuilder
+                    .addOutboundTransition(StateTransition.builder(poseState)
+                            .isTakenIfTrue(SKIP_MAIN_HAND_RAISE_IF)
+                            .setTiming(Transition.of(TimeSpan.ofTicks(4), Easing.SINE_OUT))
+                            .build()
+            );
+        }
+        stateMachineBuilder
+                .addState(State.builder(poseState, posePoseFunction)
+                        .addOutboundTransition(StateTransition.builder(loweringState)
+                                .isTakenIfTrue(switchHandsCondition)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT))
+                                .build())
+                        .build())
+                .addState(State.builder(raisingState, loweringPoseFunction)
+                        .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(poseState)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT))
+                                .build())
+                        .build())
+                .addState(raisingStateBuilder.build());
+        fromLoweringAliasBuilder
+                .addOutboundTransition(StateTransition.builder(raisingState)
+                        .isTakenIfTrue(context -> HandPose.fromItem(context.dataContainer().getDriverValue(itemDriverKey)) == handPose)
+                        .build());
+    }
 
     public static final ResourceLocation HAND_TOOL_MINE_SWING = makeAnimationSequenceResourceLocation("hand_tool_mine_swing_v2");
     public static final ResourceLocation HAND_TOOL_MINE_IMPACT = makeAnimationSequenceResourceLocation("hand_tool_mine_impact");
