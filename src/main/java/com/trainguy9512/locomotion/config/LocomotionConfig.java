@@ -70,19 +70,11 @@ public class LocomotionConfig {
 
         public final FirstPersonPlayer firstPersonPlayer = new FirstPersonPlayer();
 
-        public TestType type = TestType.ONE_TEST;
-
-        public enum TestType {
-            ONE_TEST,
-            TWO_TEST
-
-        }
-
         public static class FirstPersonPlayer {
             public boolean enableRenderer = true;
             public boolean enableCameraRotationDamping = true;
             public float cameraRotationStiffnessFactor = 0.3f;
-            public float cameraRotationDampingFactor = 0.7f;
+            public float cameraRotationDampingFactor = 0.65f;
         }
     }
 
