@@ -12,7 +12,6 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 public class MontageManager {
 
@@ -24,7 +23,7 @@ public class MontageManager {
 
     public void tick() {
         this.montageStack.forEach(MontageInstance::tick);
-        this.montageStack.removeIf(montageInstance -> montageInstance.weight.getPreviousValue() == 0 && montageInstance.weight.getCurrentValue() == 0);
+        this.montageStack.removeIf(montageInstance -> montageInstance.ticksElapsed.getPreviousValue() > montageInstance.tickLength + (1 - montageInstance.configuration.transitionOutCrossfadeWeight()) * montageInstance.configuration.transitionOut().duration().inTicks());
     }
 
     public static MontageManager of() {
@@ -85,7 +84,7 @@ public class MontageManager {
         LocalSpacePose slotPose = LocalSpacePose.of(basePose);
         for (MontageInstance montageInstance : this.montageStack) {
             if (montageInstance.configuration.slots().contains(slot)) {
-                slotPose = slotPose.interpolated(montageInstance.getPose(jointSkeleton, partialTicks), montageInstance.getInterpolatedWeight(partialTicks));
+                slotPose = slotPose.interpolated(montageInstance.getPose(jointSkeleton, partialTicks), montageInstance.getWeight(partialTicks));
             }
         }
         return slotPose;
@@ -94,7 +93,7 @@ public class MontageManager {
     public boolean areAnyMontagesInSlotFullyOverriding(String slot) {
         for (MontageInstance montageInstance : this.montageStack) {
             if (montageInstance.configuration.slots().contains(slot)) {
-                if (montageInstance.weight.getCurrentValue() == 1) {
+                if (montageInstance.getWeightIsFull(1)) {
                     return true;
                 }
             }
@@ -103,7 +102,6 @@ public class MontageManager {
     }
 
     private static class MontageInstance {
-        private final VariableDriver<Float> weight;
         private final VariableDriver<Float> ticksElapsed;
         private final MontageConfiguration configuration;
 
@@ -115,7 +113,6 @@ public class MontageManager {
         private LocalSpacePose additiveSubtractionPose;
 
         private MontageInstance(MontageConfiguration configuration, OnTickDriverContainer driverContainer) {
-            this.weight = VariableDriver.ofFloat(() -> 0f);
             this.ticksElapsed = VariableDriver.ofFloat(() -> configuration.startTimeOffset().inTicks());
             this.configuration = configuration;
 
@@ -138,18 +135,26 @@ public class MontageManager {
         private void tick() {
             this.ticksElapsed.pushCurrentToPrevious();
             this.ticksElapsed.modifyValue(currentValue -> currentValue + this.playRate);
-            this.weight.pushCurrentToPrevious();
-            this.weight.setValue(this.getWeight(this.ticksElapsed.getCurrentValue()));
         }
 
-        private float getWeight(float ticksElapsed) {
+        private boolean getWeightIsFull(float partialTicks) {
+            float interpolatedTimeElapsed = this.ticksElapsed.getValueInterpolated(partialTicks);
+            if (interpolatedTimeElapsed > this.configuration.startTimeOffset().inTicks() + this.configuration.transitionIn().duration().inTicks()) {
+                if (interpolatedTimeElapsed < this.tickLength - (this.configuration.transitionOut().duration().inTicks() * this.configuration.transitionOutCrossfadeWeight())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private float getWeightOLD(float ticksElapsed) {
             float offsetEndTransitionStartTime = this.tickLength - (this.configuration.transitionOut().duration().inTicks() * this.configuration.transitionOutCrossfadeWeight());
             float startTimeOffsetTicks = this.configuration.startTimeOffset().inTicks();
 
             if (ticksElapsed < this.configuration.transitionIn().duration().inTicks() + startTimeOffsetTicks) {
                 return (ticksElapsed - startTimeOffsetTicks) / this.configuration.transitionIn().duration().inTicks();
             } else if (ticksElapsed > offsetEndTransitionStartTime) {
-                return Math.max(1f - ((ticksElapsed - offsetEndTransitionStartTime) / this.configuration.transitionOut().duration().inTicks()), 0f);
+                return 1 - Math.max(1f - ((ticksElapsed - offsetEndTransitionStartTime) / this.configuration.transitionOut().duration().inTicks()), 0f);
             }
             return 1;
         }
@@ -187,17 +192,36 @@ public class MontageManager {
             return pose;
         }
 
-        private float getInterpolatedWeight(float partialTicks) {
-            float weight = this.weight.getValueInterpolated(partialTicks);
-            float startTimeOffsetTicks = this.configuration.startTimeOffset().inTicks();
-
-            if (weight == 1 || weight == 0) {
-                return weight;
-            } else if (this.ticksElapsed.getValueInterpolated(partialTicks) < this.configuration.transitionIn().duration().inTicks() + startTimeOffsetTicks) {
-                return this.configuration.transitionIn().applyEasement(weight);
-            } else {
-                return 1 - this.configuration.transitionOut().applyEasement(1 - weight);
+        private float getWeight(float partialTicks) {
+            if (this.getWeightIsFull(partialTicks)) {
+                return 1;
             }
+
+            float entranceTransitionEndTime = this.configuration.startTimeOffset().inTicks() + this.configuration.transitionIn().duration().inTicks();
+            float exitTransitionStartTime = this.tickLength - this.configuration.transitionOut().duration().inTicks() * this.configuration.transitionOutCrossfadeWeight();
+
+            boolean isInEntranceTransition = this.ticksElapsed.getValueInterpolated(partialTicks) < entranceTransitionEndTime;
+            boolean isInExitTransition = this.ticksElapsed.getValueInterpolated(partialTicks) > exitTransitionStartTime;
+
+            if (isInEntranceTransition) {
+                return this.configuration.transitionIn().applyEasement((this.ticksElapsed.getValueInterpolated(partialTicks) - this.configuration.startTimeOffset().inTicks()) / this.configuration.transitionIn().duration().inTicks());
+            } else if (isInExitTransition) {
+                return 1 - this.configuration.transitionOut().applyEasement(Math.min((this.ticksElapsed.getValueInterpolated(partialTicks) - exitTransitionStartTime) / this.configuration.transitionOut().duration().inTicks(), 1f));
+            } else {
+                return 1f;
+            }
+
+
+//            float weight = this.weight.getValueInterpolated(partialTicks);
+//            float startTimeOffsetTicks = this.configuration.startTimeOffset().inTicks();
+//
+//            if (weight == 1 || weight == 0) {
+//                return weight;
+//            } else if (this.ticksElapsed.getValueInterpolated(partialTicks) < this.configuration.transitionIn().duration().inTicks() + startTimeOffsetTicks) {
+//                return this.configuration.transitionIn().applyEasement(weight);
+//            } else {
+//                return 1 - this.configuration.transitionOut().applyEasement(1 - weight);
+//            }
         }
     }
 }

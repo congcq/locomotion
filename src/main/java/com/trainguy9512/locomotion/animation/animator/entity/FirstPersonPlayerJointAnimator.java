@@ -188,7 +188,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
-        StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER);
+        StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(
+                evaluationState -> HandPose.fromItem(evaluationState.dataContainer().getDriverValue(interactionHand == InteractionHand.MAIN_HAND ? RENDERED_MAIN_HAND_ITEM : RENDERED_OFF_HAND_ITEM)).poseState
+        );
+        handPoseStateMachineBuilder.resetUponRelevant(true);
         StateAlias.Builder<HandPoseStates> stateAliasBuilder = StateAlias.builder(Set.of(HandPoseStates.EMPTY_LOWER));
 
         this.addStatesForHandPose(
@@ -264,7 +267,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             }
             return context.dataContainer().getDriverValue(itemDriver).getItem() != context.dataContainer().getDriverValue(renderedItemDriver).getItem();
         };
-        Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(IS_ATTACKING));
+        Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(IS_ATTACKING)).or(StateTransition.booleanDriverPredicate(IS_USING));
 
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedItemDriver).setValue(evaluationState.dataContainer().getDriverValue(itemDriver));
         Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(ATTACK_SLOT);
@@ -566,14 +569,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final MontageConfiguration HAND_TOOL_ATTACK_PICKAXE_MONTAGE = MontageConfiguration.builder("hand_tool_attack_pickaxe_montage", HAND_TOOL_ATTACK_PICKAXE)
             .playsInSlot(ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
-            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_IN_OUT))
+            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
             .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)).basePoseLocation)
             .build();
     public static final MontageConfiguration HAND_TOOL_USE_MONTAGE = MontageConfiguration.builder("hand_tool_use_montage", HAND_TOOL_USE)
             .playsInSlot(ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
-            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(2), Easing.SINE_IN_OUT))
+            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(16), Easing.SINE_IN_OUT))
             .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)).basePoseLocation)
             .build();
@@ -594,8 +597,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         //?} else
         /*driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().selected);*/
 
-        driverContainer.getDriver(IS_ATTACKING).consumeTrigger(() -> montageManager.playMontage(HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage, driverContainer));
-        driverContainer.getDriver(IS_USING).consumeTrigger(() -> montageManager.playMontage(HAND_TOOL_USE_MONTAGE, driverContainer));
+        driverContainer.getDriver(IS_ATTACKING).runIfTriggered(() -> montageManager.playMontage(HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage, driverContainer));
+        driverContainer.getDriver(IS_USING).runIfTriggered(() -> montageManager.playMontage(HAND_TOOL_USE_MONTAGE, driverContainer));
 
 
         float baseMiningPlayRate = 0.75f;

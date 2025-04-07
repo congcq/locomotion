@@ -1,14 +1,20 @@
 package com.trainguy9512.locomotion.animation.driver;
 
+import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
+
+import java.util.function.Consumer;
+
 /**
  * Boolean driver that can be triggered to get a one-tick "pulse". When triggered, it will automatically be un-triggered after pose function evaluation.
  */
 public class TriggerDriver implements Driver<Boolean> {
 
     private boolean triggered;
+    private boolean triggerConsumed;
 
     private TriggerDriver() {
         this.triggered = false;
+        this.triggerConsumed = false;
     }
 
     public static TriggerDriver of() {
@@ -17,16 +23,17 @@ public class TriggerDriver implements Driver<Boolean> {
 
     public void trigger() {
         this.triggered = true;
+        this.triggerConsumed = false;
     }
 
     /**
-     * Runs a function if the driver has been triggered, and then resets the driver.
+     * Runs a function if the driver has been triggered, and then resets the driver after pose function evaluation.
      * @param runnable          Function to run if triggered.
      */
-    public void consumeTrigger(Runnable runnable) {
-        if (this.triggered) {
+    public void runIfTriggered(Runnable runnable) {
+        if (this.triggered && !this.triggerConsumed) {
             runnable.run();
-            this.triggered = false;
+            this.triggerConsumed = true;
         }
     }
 
@@ -47,7 +54,10 @@ public class TriggerDriver implements Driver<Boolean> {
 
     @Override
     public void postTick() {
-        //this.triggered = false;
+        if (this.triggerConsumed) {
+            this.triggered = false;
+            this.triggerConsumed = false;
+        }
     }
 
     @Override
