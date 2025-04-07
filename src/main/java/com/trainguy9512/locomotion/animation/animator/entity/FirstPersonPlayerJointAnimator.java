@@ -297,7 +297,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         };
         Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(IS_ATTACKING)).or(StateTransition.booleanDriverPredicate(IS_USING));
 
-        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedItemDriver).setValue(evaluationState.dataContainer().getDriverValue(itemDriver));
+        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedItemDriver).setValue(evaluationState.dataContainer().getDriverValue(itemDriver).copy());
         Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT);
 
         State.Builder<HandPoseStates> raisingStateBuilder = State.builder(handPose.raisingState, raisingPoseFunction)
@@ -615,7 +615,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 //        LocomotionMain.LOGGER.info(dataReference.getMainHandItem().getItem());
         driverContainer.getDriver(MAIN_HAND_ITEM).setValue(dataReference.getMainHandItem());
         driverContainer.getDriver(OFF_HAND_ITEM).setValue(dataReference.getOffhandItem());
-
 
         //? if >= 1.21.5 {
         driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().getSelectedSlot());
