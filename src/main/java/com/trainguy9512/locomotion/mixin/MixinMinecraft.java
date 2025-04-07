@@ -114,6 +114,16 @@ public abstract class MixinMinecraft {
         });
     }
 
+    @Inject(
+            method = "startUseItem",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;swing(Lnet/minecraft/world/InteractionHand;)V")
+    )
+    public void injectOnSwingPlayerHandWhenBeginningUse(CallbackInfo ci) {
+        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
+            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_USING).trigger();
+        });
+    }
+
     /**
      * Play the block cracking particles only if the mining animation has entered its impact state.
      * Play the cracking particles as normal if the first person renderer config is disabled.

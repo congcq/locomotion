@@ -307,9 +307,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     }
 
     public static final ResourceLocation HAND_TOOL_MINE_SWING = makeAnimationSequenceResourceLocation("hand_tool_mine_swing_v2");
-    public static final ResourceLocation HAND_TOOL_MINE_IMPACT = makeAnimationSequenceResourceLocation("hand_tool_mine_impact");
     public static final ResourceLocation HAND_TOOL_MINE_FINISH = makeAnimationSequenceResourceLocation("hand_tool_mine_finish_v2");
     public static final ResourceLocation HAND_TOOL_ATTACK_PICKAXE = makeAnimationSequenceResourceLocation("hand_tool_attack_pickaxe");
+    public static final ResourceLocation HAND_TOOL_USE = makeAnimationSequenceResourceLocation("hand_tool_use");
 
 
     public PoseFunction<LocalSpacePose> handToolPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
@@ -559,7 +559,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Boolean>> IS_MINING = DriverKey.of("is_mining", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Float>> MINING_SPEED_PLAY_RATE = DriverKey.of("mining_speed_play_rate", () -> VariableDriver.ofFloat(() -> 1f));
     public static final DriverKey<TriggerDriver> IS_ATTACKING = DriverKey.of("is_attacking", TriggerDriver::of);
-    public static final DriverKey<VariableDriver<Integer>> REMAINING_USE_TIME = DriverKey.of("remaining_use_time", () -> VariableDriver.ofInteger(() -> 0));
+    public static final DriverKey<TriggerDriver> IS_USING = DriverKey.of("is_using", TriggerDriver::of);
 
     public static final String ATTACK_SLOT = "attack";
 
@@ -568,6 +568,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_IN_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
+            .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)).basePoseLocation)
+            .build();
+    public static final MontageConfiguration HAND_TOOL_USE_MONTAGE = MontageConfiguration.builder("hand_tool_use_montage", HAND_TOOL_USE)
+            .playsInSlot(ATTACK_SLOT)
+            .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
+            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(2), Easing.SINE_IN_OUT))
+            .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(16), Easing.SINE_IN_OUT))
             .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)).basePoseLocation)
             .build();
 
@@ -588,7 +595,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         /*driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().selected);*/
 
         driverContainer.getDriver(IS_ATTACKING).consumeTrigger(() -> montageManager.playMontage(HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage, driverContainer));
-        driverContainer.getDriver(REMAINING_USE_TIME).setValue(dataReference.getUseItemRemainingTicks());
+        driverContainer.getDriver(IS_USING).consumeTrigger(() -> montageManager.playMontage(HAND_TOOL_USE_MONTAGE, driverContainer));
 
 
         float baseMiningPlayRate = 0.75f;
