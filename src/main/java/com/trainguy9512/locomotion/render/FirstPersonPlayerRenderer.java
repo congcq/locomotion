@@ -77,7 +77,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
                             //this.entityRenderDispatcher.render(abstractClientPlayer, 0, 0, 0, partialTicks, poseStack, buffer, combinedLight);
 
-                            boolean leftHanded = abstractClientPlayer.getMainArm() == HumanoidArm.LEFT;
+                            boolean leftHanded = this.minecraft.options.mainHand().get() == HumanoidArm.LEFT;
 
                             this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, poseStack, rightItemPose, buffer, combinedLight, HumanoidArm.RIGHT);
                             this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_LEFT_HAND, poseStack, leftItemPose, buffer, combinedLight, HumanoidArm.LEFT);

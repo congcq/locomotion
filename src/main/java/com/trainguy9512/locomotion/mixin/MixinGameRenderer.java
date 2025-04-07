@@ -58,21 +58,6 @@ public abstract class MixinGameRenderer {
     }
 
     /**
-     * Redirects the call to render the vanilla item in hand renderer with Locomotion's first person player renderer.
-     */
-    @Redirect(
-            method = "renderItemInHand",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderHandsWithItems(FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;Lnet/minecraft/client/player/LocalPlayer;I)V")
-    )
-    private void renderLocomotionFirstPersonPlayer(ItemInHandRenderer instance, float partialTicks, PoseStack poseStack, MultiBufferSource.BufferSource buffer, LocalPlayer playerEntity, int combinedLight){
-        if (LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
-            ((FirstPersonPlayerRendererGetter) this.minecraft.getEntityRenderDispatcher()).locomotion$getFirstPersonPlayerRenderer().ifPresent(firstPersonPlayerRenderer -> firstPersonPlayerRenderer.render(partialTicks, poseStack, buffer, playerEntity, combinedLight));
-        } else {
-            instance.renderHandsWithItems(partialTicks, poseStack, buffer, playerEntity, combinedLight);
-        }
-    }
-
-    /**
      * Remove the view bobbing animation, as the animation pose provides its own.
      * When config is added to enable/disable custom first person rendering, this should be revisited!
      */
