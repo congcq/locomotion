@@ -21,6 +21,7 @@ import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.PlayerModelPart;
@@ -97,16 +98,25 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
     }
 
     private void renderArm(AbstractClientPlayer abstractClientPlayer, PlayerModel playerModel, HumanoidArm arm, PoseStack poseStack, MultiBufferSource buffer, int combinedLight) {
+        PlayerSkin skin = abstractClientPlayer.getSkin();
+        poseStack.pushPose();
         switch(arm){
             case LEFT -> {
+                if (skin.model() == PlayerSkin.Model.SLIM) {
+                    poseStack.translate(0.5 / 16f, 0, 0);
+                }
                 playerModel.leftSleeve.visible = abstractClientPlayer.isModelPartShown(PlayerModelPart.LEFT_SLEEVE);
-                playerModel.leftArm.render(poseStack, buffer.getBuffer(RenderType.entityTranslucent(abstractClientPlayer.getSkin().texture())), combinedLight, OverlayTexture.NO_OVERLAY);
+                playerModel.leftArm.render(poseStack, buffer.getBuffer(RenderType.entityTranslucent(skin.texture())), combinedLight, OverlayTexture.NO_OVERLAY);
             }
             case RIGHT -> {
+                if (skin.model() == PlayerSkin.Model.SLIM) {
+                    poseStack.translate(-0.5 / 16f, 0, 0);
+                }
                 playerModel.rightSleeve.visible = abstractClientPlayer.isModelPartShown(PlayerModelPart.RIGHT_SLEEVE);
-                playerModel.rightArm.render(poseStack, buffer.getBuffer(RenderType.entityTranslucent(abstractClientPlayer.getSkin().texture())), combinedLight, OverlayTexture.NO_OVERLAY);
+                playerModel.rightArm.render(poseStack, buffer.getBuffer(RenderType.entityTranslucent(skin.texture())), combinedLight, OverlayTexture.NO_OVERLAY);
             }
         }
+        poseStack.popPose();
     }
 
     public void renderItem(

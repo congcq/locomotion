@@ -33,6 +33,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -137,7 +138,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public enum HandPose {
         EMPTY (HandPoseStates.EMPTY_RAISE, HandPoseStates.EMPTY_LOWER, HandPoseStates.EMPTY, HAND_EMPTY_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE),
         GENERIC_ITEM (HandPoseStates.GENERIC_ITEM_RAISE, HandPoseStates.GENERIC_ITEM_LOWER, HandPoseStates.GENERIC_ITEM, HAND_GENERIC_ITEM_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE),
-        TOOL (HandPoseStates.TOOL_RAISE, HandPoseStates.TOOL_LOWER, HandPoseStates.TOOL, HAND_TOOL_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE);
+        TOOL (HandPoseStates.TOOL_RAISE, HandPoseStates.TOOL_LOWER, HandPoseStates.TOOL, HAND_TOOL_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE),
+        SHIELD (HandPoseStates.SHIELD_RAISE, HandPoseStates.SHIELD_LOWER, HandPoseStates.SHIELD, HAND_SHIELD_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE);
 
         public final HandPoseStates raisingState;
         public final HandPoseStates loweringState;
@@ -163,14 +165,17 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         private static HandPose fromItem(ItemStack itemStack) {
             if (itemStack.isEmpty()) {
-                return HandPose.EMPTY;
+                return EMPTY;
+            }
+            if (itemStack.is(Items.SHIELD)) {
+                return SHIELD;
             }
             for (TagKey<Item> tag : TOOL_ITEM_TAGS) {
                 if (itemStack.is(tag)) {
-                    return HandPose.TOOL;
+                    return TOOL;
                 }
             }
-            return HandPose.GENERIC_ITEM;
+            return GENERIC_ITEM;
         }
     }
 
@@ -178,12 +183,15 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         EMPTY,
         EMPTY_RAISE,
         EMPTY_LOWER,
+        GENERIC_ITEM,
+        GENERIC_ITEM_RAISE,
+        GENERIC_ITEM_LOWER,
         TOOL,
         TOOL_RAISE,
         TOOL_LOWER,
-        GENERIC_ITEM,
-        GENERIC_ITEM_RAISE,
-        GENERIC_ITEM_LOWER
+        SHIELD,
+        SHIELD_RAISE,
+        SHIELD_LOWER
     }
 
     public static final ResourceLocation HAND_LOWERED_POSE = makeAnimationSequenceResourceLocation("hand_lowered_pose");
@@ -194,6 +202,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation HAND_TOOL_LOWER = makeAnimationSequenceResourceLocation("hand_tool_lower");
     public static final ResourceLocation HAND_TOOL_RAISE = makeAnimationSequenceResourceLocation("hand_tool_raise");
     public static final ResourceLocation HAND_GENERIC_ITEM_POSE = makeAnimationSequenceResourceLocation("hand_generic_item_pose");
+    public static final ResourceLocation HAND_SHIELD_POSE = makeAnimationSequenceResourceLocation("hand_shield_pose");
 
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
@@ -222,6 +231,17 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 this.handToolPoseFunction(cachedPoseContainer, interactionHand),
                 SequencePlayerFunction.builder(HAND_TOOL_LOWER).build(),
                 SequencePlayerFunction.builder(HAND_TOOL_RAISE).build(),
+                Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT),
+                Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT)
+        );
+        this.addStatesForHandPose(
+                handPoseStateMachineBuilder,
+                stateAliasBuilder,
+                interactionHand,
+                HandPose.SHIELD,
+                SequenceEvaluatorFunction.of(HAND_SHIELD_POSE),
+                makeDynamicAdditiveLowerSequencePlayer(HAND_SHIELD_POSE),
+                makeDynamicAdditiveRaiseSequencePlayer(HAND_SHIELD_POSE),
                 Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT),
                 Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT)
         );
