@@ -6,6 +6,8 @@ import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.access.MatrixModelPart;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
+import com.trainguy9512.locomotion.animation.driver.DriverKey;
+import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
@@ -25,6 +27,7 @@ import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.PlayerModelPart;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -80,8 +83,16 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
                             boolean leftHanded = this.minecraft.options.mainHand().get() == HumanoidArm.LEFT;
 
-                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, poseStack, rightItemPose, buffer, combinedLight, HumanoidArm.RIGHT);
-                            this.renderItem(abstractClientPlayer, dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM, partialTicks), ItemDisplayContext.THIRD_PERSON_LEFT_HAND, poseStack, leftItemPose, buffer, combinedLight, HumanoidArm.LEFT);
+                            ItemStack leftHandRenderedItem = dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM);
+                            ItemStack rightHandRenderedItem = dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDERED_OFF_HAND_ITEM : FirstPersonPlayerJointAnimator.RENDERED_MAIN_HAND_ITEM);
+                            ItemStack leftHandItem = dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.MAIN_HAND_ITEM : FirstPersonPlayerJointAnimator.OFF_HAND_ITEM);
+                            ItemStack rightHandItem = dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.OFF_HAND_ITEM : FirstPersonPlayerJointAnimator.MAIN_HAND_ITEM);
+
+                            leftHandItem = leftHandItem.is(leftHandRenderedItem.getItem()) ? leftHandItem : leftHandRenderedItem;
+                            rightHandItem = rightHandItem.is(rightHandRenderedItem.getItem()) ? rightHandItem : rightHandRenderedItem;
+
+                            this.renderItem(abstractClientPlayer, rightHandItem, ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, poseStack, rightItemPose, buffer, combinedLight, HumanoidArm.RIGHT);
+                            this.renderItem(abstractClientPlayer, leftHandItem, ItemDisplayContext.THIRD_PERSON_LEFT_HAND, poseStack, leftItemPose, buffer, combinedLight, HumanoidArm.LEFT);
 
 
                             //this.renderItemInHand(abstractClientPlayer, ItemStack.EMPTY, poseStack, HumanoidArm.LEFT, animationPose, bufferSource, i);
@@ -128,8 +139,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             MultiBufferSource buffer,
             int combinedLight,
             HumanoidArm side
-    )
-    {
+    ) {
         if (!itemStack.isEmpty()) {
             poseStack.pushPose();
             jointChannel.transformPoseStack(poseStack, 16f);
