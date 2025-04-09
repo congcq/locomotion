@@ -15,10 +15,8 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
-import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.entity.ItemRenderer;
-import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.block.BlockRenderDispatcher;
+import net.minecraft.client.renderer.entity.*;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 import net.minecraft.client.renderer.item.ItemModelResolver;
@@ -27,17 +25,18 @@ import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.PlayerModelPart;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.*;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
+
+import java.util.List;
 
 public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRenderState, PlayerModel> {
 
     private final Minecraft minecraft;
     private final EntityRenderDispatcher entityRenderDispatcher;
     private final ItemRenderer itemRenderer;
+    private final BlockRenderDispatcher blockRenderer;
     private final ItemModelResolver itemModelResolver;
     private final JointAnimatorDispatcher jointAnimatorDispatcher;
 
@@ -45,6 +44,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
         this.minecraft = Minecraft.getInstance();
         this.entityRenderDispatcher = context.getEntityRenderDispatcher();
         this.itemRenderer = minecraft.getItemRenderer();
+        this.blockRenderer = context.getBlockRenderDispatcher();
         this.itemModelResolver = context.getItemModelResolver();
         this.jointAnimatorDispatcher = JointAnimatorDispatcher.getInstance();
     }
@@ -144,11 +144,12 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             poseStack.pushPose();
             jointChannel.transformPoseStack(poseStack, 16f);
 
+            ItemRenderType renderType = ItemRenderType.fromItemStack(itemStack);
+            ItemStack itemStackToRender = renderType == ItemRenderType.THIRD_PERSON_ITEM_STATIC ? itemStack.copy() : itemStack;
             //? if >= 1.21.5 {
-            this.itemRenderer.renderStatic(entity, itemStack, displayContext, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());
+            this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());
             //?} else
-            /*this.itemRenderer.renderStatic(entity, itemStack, displayContext, side == HumanoidArm.LEFT, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());*/
-
+            /*this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, side == HumanoidArm.LEFT, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());*/
             poseStack.popPose();
         }
     }
@@ -171,5 +172,26 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
     @Override
     public @NotNull PlayerModel getModel() {
         return ((PlayerRenderer)entityRenderDispatcher.getRenderer(minecraft.player)).getModel();
+    }
+
+    private enum ItemRenderType {
+        THIRD_PERSON_ITEM,
+        THIRD_PERSON_ITEM_STATIC;
+
+        public static final List<Item> STATIC_ITEMS = List.of(
+                Items.SHIELD
+        );
+
+        public static final List<Item> BLOCK_ITEM_OVERRIDES = List.of(
+                Items.COBWEB
+        );
+
+        public static ItemRenderType fromItemStack(ItemStack itemStack) {
+            Item item = itemStack.getItem();
+            if (STATIC_ITEMS.contains(item)) {
+                return THIRD_PERSON_ITEM_STATIC;
+            }
+            return THIRD_PERSON_ITEM;
+        }
     }
 }
