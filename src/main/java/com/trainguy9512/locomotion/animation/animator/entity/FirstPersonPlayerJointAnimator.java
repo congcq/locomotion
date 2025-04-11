@@ -371,7 +371,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case MAIN_HAND -> IS_USING_MAIN_HAND_ITEM;
             case OFF_HAND -> IS_USING_OFF_HAND_ITEM;
         };
-        return StateMachineFunction.builder(evaluationState -> ShieldStates.LOWERED)
+        PoseFunction<LocalSpacePose> shieldBlockingStateMachine = StateMachineFunction.builder(evaluationState -> ShieldStates.LOWERED)
                 .resetUponRelevant(true)
                 .addState(State.builder(ShieldStates.LOWERED, SequenceEvaluatorFunction.of(HAND_SHIELD_POSE))
                         .addOutboundTransition(StateTransition.builder(ShieldStates.RAISING)
@@ -412,6 +412,24 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetUponEntry(true)
                         .build())
                 .build();
+
+        return switch (interactionHand) {
+            case MAIN_HAND -> ApplyAdditiveFunction.of(shieldBlockingStateMachine, MakeDynamicAdditiveFunction.of(
+                    miningLoopPoseFunction(
+                            cachedPoseContainer,
+                            SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
+                            SequencePlayerFunction.builder(HAND_TOOL_MINE_SWING)
+                                    .looping(true)
+                                    .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(16))
+                                    .setPlayRate(evaluationState -> 1.15f)
+                                    .build(),
+                            SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
+                            Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)
+                    ),
+                            SequenceEvaluatorFunction.of(HAND_TOOL_POSE))
+            );
+            case OFF_HAND -> shieldBlockingStateMachine;
+        };
     }
 
     public static final ResourceLocation HAND_TOOL_MINE_SWING = makeAnimationSequenceResourceLocation("hand_tool_mine_swing_v2");
@@ -509,7 +527,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> jumpAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_JUMP).build();
         PoseFunction<LocalSpacePose> fallingAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_FALLING).looping(true).build();
         PoseFunction<LocalSpacePose> walkingBlendSpacePlayer = BlendSpace1DPlayerFunction.builder(evaluationState -> evaluationState.dataContainer().getDriverValue(MODIFIED_WALK_SPEED))
-                .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
+                .addEntry(0f, GROUND_MOVEMENT_POSE, 0.5f)
+                .addEntry(0.5f, GROUND_MOVEMENT_WALKING, 2f)
                 .addEntry(0.86f, GROUND_MOVEMENT_WALKING, 2.25f)
                 .addEntry(1f, GROUND_MOVEMENT_WALKING, 3.5f)
                 .build();
