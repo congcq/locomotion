@@ -384,10 +384,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> shieldBlockingStateMachine = StateMachineFunction.builder(evaluationState -> ShieldStates.LOWERED)
                 .resetUponRelevant(true)
                 .addState(State.builder(ShieldStates.LOWERED, SequenceEvaluatorFunction.of(HAND_SHIELD_POSE))
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_IN)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey))
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(8)))
-                                .build())
                         .build())
                 .addState(State.builder(ShieldStates.BLOCKING_IN, SequencePlayerFunction.builder(HAND_SHIELD_BLOCK_IN).build())
                         .resetUponEntry(true)
@@ -395,34 +391,15 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(5)))
                                 .build())
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_OUT)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey).negate()
-                                        .and(StateTransition.CURRENT_TRANSITION_FINISHED)
-                                )
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
-                                .build())
                         .build())
                 .addState(State.builder(ShieldStates.BLOCKING, SequenceEvaluatorFunction.of(HAND_SHIELD_BLOCK_OUT))
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_OUT)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey).negate())
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6)))
-                                .build())
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.DISABLED_IN)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(isHandOnCooldownKey))
-                                .setTiming(Transition.SINGLE_TICK)
-                                .build())
+                        .resetUponEntry(true)
                         .build())
                 .addState(State.builder(ShieldStates.BLOCKING_OUT, SequencePlayerFunction.builder(HAND_SHIELD_BLOCK_OUT).build())
                         .resetUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERED)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(15)))
-                                .build())
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_IN)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey)
-                                        .and(StateTransition.CURRENT_TRANSITION_FINISHED)
-                                )
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
                                 .build())
                         .build())
                 .addState(State.builder(ShieldStates.DISABLED_IN, SequencePlayerFunction.builder(HAND_SHIELD_DISABLE_IN).build())
@@ -444,6 +421,37 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERED)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10)))
+                                .build())
+                        .build())
+                .addStateAlias(StateAlias.builder(
+                        Set.of(
+                                ShieldStates.BLOCKING_IN,
+                                ShieldStates.BLOCKING,
+                                ShieldStates.BLOCKING_OUT
+                        ))
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.DISABLED_IN)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(isHandOnCooldownKey))
+                                .setTiming(Transition.SINGLE_TICK)
+                                .build())
+                        .build())
+                .addStateAlias(StateAlias.builder(
+                        Set.of(
+                                ShieldStates.BLOCKING_IN,
+                                ShieldStates.BLOCKING
+                        ))
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_OUT)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey).negate().and(StateTransition.CURRENT_TRANSITION_FINISHED))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6)))
+                                .build())
+                        .build())
+                .addStateAlias(StateAlias.builder(
+                                Set.of(
+                                        ShieldStates.LOWERED,
+                                        ShieldStates.BLOCKING_OUT
+                                ))
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_IN)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
                                 .build())
                         .build())
                 .build();
