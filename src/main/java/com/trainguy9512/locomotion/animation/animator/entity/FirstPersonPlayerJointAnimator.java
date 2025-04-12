@@ -356,14 +356,20 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     }
 
     public static final ResourceLocation HAND_SHIELD_POSE = makeAnimationSequenceResourceLocation("hand_shield_pose");
-    public static final ResourceLocation HAND_SHIELD_RAISING = makeAnimationSequenceResourceLocation("hand_shield_raise");
-    public static final ResourceLocation HAND_SHIELD_LOWERING = makeAnimationSequenceResourceLocation("hand_shield_lower");
+    public static final ResourceLocation HAND_SHIELD_BLOCK_IN = makeAnimationSequenceResourceLocation("hand_shield_block_in");
+    public static final ResourceLocation HAND_SHIELD_BLOCK_OUT = makeAnimationSequenceResourceLocation("hand_shield_block_out");
+    public static final ResourceLocation HAND_SHIELD_DISABLE_IN = makeAnimationSequenceResourceLocation("hand_shield_disable_in");
+    public static final ResourceLocation HAND_SHIELD_DISABLE_OUT = makeAnimationSequenceResourceLocation("hand_shield_disable_out");
+    public static final ResourceLocation HAND_SHIELD_IMPACT = makeAnimationSequenceResourceLocation("hand_shield_impact");
 
     public enum ShieldStates {
         LOWERED,
-        RAISING,
-        RAISED,
-        LOWERING
+        BLOCKING_IN,
+        BLOCKING,
+        BLOCKING_OUT,
+        DISABLED_IN,
+        DISABLED,
+        DISABLED_OUT
     }
 
     public PoseFunction<LocalSpacePose> handShieldPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
@@ -371,45 +377,74 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case MAIN_HAND -> IS_USING_MAIN_HAND_ITEM;
             case OFF_HAND -> IS_USING_OFF_HAND_ITEM;
         };
+        DriverKey<VariableDriver<Boolean>> isHandOnCooldownKey = switch (interactionHand) {
+            case MAIN_HAND -> IS_MAIN_HAND_ON_COOLDOWN;
+            case OFF_HAND -> IS_OFF_HAND_ON_COOLDOWN;
+        };
         PoseFunction<LocalSpacePose> shieldBlockingStateMachine = StateMachineFunction.builder(evaluationState -> ShieldStates.LOWERED)
                 .resetUponRelevant(true)
                 .addState(State.builder(ShieldStates.LOWERED, SequenceEvaluatorFunction.of(HAND_SHIELD_POSE))
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.RAISING)
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_IN)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey))
-                                .setTiming(Transition.SINGLE_TICK)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(8)))
                                 .build())
                         .build())
-                .addState(State.builder(ShieldStates.RAISING, SequencePlayerFunction.builder(HAND_SHIELD_RAISING).build())
+                .addState(State.builder(ShieldStates.BLOCKING_IN, SequencePlayerFunction.builder(HAND_SHIELD_BLOCK_IN).build())
                         .resetUponEntry(true)
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.RAISED)
-                                .isTakenIfMostRelevantAnimationPlayerFinishing(0)
-                                .setTiming(Transition.SINGLE_TICK)
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(5)))
                                 .build())
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERING)
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_OUT)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey).negate()
                                         .and(StateTransition.CURRENT_TRANSITION_FINISHED)
                                 )
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
                                 .build())
                         .build())
-                .addState(State.builder(ShieldStates.RAISED, SequenceEvaluatorFunction.of(HAND_SHIELD_LOWERING))
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERING)
+                .addState(State.builder(ShieldStates.BLOCKING, SequenceEvaluatorFunction.of(HAND_SHIELD_BLOCK_OUT))
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_OUT)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey).negate())
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6)))
+                                .build())
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.DISABLED_IN)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(isHandOnCooldownKey))
                                 .setTiming(Transition.SINGLE_TICK)
                                 .build())
                         .build())
-                .addState(State.builder(ShieldStates.LOWERING, SequencePlayerFunction.builder(HAND_SHIELD_LOWERING).build())
+                .addState(State.builder(ShieldStates.BLOCKING_OUT, SequencePlayerFunction.builder(HAND_SHIELD_BLOCK_OUT).build())
+                        .resetUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERED)
-                                .isTakenIfMostRelevantAnimationPlayerFinishing(0)
-                                .setTiming(Transition.SINGLE_TICK)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(15)))
                                 .build())
-                        .addOutboundTransition(StateTransition.builder(ShieldStates.RAISING)
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_IN)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey)
                                         .and(StateTransition.CURRENT_TRANSITION_FINISHED)
                                 )
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
                                 .build())
+                        .build())
+                .addState(State.builder(ShieldStates.DISABLED_IN, SequencePlayerFunction.builder(HAND_SHIELD_DISABLE_IN).build())
                         .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.DISABLED)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(0)
+                                .setTiming(Transition.SINGLE_TICK)
+                                .build())
+                        .build())
+                .addState(State.builder(ShieldStates.DISABLED, SequenceEvaluatorFunction.of(HAND_SHIELD_DISABLE_OUT))
+                        .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.DISABLED_OUT)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(isHandOnCooldownKey).negate())
+                                .setTiming(Transition.SINGLE_TICK)
+                                .build())
+                        .build())
+                .addState(State.builder(ShieldStates.DISABLED_OUT, SequencePlayerFunction.builder(HAND_SHIELD_DISABLE_OUT).build())
+                        .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERED)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10)))
+                                .build())
                         .build())
                 .build();
 
@@ -686,6 +721,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<TriggerDriver> HAS_USED_ITEM = DriverKey.of("is_using", TriggerDriver::of);
     public static final DriverKey<VariableDriver<Boolean>> IS_USING_MAIN_HAND_ITEM = DriverKey.of("is_using_main_hand_item", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Boolean>> IS_USING_OFF_HAND_ITEM = DriverKey.of("is_using_off_hand_item", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<VariableDriver<Boolean>> IS_MAIN_HAND_ON_COOLDOWN = DriverKey.of("is_main_hand_on_cooldown", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<VariableDriver<Boolean>> IS_OFF_HAND_ON_COOLDOWN = DriverKey.of("is_off_hand_on_cooldown", () -> VariableDriver.ofBoolean(() -> false));
 
     public static final String MAIN_HAND_ATTACK_SLOT = "main_hand_attack";
     public static final String OFF_HAND_ATTACK_SLOT = "off_hand_attack";
@@ -720,10 +757,18 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         //?} else
         /*driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().selected);*/
 
+
+
+
+        LocomotionMain.LOGGER.info(dataReference.getCooldowns().isOnCooldown(dataReference.getMainHandItem()));
+
         driverContainer.getDriver(HAS_ATTACKED).runIfTriggered(() -> montageManager.playMontage(HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage, driverContainer));
         driverContainer.getDriver(HAS_USED_ITEM).runIfTriggered(() -> montageManager.playMontage(HAND_TOOL_USE_MONTAGE, driverContainer));
         driverContainer.getDriver(IS_USING_MAIN_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.MAIN_HAND);
         driverContainer.getDriver(IS_USING_OFF_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.OFF_HAND);
+
+        driverContainer.getDriver(IS_MAIN_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)));
+        driverContainer.getDriver(IS_OFF_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_OFF_HAND_ITEM)));
 
         driverContainer.getDriver(IS_MOVING).setValue(dataReference.input.keyPresses.forward() || dataReference.input.keyPresses.backward() || dataReference.input.keyPresses.left() || dataReference.input.keyPresses.right());
         driverContainer.getDriver(IS_GROUNDED).setValue(dataReference.onGround());
