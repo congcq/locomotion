@@ -420,17 +420,19 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERED)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10)))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(20)))
                                 .build())
                         .build())
                 .addStateAlias(StateAlias.builder(
                         Set.of(
                                 ShieldStates.BLOCKING_IN,
                                 ShieldStates.BLOCKING,
-                                ShieldStates.BLOCKING_OUT
+                                ShieldStates.BLOCKING_OUT,
+                                ShieldStates.LOWERED,
+                                ShieldStates.DISABLED_OUT
                         ))
                         .addOutboundTransition(StateTransition.builder(ShieldStates.DISABLED_IN)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(isHandOnCooldownKey))
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(isHandOnCooldownKey).and(transitionContext -> transitionContext.dataContainer().getDriver(usingItemDriverKey).getPreviousValue()))
                                 .setTiming(Transition.SINGLE_TICK)
                                 .build())
                         .build())
@@ -447,11 +449,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .addStateAlias(StateAlias.builder(
                                 Set.of(
                                         ShieldStates.LOWERED,
-                                        ShieldStates.BLOCKING_OUT
+                                        ShieldStates.BLOCKING_OUT,
+                                        ShieldStates.DISABLED_OUT
                                 ))
                         .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_IN)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey))
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(13), Easing.SINE_IN_OUT))
                                 .build())
                         .build())
                 .build();
@@ -553,13 +556,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         SOFT_LAND
     }
 
-    public static final ResourceLocation GROUND_MOVEMENT_POSE = makeAnimationSequenceResourceLocation("ground_movement_pose");
-    public static final ResourceLocation GROUND_MOVEMENT_IDLE = makeAnimationSequenceResourceLocation("ground_movement_idle");
-    public static final ResourceLocation GROUND_MOVEMENT_WALKING = makeAnimationSequenceResourceLocation("ground_movement_walking");
-    public static final ResourceLocation GROUND_MOVEMENT_WALK_TO_STOP = makeAnimationSequenceResourceLocation("ground_movement_walk_to_stop");
-    public static final ResourceLocation GROUND_MOVEMENT_JUMP = makeAnimationSequenceResourceLocation("ground_movement_jump");
-    public static final ResourceLocation GROUND_MOVEMENT_FALLING = makeAnimationSequenceResourceLocation("ground_movement_falling");
-    public static final ResourceLocation GROUND_MOVEMENT_LAND = makeAnimationSequenceResourceLocation("ground_movement_land");
+    public static final ResourceLocation GROUND_MOVEMENT_POSE = makeAnimationSequenceResourceLocation("ground_movement/pose");
+    public static final ResourceLocation GROUND_MOVEMENT_IDLE = makeAnimationSequenceResourceLocation("ground_movement/idle");
+    public static final ResourceLocation GROUND_MOVEMENT_WALKING = makeAnimationSequenceResourceLocation("ground_movement/walking");
+    public static final ResourceLocation GROUND_MOVEMENT_WALK_TO_STOP = makeAnimationSequenceResourceLocation("ground_movement/walk_to_stop");
+    public static final ResourceLocation GROUND_MOVEMENT_JUMP = makeAnimationSequenceResourceLocation("ground_movement/jump");
+    public static final ResourceLocation GROUND_MOVEMENT_FALLING = makeAnimationSequenceResourceLocation("ground_movement/falling");
+    public static final ResourceLocation GROUND_MOVEMENT_LAND = makeAnimationSequenceResourceLocation("ground_movement/land");
 
     public PoseFunction<LocalSpacePose> constructAdditiveGroundMovementPoseFunction(CachedPoseContainer cachedPoseContainer) {
 

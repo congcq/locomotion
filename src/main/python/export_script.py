@@ -33,7 +33,6 @@ class AnimationModExportDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=maya_main_window()):
         super(AnimationModExportDialog, self).__init__(parent)
-
         self.setWindowTitle("Locomotion Animation Sequence Exporter")
         self.setMinimumWidth(500)
 
@@ -43,7 +42,7 @@ class AnimationModExportDialog(QtWidgets.QDialog):
 
         directory_a = "C:/Users/train/Desktop/Minecraft Modding/Animation Overhaul/src/main/resources/assets/locomotion/sequences"
         directory_b = "C:/Users/train/Desktop/Minecraft Modding/trainguys-animation-overhaul-1.19.x/src/main/resources/assets/locomotion/sequences"
-        self.initial_directory = directory_a
+        self.initial_directory = directory_b
 
         self.create_widgets()
         self.create_layouts()
@@ -77,14 +76,17 @@ class AnimationModExportDialog(QtWidgets.QDialog):
         self.export_animation_curves_checkbox = QtWidgets.QCheckBox()
         self.export_animation_curves_checkbox.setChecked(True)
 
+        self.export_time_markers_checkbox = QtWidgets.QCheckBox()
+        self.export_time_markers_checkbox.setChecked(True)
+
 
 
         self.bookmark_list_layout = QtWidgets.QVBoxLayout()
 
         # Bookmark Selector Widgets
 
-        self.info_conventions_label = QtWidgets.QLabel("Bookmark Naming:<br>Joint Set Naming:")
-        self.info_conventions_text = QtWidgets.QLabel("SEQ_[path/to/animation]<br>[rig_namespace]:exportSet_animation")
+        self.info_conventions_label = QtWidgets.QLabel("Bookmark Naming:<br>Marker Naming:<br>Joint Set Naming:")
+        self.info_conventions_text = QtWidgets.QLabel("SEQ_[path/to/animation]<br>MARKER_[identifier]<br>[rig_namespace]:exportSet_animation")
 
         #self.info_conventions_label.setFont(QtGui.QFont('times', 10))
         #self.info_conventions_text.setFont(QtGui.QFont('times', 10))
@@ -113,6 +115,7 @@ class AnimationModExportDialog(QtWidgets.QDialog):
         settings_form_layout.addRow("Resources Directory:", directory_select_layout)
         settings_form_layout.addRow("Export Set:", sets_combo_box_layout)
         settings_form_layout.addRow("Include Curves:", self.export_animation_curves_checkbox)
+        settings_form_layout.addRow("Include Time Markers:", self.export_time_markers_checkbox)
 
         settings_layout = QtWidgets.QVBoxLayout()
         settings_layout.addLayout(settings_form_layout)
@@ -190,6 +193,7 @@ class AnimationModExportDialog(QtWidgets.QDialog):
 
         self.bookmarks = []
         self.sequenceNames = []
+        self.markers = {}
 
         data = []
         bookmarks = getAllBookmarks()
@@ -197,14 +201,27 @@ class AnimationModExportDialog(QtWidgets.QDialog):
             if cmds.getAttr("{}.name".format(bookmark)).split("_")[0] == "SEQ":
                 color = cmds.getAttr("{}.color".format(bookmark))[0]
                 name = '_'.join(cmds.getAttr("{}.name".format(bookmark)).split("_")[1:])
+                self.markers[bookmark] = []
+
+                markers = []
+                for markerBookmark in bookmarks:
+                    if cmds.getAttr(f"{markerBookmark}.name").split("_")[0] == "MARKER":
+                        markerBeforeEndOfSequence = cmds.getAttr(f"{markerBookmark}.timeRangeStart") <= cmds.getAttr(f"{bookmark}.timeRangeStop")
+                        markerAfterBeginningOfSequence = cmds.getAttr(f"{markerBookmark}.timeRangeStart") >= cmds.getAttr(f"{bookmark}.timeRangeStart")
+                        if markerBeforeEndOfSequence and markerAfterBeginningOfSequence:
+                            markers.append(markerBookmark)
+                            self.markers[bookmark].append(markerBookmark)
+
                 data.append([
                     name,
                     '#%02x%02x%02x' % (int(color[0] * 255), int(color[1] * 255), int(color[2] * 255)),
-                    str(int(cmds.getAttr("{}.timeRangeStart".format(bookmark)))).zfill(4),
-                    str(int(cmds.getAttr("{}.timeRangeStop".format(bookmark)))).zfill(4)
+                    str(int(cmds.getAttr(f"{bookmark}.timeRangeStart"))).zfill(4),
+                    str(int(cmds.getAttr(f"{bookmark}.timeRangeStop"))).zfill(4),
+                    markers
                 ])
                 self.bookmarks.append(bookmark)
                 self.sequenceNames.append(name)
+
 
 
         self.clear_layout(self.bookmark_list_layout)
@@ -212,7 +229,8 @@ class AnimationModExportDialog(QtWidgets.QDialog):
         tempLayout = QtWidgets.QVBoxLayout()
         self.bookmark_checkbox_widgets = []
 
-        for i, (name, code, start, end) in enumerate(data):
+        for i, (name, code, start, end, markers) in enumerate(data):
+            column_layout = QtWidgets.QVBoxLayout()
             row_layout = QtWidgets.QHBoxLayout()
 
             bookmark_label_widget = QtWidgets.QLabel(name)
@@ -235,7 +253,22 @@ class AnimationModExportDialog(QtWidgets.QDialog):
             row_layout.addWidget(bookmark_range_widget)
             row_layout.addWidget(bookmark_color_widget)
 
-            tempLayout.addLayout(row_layout)
+            column_layout.addLayout(row_layout)
+
+            for marker in markers:
+
+                marker_data_layout = QtWidgets.QHBoxLayout()
+                marker_label_widget = QtWidgets.QLabel('_'.join(cmds.getAttr(f"{marker}.name").split('_')[1:]))
+                marker_label_widget.setContentsMargins(20, 0, 0, 0)
+                marker_time_widget = QtWidgets.QLabel(str(int(cmds.getAttr(f"{marker}.timeRangeStart"))).zfill(4))
+
+                marker_data_layout.addWidget(marker_label_widget)
+                marker_data_layout.addStretch()
+                marker_data_layout.addWidget(marker_time_widget)
+                column_layout.addLayout(marker_data_layout)
+
+
+            tempLayout.addLayout(column_layout)
         self.bookmark_list_layout.addLayout(tempLayout)
 
     def get_frame_rate(self):
@@ -245,6 +278,10 @@ class AnimationModExportDialog(QtWidgets.QDialog):
             return 24
         if "fps" in value:
             return int(value.split('fps')[0])
+        if "ntscf" in value:
+            return 60
+        if "ntsc" in value:
+            return 30
         return 0
 
     def export(self):
@@ -263,7 +300,11 @@ class AnimationModExportDialog(QtWidgets.QDialog):
             timelineBookmark = self.bookmarks[i]
             markedForExport = self.bookmark_checkbox_widgets[i].isChecked()
 
-            exportedSequences.append(sequencePathAndName.split('/')[-1])
+            actualDirectory = '/'.join(filePath.split('/')[:-1])
+            if not os.path.isdir(actualDirectory):
+                QtWidgets.QMessageBox.critical(self, "Export Failure", f"The directory {actualDirectory} does not exist.")
+                return
+                print(actualDirectory)
 
             if markedForExport:
                 self.export_sequence(timelineBookmark, filePath, exportSet, frameRate)
@@ -271,8 +312,9 @@ class AnimationModExportDialog(QtWidgets.QDialog):
                 print(filePath)
                 print(exportSet)
                 print(frameRate)
+                exportedSequences.append(sequencePathAndName.split('/')[-1])
 
-        #QtWidgets.QMessageBox.information(self, "Export Complete", f"Successfully exported the following animation sequences: \n\n{', '.join(exportedSequences)}")
+        QtWidgets.QMessageBox.information(self, "Export Complete", f"Successfully exported the following animation sequences: \n\n{', '.join(exportedSequences)}")
         pass
 
     def export_sequence(self, timelineBookmark, filePath, exportSet, frameRate):
@@ -293,9 +335,18 @@ class AnimationModExportDialog(QtWidgets.QDialog):
             "length": length
         }
 
-        jsonDict["notifies"] = {}
-        jsonDict["curves"] = {}
         jsonDict["joints"] = {}
+        jsonDict["time_markers"] = {}
+        jsonDict["curves"] = {}
+
+        if self.export_time_markers_checkbox.isChecked():
+            for marker in self.markers[timelineBookmark]:
+                markerName = '_'.join(cmds.getAttr(f"{marker}.name").split('_')[1:])
+                if markerName not in jsonDict["time_markers"].keys():
+                    jsonDict["time_markers"][markerName] = []
+                markerTimeConverted = round((cmds.getAttr(f"{marker}.timeRangeStart") - startTime) * frameRateConversionMultiplier, 3)
+                jsonDict["time_markers"][markerName].append(markerTimeConverted)
+
 
         for joint in joints:
             jointWithoutNamespace = joint.split(':')[-1]
@@ -373,6 +424,11 @@ class AnimationModExportDialog(QtWidgets.QDialog):
                 previousConvertedTime = convertedTime
                 pass
 
+
+
+
+
+
         debug = False
         if debug:
             print(json.dumps(jsonDict, indent=4))
@@ -392,3 +448,4 @@ if __name__ == "__main__":
 
     animation_mod_export_dialog = AnimationModExportDialog()
     animation_mod_export_dialog.show()
+
