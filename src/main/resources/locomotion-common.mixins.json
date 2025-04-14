@@ -16,8 +16,7 @@
     "MixinLivingEntityRenderer",
     "MixinLivingEntityRenderState",
     "MixinMinecraft",
-    "MixinModelPart",
-    "MixinBlocksAttacks"
+    "MixinModelPart"
   ],
   "injectors": {
     "defaultRequire": 1
