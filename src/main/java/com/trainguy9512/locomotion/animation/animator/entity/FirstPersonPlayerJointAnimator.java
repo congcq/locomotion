@@ -190,17 +190,17 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         TOOL_LOWER,
         SHIELD,
         SHIELD_RAISE,
-        SHIELD_LOWER
+        SHIELD_LOWER,
     }
 
-    public static final ResourceLocation HAND_LOWERED_POSE = makeAnimationSequenceResourceLocation("hand_lowered_pose");
-    public static final ResourceLocation HAND_EMPTY_POSE = makeAnimationSequenceResourceLocation("hand_empty_pose");
-    public static final ResourceLocation HAND_EMPTY_LOWER = makeAnimationSequenceResourceLocation("hand_empty_lower");
-    public static final ResourceLocation HAND_EMPTY_RAISE = makeAnimationSequenceResourceLocation("hand_empty_raise");
-    public static final ResourceLocation HAND_TOOL_POSE = makeAnimationSequenceResourceLocation("hand_tool_pose");
-    public static final ResourceLocation HAND_TOOL_LOWER = makeAnimationSequenceResourceLocation("hand_tool_lower");
-    public static final ResourceLocation HAND_TOOL_RAISE = makeAnimationSequenceResourceLocation("hand_tool_raise");
-    public static final ResourceLocation HAND_GENERIC_ITEM_POSE = makeAnimationSequenceResourceLocation("hand_generic_item_pose");
+    public static final ResourceLocation HAND_LOWERED_POSE = makeAnimationSequenceResourceLocation("hand/empty/lowered");
+    public static final ResourceLocation HAND_EMPTY_POSE = makeAnimationSequenceResourceLocation("hand/empty/pose");
+    public static final ResourceLocation HAND_EMPTY_LOWER = makeAnimationSequenceResourceLocation("hand/empty/lower");
+    public static final ResourceLocation HAND_EMPTY_RAISE = makeAnimationSequenceResourceLocation("hand/empty/raise");
+    public static final ResourceLocation HAND_TOOL_POSE = makeAnimationSequenceResourceLocation("hand/tool/pose");
+    public static final ResourceLocation HAND_TOOL_LOWER = makeAnimationSequenceResourceLocation("hand/tool/lower");
+    public static final ResourceLocation HAND_TOOL_RAISE = makeAnimationSequenceResourceLocation("hand/tool/raise");
+    public static final ResourceLocation HAND_GENERIC_ITEM_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/pose");
 
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
@@ -355,12 +355,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .build());
     }
 
-    public static final ResourceLocation HAND_SHIELD_POSE = makeAnimationSequenceResourceLocation("hand_shield_pose");
-    public static final ResourceLocation HAND_SHIELD_BLOCK_IN = makeAnimationSequenceResourceLocation("hand_shield_block_in");
-    public static final ResourceLocation HAND_SHIELD_BLOCK_OUT = makeAnimationSequenceResourceLocation("hand_shield_block_out");
-    public static final ResourceLocation HAND_SHIELD_DISABLE_IN = makeAnimationSequenceResourceLocation("hand_shield_disable_in");
-    public static final ResourceLocation HAND_SHIELD_DISABLE_OUT = makeAnimationSequenceResourceLocation("hand_shield_disable_out");
-    public static final ResourceLocation HAND_SHIELD_IMPACT = makeAnimationSequenceResourceLocation("hand_shield_impact");
+    public static final ResourceLocation HAND_SHIELD_POSE = makeAnimationSequenceResourceLocation("hand/shield/pose");
+    public static final ResourceLocation HAND_SHIELD_BLOCK_IN = makeAnimationSequenceResourceLocation("hand/shield/block_in");
+    public static final ResourceLocation HAND_SHIELD_BLOCK_OUT = makeAnimationSequenceResourceLocation("hand/shield/block_out");
+    public static final ResourceLocation HAND_SHIELD_DISABLE_IN = makeAnimationSequenceResourceLocation("hand/shield/disable_in");
+    public static final ResourceLocation HAND_SHIELD_DISABLE_OUT = makeAnimationSequenceResourceLocation("hand/shield/disable_out");
+    public static final ResourceLocation HAND_SHIELD_IMPACT = makeAnimationSequenceResourceLocation("hand/shield/impact");
 
     public enum ShieldStates {
         LOWERED,
@@ -464,12 +464,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                     miningLoopPoseFunction(
                             cachedPoseContainer,
                             SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
-                            SequencePlayerFunction.builder(HAND_TOOL_MINE_SWING)
+                            SequencePlayerFunction.builder(HAND_TOOL_PICKAXE_MINE_SWING)
                                     .looping(true)
                                     .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(16))
                                     .setPlayRate(evaluationState -> 1.15f)
                                     .build(),
-                            SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
+                            SequencePlayerFunction.builder(HAND_TOOL_PICKAXE_MINE_FINISH).build(),
                             Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)
                     ),
                             SequenceEvaluatorFunction.of(HAND_TOOL_POSE))
@@ -478,22 +478,22 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         };
     }
 
-    public static final ResourceLocation HAND_TOOL_MINE_SWING = makeAnimationSequenceResourceLocation("hand_tool_mine_swing_v2");
-    public static final ResourceLocation HAND_TOOL_MINE_FINISH = makeAnimationSequenceResourceLocation("hand_tool_mine_finish_v2");
-    public static final ResourceLocation HAND_TOOL_ATTACK_PICKAXE = makeAnimationSequenceResourceLocation("hand_tool_attack_pickaxe");
-    public static final ResourceLocation HAND_TOOL_USE = makeAnimationSequenceResourceLocation("hand_tool_use");
+    public static final ResourceLocation HAND_TOOL_PICKAXE_MINE_SWING = makeAnimationSequenceResourceLocation("hand/tool/pickaxe/mine_swing");
+    public static final ResourceLocation HAND_TOOL_PICKAXE_MINE_FINISH = makeAnimationSequenceResourceLocation("hand/tool/pickaxe/mine_finish");
+    public static final ResourceLocation HAND_TOOL_ATTACK = makeAnimationSequenceResourceLocation("hand/tool/attack");
+    public static final ResourceLocation HAND_TOOL_USE = makeAnimationSequenceResourceLocation("hand/tool/use");
 
     public PoseFunction<LocalSpacePose> handToolPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
         return switch (interactionHand) {
             case MAIN_HAND -> miningLoopPoseFunction(
                     cachedPoseContainer,
                     SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
-                    SequencePlayerFunction.builder(HAND_TOOL_MINE_SWING)
+                    SequencePlayerFunction.builder(HAND_TOOL_PICKAXE_MINE_SWING)
                             .looping(true)
                             .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(16))
                             .setPlayRate(evaluationState -> 1.15f)
                             .build(),
-                    SequencePlayerFunction.builder(HAND_TOOL_MINE_FINISH).build(),
+                    SequencePlayerFunction.builder(HAND_TOOL_PICKAXE_MINE_FINISH).build(),
                     Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)
             );
             case OFF_HAND -> SequenceEvaluatorFunction.of(HAND_TOOL_POSE);
@@ -740,7 +740,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final String OFF_HAND_ATTACK_SLOT = "off_hand_attack";
     public static final String SHIELD_BLOCK_SLOT = "shield_block";
 
-    public static final MontageConfiguration HAND_TOOL_ATTACK_PICKAXE_MONTAGE = MontageConfiguration.builder("hand_tool_attack_pickaxe", HAND_TOOL_ATTACK_PICKAXE)
+    public static final MontageConfiguration HAND_TOOL_ATTACK_PICKAXE_MONTAGE = MontageConfiguration.builder("hand_tool_attack_pickaxe", HAND_TOOL_ATTACK)
             .playsInSlot(MAIN_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
