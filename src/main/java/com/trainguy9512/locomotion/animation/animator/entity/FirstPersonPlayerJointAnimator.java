@@ -392,7 +392,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(5)))
                                 .build())
                         .build())
-                .addState(State.builder(ShieldStates.BLOCKING, SequenceEvaluatorFunction.of(HAND_SHIELD_BLOCK_OUT))
+                .addState(State.builder(ShieldStates.BLOCKING, MontageSlotFunction.of(SequenceEvaluatorFunction.of(HAND_SHIELD_BLOCK_OUT), SHIELD_BLOCK_SLOT))
                         .resetUponEntry(true)
                         .build())
                 .addState(State.builder(ShieldStates.BLOCKING_OUT, SequencePlayerFunction.builder(HAND_SHIELD_BLOCK_OUT).build())
@@ -728,8 +728,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<Boolean>> IS_JUMPING = DriverKey.of("is_jumping", () -> VariableDriver.ofBoolean(() -> false));
 
     public static final DriverKey<VariableDriver<Boolean>> IS_MINING = DriverKey.of("is_mining", () -> VariableDriver.ofBoolean(() -> false));
-    public static final DriverKey<TriggerDriver> HAS_ATTACKED = DriverKey.of("is_attacking", TriggerDriver::of);
-    public static final DriverKey<TriggerDriver> HAS_USED_ITEM = DriverKey.of("is_using", TriggerDriver::of);
+    public static final DriverKey<TriggerDriver> HAS_ATTACKED = DriverKey.of("has_attacked", TriggerDriver::of);
+    public static final DriverKey<TriggerDriver> HAS_USED_ITEM = DriverKey.of("has_used_item", TriggerDriver::of);
+    public static final DriverKey<TriggerDriver> HAS_BLOCKED_ATTACK = DriverKey.of("has_blocked_attack", TriggerDriver::of);
     public static final DriverKey<VariableDriver<Boolean>> IS_USING_MAIN_HAND_ITEM = DriverKey.of("is_using_main_hand_item", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Boolean>> IS_USING_OFF_HAND_ITEM = DriverKey.of("is_using_off_hand_item", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<Boolean>> IS_MAIN_HAND_ON_COOLDOWN = DriverKey.of("is_main_hand_on_cooldown", () -> VariableDriver.ofBoolean(() -> false));
@@ -737,20 +738,27 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public static final String MAIN_HAND_ATTACK_SLOT = "main_hand_attack";
     public static final String OFF_HAND_ATTACK_SLOT = "off_hand_attack";
+    public static final String SHIELD_BLOCK_SLOT = "shield_block";
 
-    public static final MontageConfiguration HAND_TOOL_ATTACK_PICKAXE_MONTAGE = MontageConfiguration.builder("hand_tool_attack_pickaxe_montage", HAND_TOOL_ATTACK_PICKAXE)
+    public static final MontageConfiguration HAND_TOOL_ATTACK_PICKAXE_MONTAGE = MontageConfiguration.builder("hand_tool_attack_pickaxe", HAND_TOOL_ATTACK_PICKAXE)
             .playsInSlot(MAIN_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
             .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)).basePoseLocation)
             .build();
-    public static final MontageConfiguration HAND_TOOL_USE_MONTAGE = MontageConfiguration.builder("hand_tool_use_montage", HAND_TOOL_USE)
+    public static final MontageConfiguration HAND_TOOL_USE_MONTAGE = MontageConfiguration.builder("hand_tool_use", HAND_TOOL_USE)
             .playsInSlot(MAIN_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(16), Easing.SINE_IN_OUT))
             .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)).basePoseLocation)
+            .build();
+    public static final MontageConfiguration SHIELD_BLOCK_IMPACT_MONTAGE = MontageConfiguration.builder("shield_block_impact", HAND_SHIELD_IMPACT)
+            .playsInSlot(SHIELD_BLOCK_SLOT)
+            .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
+            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(2), Easing.SINE_IN_OUT))
+            .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(8), Easing.SINE_IN_OUT))
             .build();
 
     @Override
@@ -769,12 +777,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         /*driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().selected);*/
 
 
-
-
-        LocomotionMain.LOGGER.info(dataReference.getCooldowns().isOnCooldown(dataReference.getMainHandItem()));
-
         driverContainer.getDriver(HAS_ATTACKED).runIfTriggered(() -> montageManager.playMontage(HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage, driverContainer));
         driverContainer.getDriver(HAS_USED_ITEM).runIfTriggered(() -> montageManager.playMontage(HAND_TOOL_USE_MONTAGE, driverContainer));
+        driverContainer.getDriver(HAS_BLOCKED_ATTACK).runIfTriggered(() -> montageManager.playMontage(SHIELD_BLOCK_IMPACT_MONTAGE, driverContainer));
         driverContainer.getDriver(IS_USING_MAIN_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.MAIN_HAND);
         driverContainer.getDriver(IS_USING_OFF_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.OFF_HAND);
 
