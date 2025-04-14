@@ -43,20 +43,6 @@ public abstract class MixinGameRenderer {
         }
     }
 
-//    /**
-//     * Transform the camera pose stack based on the first person player's camera joint, prior to bobHurt and bobView.
-//     */
-//    @Inject(
-//            method = "renderLevel",
-//            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GameRenderer;bobHurt(Lcom/mojang/blaze3d/vertex/PoseStack;F)V")
-//    )
-//    private void addCameraRotation(DeltaTracker deltaTracker, CallbackInfo ci, @Local PoseStack poseStack){
-//        if (LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
-//            ((FirstPersonPlayerRendererGetter)this.minecraft.getEntityRenderDispatcher()).locomotion$getFirstPersonPlayerRenderer().ifPresent(firstPersonPlayerRenderer -> firstPersonPlayerRenderer.transformCamera(poseStack));
-//        }
-//
-//    }
-
     /**
      * Transform the camera pose stack based on the first person player's camera joint, prior to bobHurt and bobView.
      */
