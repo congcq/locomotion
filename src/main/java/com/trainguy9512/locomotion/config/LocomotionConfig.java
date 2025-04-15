@@ -75,6 +75,7 @@ public class LocomotionConfig {
             public boolean enableCameraRotationDamping = true;
             public float cameraRotationStiffnessFactor = 0.3f;
             public float cameraRotationDampingFactor = 0.65f;
+            public float miningAnimationSpeedMultiplier = 1f;
         }
     }
 
