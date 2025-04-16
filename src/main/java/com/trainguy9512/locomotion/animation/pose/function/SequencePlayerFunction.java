@@ -96,6 +96,11 @@ public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose
         return new Tuple<>(TimeSpan.ofTicks(remainingTimePreviously), TimeSpan.ofTicks(remainingTimeCurrently));
     }
 
+    @Override
+    public TimeSpan getAnimationLength() {
+        return AnimationSequenceData.INSTANCE.getOrThrow(this.animationSequence).length();
+    }
+
     public static class Builder<B extends Builder<B>> extends TimeBasedPoseFunction.Builder<B>{
 
         private final ResourceLocation animationSequence;

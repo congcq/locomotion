@@ -12,6 +12,7 @@ import com.trainguy9512.locomotion.util.Transition;
 import net.minecraft.util.Tuple;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -34,7 +35,7 @@ public record StateTransition<S extends Enum<S>>(
 
     public static Predicate<TransitionContext> makeMostRelevantAnimationPlayerFinishedCondition(float crossFadeWeight) {
         return transitionContext -> {
-            var potentialPlayer = transitionContext.currentStateInput.testForMostRelevantAnimationPlayer();
+            var potentialPlayer = transitionContext.getMostRelevantAnimationPlayer();
             if (potentialPlayer.isPresent()) {
                 AnimationPlayer player = potentialPlayer.get();
                 float transitionTimeTicks = transitionContext.transitionDuration().inTicks() * crossFadeWeight;
@@ -170,6 +171,10 @@ public record StateTransition<S extends Enum<S>>(
     ) {
         public static TransitionContext of(OnTickDriverContainer dataContainer, TimeSpan timeElapsedInCurrentState, float currentStateWeight, float previousStateWeight, PoseFunction<LocalSpacePose> currentStateInput, TimeSpan transitionDuration) {
             return new TransitionContext(dataContainer, timeElapsedInCurrentState, currentStateWeight, previousStateWeight, currentStateInput, transitionDuration);
+        }
+
+        public Optional<AnimationPlayer> getMostRelevantAnimationPlayer() {
+            return this.currentStateInput.testForMostRelevantAnimationPlayer();
         }
     }
 }

@@ -197,7 +197,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     SequencePlayerFunction.builder(HAND_EMPTY_MINE_SWING)
                                             .looping(true)
                                             .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(20))
-                                            .setPlayRate(evaluationState -> 1.2f * LocomotionMain.CONFIG.data().firstPersonPlayer.miningAnimationSpeedMultiplier)
+                                            .setPlayRate(evaluationState -> 1.35f * LocomotionMain.CONFIG.data().firstPersonPlayer.miningAnimationSpeedMultiplier)
                                             .build(),
                                     SequencePlayerFunction.builder(HAND_EMPTY_MINE_FINISH).build(),
                                     Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)),
@@ -561,6 +561,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING.and(StateTransition.booleanDriverPredicate(IS_MINING).negate())
                                 )
                                 .setTiming(Transition.SINGLE_TICK)
+                                .setPriority(50)
                                 .build())
                         .build())
                 .addState(State.builder(MiningStates.FINISH, finishPoseFunction)
