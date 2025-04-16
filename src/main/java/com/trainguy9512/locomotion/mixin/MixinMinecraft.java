@@ -1,6 +1,7 @@
 package com.trainguy9512.locomotion.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
+import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import net.minecraft.client.Minecraft;
@@ -8,6 +9,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.InteractionHand;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -31,8 +33,6 @@ public abstract class MixinMinecraft {
     @Shadow public abstract CompletableFuture<Void> delayTextureReload();
 
     @Shadow @Nullable public LocalPlayer player;
-
-    @Shadow protected abstract boolean startAttack();
 
     @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiling/ProfilerFiller;popPush(Ljava/lang/String;)V", ordinal = 5))
     public void tickJointAnimators(CallbackInfo ci, @Local ProfilerFiller profilerFiller) {
@@ -101,8 +101,11 @@ public abstract class MixinMinecraft {
             method = "continueAttack",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;swing(Lnet/minecraft/world/InteractionHand;)V")
     )
-    public void injectOnContinueAttackIsMining(boolean bl, CallbackInfo ci) {
+    public void injectOnContinueAttackIsMining(boolean bl, CallbackInfo ci, @Local BlockPos blockPos) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
+//            assert Minecraft.getInstance().level != null;
+//            assert Minecraft.getInstance().player != null;
+//            LocomotionMain.LOGGER.info(Minecraft.getInstance().player.getDestroySpeed(Minecraft.getInstance().level.getBlockState(blockPos)));
             dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
         });
     }
@@ -111,9 +114,12 @@ public abstract class MixinMinecraft {
             method = "startUseItem",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;swing(Lnet/minecraft/world/InteractionHand;)V")
     )
-    public void injectOnSwingPlayerHandWhenBeginningUse(CallbackInfo ci) {
+    public void injectOnSwingPlayerHandWhenBeginningUse(CallbackInfo ci, @Local InteractionHand interactionHand) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-            dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_USED_ITEM).trigger();
+            switch (interactionHand) {
+                case MAIN_HAND -> dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_USED_MAIN_HAND_ITEM).trigger();
+                case OFF_HAND -> dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_USED_OFF_HAND_ITEM).trigger();
+            }
         });
     }
 
