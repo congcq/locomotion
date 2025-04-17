@@ -50,21 +50,12 @@ public abstract class MixinMinecraft {
     }
 
     @Inject(
-            method = "startAttack",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;startDestroyBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)Z"))
-    public void injectStartAttackHitBlock(CallbackInfoReturnable<Boolean> cir, @Local BlockPos blockPos) {
+            method = "handleKeybinds",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;swing(Lnet/minecraft/world/InteractionHand;)V")
+    )
+    public void playItemDropAnimation(CallbackInfo ci) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-//            assert Minecraft.getInstance().level != null;
-//            assert Minecraft.getInstance().player != null;
-//            LocomotionMain.LOGGER.info(Minecraft.getInstance().player.getDestroySpeed(Minecraft.getInstance().level.getBlockState(blockPos)));
-//            LocomotionMain.LOGGER.info(Minecraft.getInstance().level.getBlockState(blockPos).getDestroySpeed(Minecraft.getInstance().level, blockPos));
-//            LocomotionMain.LOGGER.info(Minecraft.getInstance().player.getAbilities().instabuild);
-            assert this.player != null;
-            if (this.player.getAbilities().instabuild) {
-                dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_ATTACKED).trigger();
-            } else {
-                dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
-            }
+            dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_DROPPED_ITEM).trigger();
         });
     }
 
@@ -83,44 +74,6 @@ public abstract class MixinMinecraft {
     public void injectStartAttackMiss(CallbackInfoReturnable<Boolean> cir) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
             dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_ATTACKED).trigger();
-        });
-    }
-//
-//    @Inject(method = "startUseItem", at = @At("HEAD"))
-//    public void injectOnStartUseItem(CallbackInfo ci){
-//        FirstPersonPlayerJointAnimator.INSTANCE.localAnimationDataContainer.setValue(FirstPersonPlayerJointAnimator.IS_USING_ITEM, true);
-//    }
-
-    /**
-     * Sets the first person player's IS_MINING driver to be false if there is no attacked block.
-     */
-    @Inject(
-            method = "continueAttack",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;stopDestroyBlock()V")
-    )
-    public void injectOnContinueAttackIsNotMining(boolean bl, CallbackInfo ci) {
-        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-            var driver = dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING);
-            if (driver.getPreviousValue()) {
-                driver.setValue(false);
-            }
-        });
-    }
-
-    /**
-     * Sets the first person player's IS_MINING driver to be true if the attacked blcok is being broken.
-     */
-    @Inject(
-            method = "continueAttack",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;swing(Lnet/minecraft/world/InteractionHand;)V")
-    )
-    public void injectOnContinueAttackIsMining(boolean bl, CallbackInfo ci, @Local BlockPos blockPos) {
-        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {assert this.player != null;
-            if (this.player.getAbilities().instabuild) {
-                dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_ATTACKED).trigger();
-            } else {
-                dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
-            }
         });
     }
 
@@ -146,8 +99,8 @@ public abstract class MixinMinecraft {
 //            method = "continueAttack",
 //            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/ParticleEngine;crack(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)V"))
 //    public void onlySpawnBreakParticlesOnPickaxeImpact(ParticleEngine instance, BlockPos pos, Direction side) {
-//        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-//            if (dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.IS_MINING_IMPACTING) || !LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
+//        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(driverContainer -> {
+//            if (driverContainer.getDriverValue(FirstPersonPlayerJointAnimator.IS_MINING_IMPACTING) || !LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
 //                for (float i = 0; i < 8; i++) {
 //                    instance.crack(pos, side);
 //                }

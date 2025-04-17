@@ -37,6 +37,10 @@ public class TriggerDriver implements Driver<Boolean> {
         }
     }
 
+    public boolean hasBeenTriggered() {
+        return this.triggered;
+    }
+
     @Override
     public void tick() {
 

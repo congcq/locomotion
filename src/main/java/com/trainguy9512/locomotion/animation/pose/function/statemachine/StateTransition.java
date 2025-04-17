@@ -30,7 +30,7 @@ public record StateTransition<S extends Enum<S>>(
     public static final Predicate<TransitionContext> MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED = makeMostRelevantAnimationPlayerFinishedCondition(0f);
 
     public static <D extends Driver<Boolean>> Predicate<TransitionContext> booleanDriverPredicate(DriverKey<D> booleanDriverKey) {
-        return transitionContext -> transitionContext.dataContainer.getDriverValue(booleanDriverKey);
+        return transitionContext -> transitionContext.driverContainer.getDriverValue(booleanDriverKey);
     }
 
     public static Predicate<TransitionContext> makeMostRelevantAnimationPlayerFinishedCondition(float crossFadeWeight) {
@@ -162,7 +162,7 @@ public record StateTransition<S extends Enum<S>>(
     }
 
     public record TransitionContext(
-            OnTickDriverContainer dataContainer,
+            OnTickDriverContainer driverContainer,
             TimeSpan timeElapsedInCurrentState,
             float currentStateWeight,
             float previousStateWeight,
