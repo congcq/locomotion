@@ -6,6 +6,7 @@ import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -34,6 +35,8 @@ public abstract class MixinMinecraft {
 
     @Shadow @Nullable public LocalPlayer player;
 
+    @Shadow @Nullable public MultiPlayerGameMode gameMode;
+
     @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiling/ProfilerFiller;popPush(Ljava/lang/String;)V", ordinal = 5))
     public void tickJointAnimators(CallbackInfo ci, @Local ProfilerFiller profilerFiller) {
         profilerFiller.popPush("jointAnimatorTick");
@@ -51,7 +54,17 @@ public abstract class MixinMinecraft {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;startDestroyBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)Z"))
     public void injectStartAttackHitBlock(CallbackInfoReturnable<Boolean> cir, @Local BlockPos blockPos) {
         JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
+//            assert Minecraft.getInstance().level != null;
+//            assert Minecraft.getInstance().player != null;
+//            LocomotionMain.LOGGER.info(Minecraft.getInstance().player.getDestroySpeed(Minecraft.getInstance().level.getBlockState(blockPos)));
+//            LocomotionMain.LOGGER.info(Minecraft.getInstance().level.getBlockState(blockPos).getDestroySpeed(Minecraft.getInstance().level, blockPos));
+//            LocomotionMain.LOGGER.info(Minecraft.getInstance().player.getAbilities().instabuild);
+            assert this.player != null;
+            if (this.player.getAbilities().instabuild) {
+                dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_ATTACKED).trigger();
+            } else {
+                dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
+            }
         });
     }
 
@@ -102,12 +115,12 @@ public abstract class MixinMinecraft {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;swing(Lnet/minecraft/world/InteractionHand;)V")
     )
     public void injectOnContinueAttackIsMining(boolean bl, CallbackInfo ci, @Local BlockPos blockPos) {
-        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
-//            assert Minecraft.getInstance().level != null;
-//            assert Minecraft.getInstance().player != null;
-//            LocomotionMain.LOGGER.info(Minecraft.getInstance().player.getDestroySpeed(Minecraft.getInstance().level.getBlockState(blockPos)));
-//            LocomotionMain.LOGGER.info(Minecraft.getInstance().level.getBlockState(blockPos).getDestroySpeed(Minecraft.getInstance().level, blockPos));
-            dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
+        JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {assert this.player != null;
+            if (this.player.getAbilities().instabuild) {
+                dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_ATTACKED).trigger();
+            } else {
+                dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
+            }
         });
     }
 
