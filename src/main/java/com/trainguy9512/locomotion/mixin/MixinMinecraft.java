@@ -106,6 +106,7 @@ public abstract class MixinMinecraft {
 //            assert Minecraft.getInstance().level != null;
 //            assert Minecraft.getInstance().player != null;
 //            LocomotionMain.LOGGER.info(Minecraft.getInstance().player.getDestroySpeed(Minecraft.getInstance().level.getBlockState(blockPos)));
+//            LocomotionMain.LOGGER.info(Minecraft.getInstance().level.getBlockState(blockPos).getDestroySpeed(Minecraft.getInstance().level, blockPos));
             dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(true);
         });
     }
