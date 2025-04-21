@@ -210,6 +210,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public enum HandPoseStates {
         DROPPING_LAST_ITEM,
+        USING_LAST_ITEM,
         EMPTY,
         EMPTY_RAISE,
         EMPTY_LOWER,
@@ -309,16 +310,25 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                     case OFF_HAND -> Transition.INSTANT;
                 }
         );
-        handPoseStateMachineBuilder.addStateAlias(stateAliasBuilder.build());
-        if (interactionHand == InteractionHand.MAIN_HAND) {
-            handPoseStateMachineBuilder.addState(State.builder(HandPoseStates.DROPPING_LAST_ITEM, SequencePlayerFunction.builder(HAND_TOOL_USE).build())
-                    .resetUponEntry(true)
-                    .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
-                            .isTakenIfTrue(transitionContext -> transitionContext.timeElapsedInCurrentState().isGreaterThan(TimeSpan.ofSeconds(0.2f)))
-                            .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
-                            .build())
-                    .build());
-        }
+        handPoseStateMachineBuilder.addStateAlias(stateAliasBuilder.build())
+                .addState(State.builder(HandPoseStates.DROPPING_LAST_ITEM,
+                                ApplyAdditiveFunction.of(SequenceEvaluatorFunction.of(HAND_EMPTY_POSE), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_TOOL_USE).build(), SequenceEvaluatorFunction.of(HAND_TOOL_POSE)))
+                        )
+                        .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1)
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
+                                .build())
+                        .build())
+                .addState(State.builder(HandPoseStates.USING_LAST_ITEM,
+                                ApplyAdditiveFunction.of(SequenceEvaluatorFunction.of(HAND_EMPTY_POSE), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_TOOL_USE).build(), SequenceEvaluatorFunction.of(HAND_TOOL_POSE)))
+                        )
+                        .resetUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1)
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
+                                .build())
+                        .build());
 
 
         return handPoseStateMachineBuilder.build();
@@ -352,10 +362,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
         };
         Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> {
+
             if (interactionHand == InteractionHand.MAIN_HAND) {
-                if (context.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered()) {
-                    return false;
-                }
+                // Don't switch hands if the player has just dropped an item.
+//                if (context.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered()) {
+//                    return false;
+
+//                }
                 if (context.driverContainer().getDriver(HOTBAR_SLOT).hasValueChanged()) {
                     if (!context.driverContainer().getDriverValue(itemDriver).isEmpty() && !context.driverContainer().getDriverValue(renderedItemDriver).isEmpty()) {
                         // If this hand pose function is the main hand item, and the selected hot bar slot has changed, and the old and new items are not empty, play the item switch animation
@@ -399,6 +412,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .addOutboundTransition(StateTransition.builder(handPose.loweringState)
                                 .isTakenIfTrue(switchHandsCondition)
                                 .setTiming(poseToLoweringTiming)
+                                .setPriority(50)
                                 .build())
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.DROPPING_LAST_ITEM)
                                 .isTakenIfTrue(transitionContext -> {
@@ -409,7 +423,27 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     }
                                     return false;
                                 })
-                                .setTiming(poseToLoweringTiming)
+                                .setPriority(60)
+                                .setTiming(Transition.of(TimeSpan.ofTicks(2)))
+                                .bindToOnTransitionTaken(updateRenderedItem)
+                                .bindToOnTransitionTaken(clearAttackMontages)
+                                .build())
+                        .addOutboundTransition(StateTransition.builder(HandPoseStates.USING_LAST_ITEM)
+                                .isTakenIfTrue(transitionContext -> {
+                                    if (transitionContext.driverContainer().getDriver(itemDriver).getCurrentValue().isEmpty()) {
+                                        if (interactionHand == InteractionHand.MAIN_HAND) {
+                                            if (transitionContext.driverContainer().getDriver(HAS_ATTACKED).hasBeenTriggered()) {
+                                                return true;
+                                            }
+                                        }
+                                        if (transitionContext.driverContainer().getDriver(interactionHand == InteractionHand.MAIN_HAND ? HAS_USED_MAIN_HAND_ITEM : HAS_USED_OFF_HAND_ITEM).hasBeenTriggered()) {
+                                            return true;
+                                        }
+                                    }
+                                    return false;
+                                })
+                                .setPriority(60)
+                                .setTiming(Transition.of(TimeSpan.ofTicks(2)))
                                 .bindToOnTransitionTaken(updateRenderedItem)
                                 .bindToOnTransitionTaken(clearAttackMontages)
                                 .build())
@@ -633,7 +667,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> jumpAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_JUMP).build();
         PoseFunction<LocalSpacePose> fallingAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_FALLING).looping(true).build();
         PoseFunction<LocalSpacePose> walkingBlendSpacePlayer = BlendSpace1DPlayerFunction.builder(evaluationState -> evaluationState.dataContainer().getDriverValue(MODIFIED_WALK_SPEED))
-                .addEntry(0f, GROUND_MOVEMENT_POSE, 0.5f)
+                .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
                 .addEntry(0.5f, GROUND_MOVEMENT_WALKING, 2f)
                 .addEntry(0.86f, GROUND_MOVEMENT_WALKING, 2.25f)
                 .addEntry(1f, GROUND_MOVEMENT_WALKING, 3.5f)
@@ -765,9 +799,11 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .build())
                 .build();
 
+//        return movementStateMachine;
+
         return MakeDynamicAdditiveFunction.of(
                 movementStateMachine,
-                SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0))
+                SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE)
         );
     }
 
