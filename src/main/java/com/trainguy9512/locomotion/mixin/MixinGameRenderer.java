@@ -52,7 +52,7 @@ public abstract class MixinGameRenderer {
     )
     private void addCameraRotation(PoseStack poseStack, float partialTicks, CallbackInfo ci){
         if (LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
-//            ((FirstPersonPlayerRendererGetter)this.minecraft.getEntityRenderDispatcher()).locomotion$getFirstPersonPlayerRenderer().ifPresent(firstPersonPlayerRenderer -> firstPersonPlayerRenderer.transformCamera(poseStack));
+            ((FirstPersonPlayerRendererGetter)this.minecraft.getEntityRenderDispatcher()).locomotion$getFirstPersonPlayerRenderer().ifPresent(firstPersonPlayerRenderer -> firstPersonPlayerRenderer.transformCamera(poseStack));
         }
 
     }
@@ -69,7 +69,6 @@ public abstract class MixinGameRenderer {
     private void removeViewBobbing(PoseStack poseStack, float partialTicks, CallbackInfo ci){
         if (LocomotionMain.CONFIG.data().firstPersonPlayer.enableRenderer) {
             ci.cancel();
-            return;
         }
     }
 }

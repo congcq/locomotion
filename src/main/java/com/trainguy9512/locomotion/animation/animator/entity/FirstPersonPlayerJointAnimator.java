@@ -80,7 +80,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public JointSkeleton buildSkeleton() {
         return JointSkeleton.of(ROOT_JOINT)
                 .addJointUnderRoot(CAMERA_JOINT)
-                .addJointUnderRoot(ARM_BUFFER_JOINT)
+                .addJointUnderParent(ARM_BUFFER_JOINT, CAMERA_JOINT)
                 .addJointUnderParent(LEFT_ARM_BUFFER_JOINT, ARM_BUFFER_JOINT)
                 .addJointUnderParent(RIGHT_ARM_BUFFER_JOINT, ARM_BUFFER_JOINT)
                 .addJointUnderParent(LEFT_ARM_JOINT, LEFT_ARM_BUFFER_JOINT)
