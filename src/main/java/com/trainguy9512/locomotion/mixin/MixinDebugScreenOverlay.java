@@ -21,8 +21,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.text.DecimalFormat;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Vector;
+import java.util.stream.Collectors;
 
 @Mixin(DebugScreenOverlay.class)
 public class MixinDebugScreenOverlay {
@@ -53,8 +55,9 @@ public class MixinDebugScreenOverlay {
                 int lineHeight = 9;
                 int currentLineTop = 0;
 
+
                 int maxDriverNameWidth = 0;
-                for (Map.Entry<DriverKey<? extends Driver<?>>, Driver<?>> entry : dataContainer.getAllDrivers().entrySet()) {
+                for (Map.Entry<DriverKey<? extends Driver<?>>, Driver<?>> entry : dataContainer.getAllDrivers().entrySet().stream().sorted(Comparator.comparing(entry -> entry.getKey().getIdentifier())).toList()) {
                     Driver<?> driver = entry.getValue();
 
                     // Get the string value
