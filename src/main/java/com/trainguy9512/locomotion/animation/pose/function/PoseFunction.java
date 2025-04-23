@@ -45,10 +45,10 @@ public interface PoseFunction<P extends Pose> {
      */
     Optional<AnimationPlayer> testForMostRelevantAnimationPlayer();
 
-    record FunctionEvaluationState(OnTickDriverContainer dataContainer, MontageManager montageManager, boolean resetting, long currentTick) {
+    record FunctionEvaluationState(OnTickDriverContainer driverContainer, MontageManager montageManager, boolean resetting, long currentTick) {
 
-        public static FunctionEvaluationState of(OnTickDriverContainer dataContainer, MontageManager montageManager, boolean resetting, long currentTick) {
-            return new FunctionEvaluationState(dataContainer, montageManager, resetting, currentTick);
+        public static FunctionEvaluationState of(OnTickDriverContainer driverContainer, MontageManager montageManager, boolean resetting, long currentTick) {
+            return new FunctionEvaluationState(driverContainer, montageManager, resetting, currentTick);
         }
 
         /**
@@ -57,11 +57,11 @@ public interface PoseFunction<P extends Pose> {
          * <p>A hard reset is an animation reset that immediately resets with no blending.</p>
          */
         public FunctionEvaluationState markedForReset() {
-            return FunctionEvaluationState.of(this.dataContainer, this.montageManager, true, this.currentTick);
+            return FunctionEvaluationState.of(this.driverContainer, this.montageManager, true, this.currentTick);
         }
 
         public FunctionEvaluationState cleared() {
-            return FunctionEvaluationState.of(this.dataContainer, this.montageManager, false, this.currentTick);
+            return FunctionEvaluationState.of(this.driverContainer, this.montageManager, false, this.currentTick);
         }
 
         /**

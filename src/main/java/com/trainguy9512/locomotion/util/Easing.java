@@ -17,40 +17,40 @@ public interface Easing {
     // https://easings.net/
 
     Easing SINE_IN = Easing.easeIn(time -> (float) (1f - Math.cos((time * Math.PI) / 2f)));
-    Easing SINE_OUT = Easing.easeOut(SINE_IN);
-    Easing SINE_IN_OUT = Easing.easeInOut(SINE_IN);
+    Easing SINE_OUT = Easing.easeOutFromEaseIn(SINE_IN);
+    Easing SINE_IN_OUT = Easing.easeInOutFromEaseIn(SINE_IN);
 
     Easing QUAD_IN = Easing.easeIn(time -> time * time);
-    Easing QUAD_OUT = Easing.easeOut(QUAD_IN);
-    Easing QUAD_IN_OUT = Easing.easeInOut(QUAD_IN);
+    Easing QUAD_OUT = Easing.easeOutFromEaseIn(QUAD_IN);
+    Easing QUAD_IN_OUT = Easing.easeInOutFromEaseIn(QUAD_IN);
 
     Easing CUBIC_IN = Easing.easeIn(time -> time * time * time);
-    Easing CUBIC_OUT = Easing.easeOut(CUBIC_IN);
-    Easing CUBIC_IN_OUT = Easing.easeInOut(CUBIC_IN);
+    Easing CUBIC_OUT = Easing.easeOutFromEaseIn(CUBIC_IN);
+    Easing CUBIC_IN_OUT = Easing.easeInOutFromEaseIn(CUBIC_IN);
 
     Easing QUART_IN = Easing.easeIn(time -> time * time * time * time);
-    Easing QUART_OUT = Easing.easeOut(QUART_IN);
-    Easing QUART_IN_OUT = Easing.easeInOut(QUART_IN);
+    Easing QUART_OUT = Easing.easeOutFromEaseIn(QUART_IN);
+    Easing QUART_IN_OUT = Easing.easeInOutFromEaseIn(QUART_IN);
 
     Easing QUINT_IN = Easing.easeIn(time -> time * time * time * time * time);
-    Easing QUINT_OUT = Easing.easeOut(QUINT_IN);
-    Easing QUINT_IN_OUT = Easing.easeInOut(QUINT_IN);
+    Easing QUINT_OUT = Easing.easeOutFromEaseIn(QUINT_IN);
+    Easing QUINT_IN_OUT = Easing.easeInOutFromEaseIn(QUINT_IN);
 
     Easing POW_IN = Easing.easeIn(time -> time == 0 ? 0 : (float) Math.pow(2, 10 * time - 10));
-    Easing POW_OUT = Easing.easeOut(POW_IN);
-    Easing POW_IN_OUT = Easing.easeInOut(POW_IN);
+    Easing POW_OUT = Easing.easeOutFromEaseIn(POW_IN);
+    Easing POW_IN_OUT = Easing.easeInOutFromEaseIn(POW_IN);
 
     Easing CIRC_IN = Easing.easeIn(time -> (float) Math.sqrt(1 - Math.pow(time - 1, 2)));
-    Easing CIRC_OUT = Easing.easeOut(CIRC_IN);
-    Easing CIRC_IN_OUT = Easing.easeInOut(CIRC_IN);
+    Easing CIRC_OUT = Easing.easeOutFromEaseIn(CIRC_IN);
+    Easing CIRC_IN_OUT = Easing.easeInOutFromEaseIn(CIRC_IN);
 
     Easing BACK_IN = Easing.easeIn(Easing.CubicBezier.easeInOf(0.36f, 0f, 0.66f, -0.56f));
-    Easing BACK_OUT = Easing.easeOut(BACK_IN);
-    Easing BACK_IN_OUT = Easing.easeInOut(BACK_IN);
+    Easing BACK_OUT = Easing.easeOutFromEaseIn(BACK_IN);
+    Easing BACK_IN_OUT = Easing.easeInOutFromEaseIn(BACK_IN);
 
     Easing ELASTIC_IN = Easing.easeIn(Easing.Elastic.easeInOf(18, 3f));
-    Easing ELASTIC_OUT = Easing.easeOut(ELASTIC_IN);
-    Easing ELASTIC_IN_OUT = Easing.easeInOut(ELASTIC_IN);
+    Easing ELASTIC_OUT = Easing.easeOutFromEaseIn(ELASTIC_IN);
+    Easing ELASTIC_IN_OUT = Easing.easeInOutFromEaseIn(ELASTIC_IN);
 
     Easing BOUNCE_IN = Easing.easeIn(Easing.inverse(time -> {
         float n1 = 7.5625f;
@@ -66,8 +66,8 @@ public interface Easing {
             return n1 * (time -= 2.625f / d1) * time + 0.984375f;
         }
     }));
-    Easing BOUNCE_OUT = Easing.easeOut(BOUNCE_IN);
-    Easing BOUNCE_IN_OUT = Easing.easeInOut(BOUNCE_IN);
+    Easing BOUNCE_OUT = Easing.easeOutFromEaseIn(BOUNCE_IN);
+    Easing BOUNCE_IN_OUT = Easing.easeInOutFromEaseIn(BOUNCE_IN);
 
     public static class Elastic implements Easing {
 
@@ -227,7 +227,7 @@ public interface Easing {
      * @return          Ease-in function
      */
     public static Easing easeIn(Easing easeIn){
-        return easeIn;
+        return value -> easeIn.ease(Math.clamp(value, 0, 1));
     }
 
     /**
@@ -235,7 +235,7 @@ public interface Easing {
      * @param easeIn    Ease-in function
      * @return          Ease-out function
      */
-    public static Easing easeOut(Easing easeIn){
+    public static Easing easeOutFromEaseIn(Easing easeIn){
         return Easing.inverse(easeIn);
     }
 
@@ -244,10 +244,10 @@ public interface Easing {
      * @param easeIn    Ease-in function
      * @return          Ease-in-out function
      */
-    public static Easing easeInOut(Easing easeIn){
+    public static Easing easeInOutFromEaseIn(Easing easeIn){
         return time -> time < 0.5f ?
                 Easing.easeIn(easeIn).ease(time * 2f) / 2f :
-                Easing.easeOut(easeIn).ease(time * 2f - 1f) / 2f + 0.5f;
+                Easing.easeOutFromEaseIn(easeIn).ease(time * 2f - 1f) / 2f + 0.5f;
     }
 
 }

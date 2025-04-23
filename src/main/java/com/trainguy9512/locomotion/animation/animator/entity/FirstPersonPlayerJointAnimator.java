@@ -246,7 +246,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
         StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(
-                evaluationState -> HandPose.fromItem(evaluationState.dataContainer().getDriverValue(interactionHand == InteractionHand.MAIN_HAND ? RENDERED_MAIN_HAND_ITEM : RENDERED_OFF_HAND_ITEM)).poseState
+                evaluationState -> HandPose.fromItem(evaluationState.driverContainer().getDriverValue(interactionHand == InteractionHand.MAIN_HAND ? RENDERED_MAIN_HAND_ITEM : RENDERED_OFF_HAND_ITEM)).poseState
         );
         handPoseStateMachineBuilder.resetUponRelevant(true);
         StateAlias.Builder<HandPoseStates> stateAliasBuilder = StateAlias.builder(Set.of(HandPoseStates.EMPTY_LOWER));
@@ -311,19 +311,19 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 }
         );
         handPoseStateMachineBuilder.addStateAlias(stateAliasBuilder.build())
-                .addState(State.builder(HandPoseStates.DROPPING_LAST_ITEM,
+                .defineState(State.builder(HandPoseStates.DROPPING_LAST_ITEM,
                                 ApplyAdditiveFunction.of(SequenceEvaluatorFunction.of(HAND_EMPTY_POSE), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_TOOL_USE).build(), SequenceEvaluatorFunction.of(HAND_TOOL_POSE)))
                         )
-                        .resetUponEntry(true)
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
                                 .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
                                 .build())
                         .build())
-                .addState(State.builder(HandPoseStates.USING_LAST_ITEM,
+                .defineState(State.builder(HandPoseStates.USING_LAST_ITEM,
                                 ApplyAdditiveFunction.of(SequenceEvaluatorFunction.of(HAND_EMPTY_POSE), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_TOOL_USE).build(), SequenceEvaluatorFunction.of(HAND_TOOL_POSE)))
                         )
-                        .resetUponEntry(true)
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
                                 .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
@@ -380,11 +380,11 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         };
         Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(HAS_ATTACKED)).or(StateTransition.booleanDriverPredicate(HAS_USED_MAIN_HAND_ITEM));
 
-        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.dataContainer().getDriver(renderedItemDriver).setValue(evaluationState.dataContainer().getDriverValue(itemDriver).copy());
+        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.driverContainer().getDriver(renderedItemDriver).setValue(evaluationState.driverContainer().getDriverValue(itemDriver).copy());
         Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT);
 
         State.Builder<HandPoseStates> raisingStateBuilder = State.builder(handPose.raisingState, raisingPoseFunction)
-                .resetUponEntry(true)
+                .resetsPoseFunctionUponEntry(true)
                 .addOutboundTransition(StateTransition.builder(handPose.poseState)
                         .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
                         .setTiming(raisingToPoseTiming)
@@ -397,13 +397,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             );
         }
         stateMachineBuilder
-                .addState(State.builder(handPose.poseState, MontageSlotFunction.of(posePoseFunction, interactionHand == InteractionHand.MAIN_HAND ? MAIN_HAND_ATTACK_SLOT : OFF_HAND_ATTACK_SLOT))
-                        .resetUponEntry(true)
+                .defineState(State.builder(handPose.poseState, MontageSlotFunction.of(posePoseFunction, interactionHand == InteractionHand.MAIN_HAND ? MAIN_HAND_ATTACK_SLOT : OFF_HAND_ATTACK_SLOT))
+                        .resetsPoseFunctionUponEntry(true)
                         .build())
-                .addState(State.builder(handPose.loweringState, loweringPoseFunction)
-                        .resetUponEntry(true)
+                .defineState(State.builder(handPose.loweringState, loweringPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
                         .build())
-                .addState(raisingStateBuilder.build())
+                .defineState(raisingStateBuilder.build())
                 .addStateAlias(StateAlias.builder(
                         Set.of(
                                 handPose.poseState,
@@ -488,41 +488,41 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         };
         PoseFunction<LocalSpacePose> shieldBlockingStateMachine = StateMachineFunction.builder(evaluationState -> ShieldStates.LOWERED)
                 .resetUponRelevant(true)
-                .addState(State.builder(ShieldStates.LOWERED, HandPose.SHIELD.getMiningStateMachine(cachedPoseContainer, interactionHand))
+                .defineState(State.builder(ShieldStates.LOWERED, HandPose.SHIELD.getMiningStateMachine(cachedPoseContainer, interactionHand))
                         .build())
-                .addState(State.builder(ShieldStates.BLOCKING_IN, SequencePlayerFunction.builder(HAND_SHIELD_BLOCK_IN).build())
-                        .resetUponEntry(true)
+                .defineState(State.builder(ShieldStates.BLOCKING_IN, SequencePlayerFunction.builder(HAND_SHIELD_BLOCK_IN).build())
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(5)))
                                 .build())
                         .build())
-                .addState(State.builder(ShieldStates.BLOCKING, MontageSlotFunction.of(SequenceEvaluatorFunction.of(HAND_SHIELD_BLOCK_OUT), SHIELD_BLOCK_SLOT))
-                        .resetUponEntry(true)
+                .defineState(State.builder(ShieldStates.BLOCKING, MontageSlotFunction.of(SequenceEvaluatorFunction.of(HAND_SHIELD_BLOCK_OUT), SHIELD_BLOCK_SLOT))
+                        .resetsPoseFunctionUponEntry(true)
                         .build())
-                .addState(State.builder(ShieldStates.BLOCKING_OUT, SequencePlayerFunction.builder(HAND_SHIELD_BLOCK_OUT).build())
-                        .resetUponEntry(true)
+                .defineState(State.builder(ShieldStates.BLOCKING_OUT, SequencePlayerFunction.builder(HAND_SHIELD_BLOCK_OUT).build())
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERED)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(15)))
                                 .build())
                         .build())
-                .addState(State.builder(ShieldStates.DISABLED_IN, SequencePlayerFunction.builder(HAND_SHIELD_DISABLE_IN).build())
-                        .resetUponEntry(true)
+                .defineState(State.builder(ShieldStates.DISABLED_IN, SequencePlayerFunction.builder(HAND_SHIELD_DISABLE_IN).build())
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.DISABLED)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(0)
                                 .setTiming(Transition.SINGLE_TICK)
                                 .build())
                         .build())
-                .addState(State.builder(ShieldStates.DISABLED, SequenceEvaluatorFunction.of(HAND_SHIELD_DISABLE_OUT))
-                        .resetUponEntry(true)
+                .defineState(State.builder(ShieldStates.DISABLED, SequenceEvaluatorFunction.of(HAND_SHIELD_DISABLE_OUT))
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.DISABLED_OUT)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(isHandOnCooldownKey).negate())
                                 .setTiming(Transition.SINGLE_TICK)
                                 .build())
                         .build())
-                .addState(State.builder(ShieldStates.DISABLED_OUT, SequencePlayerFunction.builder(HAND_SHIELD_DISABLE_OUT).build())
-                        .resetUponEntry(true)
+                .defineState(State.builder(ShieldStates.DISABLED_OUT, SequencePlayerFunction.builder(HAND_SHIELD_DISABLE_OUT).build())
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERED)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(20)))
@@ -608,14 +608,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     ) {
         return StateMachineFunction.builder(evaluationState -> MiningStates.IDLE)
                 .resetUponRelevant(true)
-                .addState(State.builder(MiningStates.IDLE, idlePoseFunction)
+                .defineState(State.builder(MiningStates.IDLE, idlePoseFunction)
                         .addOutboundTransition(StateTransition.builder(MiningStates.SWING)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING))
                                 .setTiming(idleToMiningTiming)
                                 .build())
                         .build())
-                .addState(State.builder(MiningStates.SWING, swingPoseFunction)
-                        .resetUponEntry(true)
+                .defineState(State.builder(MiningStates.SWING, swingPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(MiningStates.FINISH)
                                 .isTakenIfTrue(
                                         StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING.and(StateTransition.booleanDriverPredicate(IS_MINING).negate())
@@ -624,8 +624,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .setPriority(50)
                                 .build())
                         .build())
-                .addState(State.builder(MiningStates.FINISH, finishPoseFunction)
-                        .resetUponEntry(true)
+                .defineState(State.builder(MiningStates.FINISH, finishPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(MiningStates.IDLE)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
                                 .setPriority(50)
@@ -656,6 +656,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation GROUND_MOVEMENT_WALK_TO_STOP = makeAnimationSequenceResourceLocation("ground_movement/walk_to_stop");
     public static final ResourceLocation GROUND_MOVEMENT_JUMP = makeAnimationSequenceResourceLocation("ground_movement/jump");
     public static final ResourceLocation GROUND_MOVEMENT_FALLING = makeAnimationSequenceResourceLocation("ground_movement/falling");
+    public static final ResourceLocation GROUND_MOVEMENT_FALLING_DOWN = makeAnimationSequenceResourceLocation("ground_movement/falling_down");
+    public static final ResourceLocation GROUND_MOVEMENT_FALLING_IN_PLACE = makeAnimationSequenceResourceLocation("ground_movement/falling_in_place");
+    public static final ResourceLocation GROUND_MOVEMENT_FALLING_UP = makeAnimationSequenceResourceLocation("ground_movement/falling_up");
     public static final ResourceLocation GROUND_MOVEMENT_LAND = makeAnimationSequenceResourceLocation("ground_movement/land");
 
     public PoseFunction<LocalSpacePose> constructAdditiveGroundMovementPoseFunction(CachedPoseContainer cachedPoseContainer) {
@@ -663,18 +666,22 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> idleAnimationPlayer = BlendFunction.builder(SequenceEvaluatorFunction.of(GROUND_MOVEMENT_IDLE))
                 .addBlendInput(SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping(true).build(), evaluationState -> 0.6f)
                 .build();
-        PoseFunction<LocalSpacePose> walkToStopAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_WALK_TO_STOP).setPlayRate(0.6f).build();
-        PoseFunction<LocalSpacePose> jumpAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_JUMP).build();
-        PoseFunction<LocalSpacePose> fallingAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_FALLING).looping(true).build();
-        PoseFunction<LocalSpacePose> walkingBlendSpacePlayer = BlendSpace1DPlayerFunction.builder(evaluationState -> evaluationState.dataContainer().getDriverValue(MODIFIED_WALK_SPEED))
+        PoseFunction<LocalSpacePose> walkToStopPoseFunction = SequencePlayerFunction.builder(GROUND_MOVEMENT_WALK_TO_STOP).setPlayRate(0.6f).build();
+        PoseFunction<LocalSpacePose> jumpPoseFunction = SequencePlayerFunction.builder(GROUND_MOVEMENT_JUMP).build();
+        PoseFunction<LocalSpacePose> fallingPoseFunction = BlendSpace1DPlayerFunction.builder(VERTICAL_MOVEMENT_SPEED)
+                .addEntry(1f, GROUND_MOVEMENT_FALLING_UP)
+                .addEntry(-0f, GROUND_MOVEMENT_FALLING_IN_PLACE)
+                .addEntry(-2f, GROUND_MOVEMENT_FALLING_DOWN)
+                .build();
+        PoseFunction<LocalSpacePose> walkingPoseFunction = BlendSpace1DPlayerFunction.builder(MODIFIED_WALK_SPEED)
                 .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
                 .addEntry(0.5f, GROUND_MOVEMENT_WALKING, 2f)
                 .addEntry(0.86f, GROUND_MOVEMENT_WALKING, 2.25f)
                 .addEntry(1f, GROUND_MOVEMENT_WALKING, 3.5f)
                 .build();
 
-        PoseFunction<LocalSpacePose> landAnimationPlayer = SequencePlayerFunction.builder(GROUND_MOVEMENT_LAND).build();
-        PoseFunction<LocalSpacePose> softLandAnimationPlayer = BlendFunction.builder(SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0)))
+        PoseFunction<LocalSpacePose> landPoseFunction = SequencePlayerFunction.builder(GROUND_MOVEMENT_LAND).build();
+        PoseFunction<LocalSpacePose> softLandPoseFunction = BlendFunction.builder(SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0)))
                 .addBlendInput(SequencePlayerFunction.builder(GROUND_MOVEMENT_LAND).setPlayRate(1f).build(), evaluationState -> 0.5f)
                 .build();
 
@@ -682,16 +689,16 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
 
         PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.builder(evaluationState -> GroundMovementStates.IDLE)
-                .addState(State.builder(GroundMovementStates.IDLE, idleAnimationPlayer)
-                        .resetUponEntry(false)
+                .defineState(State.builder(GroundMovementStates.IDLE, idleAnimationPlayer)
+                        .resetsPoseFunctionUponEntry(false)
                         // Begin walking if the player is moving horizontally
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
                                 .isTakenIfTrue(walkingCondition)
                                 .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_OUT))
                                 .build())
                         .build())
-                .addState(State.builder(GroundMovementStates.WALKING, walkingBlendSpacePlayer)
-                        .resetUponEntry(false)
+                .defineState(State.builder(GroundMovementStates.WALKING, walkingPoseFunction)
+                        .resetsPoseFunctionUponEntry(false)
                         // Stop walking with the walk-to-stop animation if the player's already been walking for a bit.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.STOPPING)
                                 .isTakenIfTrue(walkingCondition.negate()
@@ -705,8 +712,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
                                 .build())
                         .build())
-                .addState(State.builder(GroundMovementStates.STOPPING, walkToStopAnimationPlayer)
-                        .resetUponEntry(true)
+                .defineState(State.builder(GroundMovementStates.STOPPING, walkToStopPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
                                 .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
@@ -716,12 +723,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
                                 .build())
                         .build())
-                .addState(State.builder(GroundMovementStates.JUMP, jumpAnimationPlayer)
-                        .resetUponEntry(true)
+                .defineState(State.builder(GroundMovementStates.JUMP, jumpPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
                         // Automatically move into the falling animation player
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.FALLING)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
-                                .setTiming(Transition.SINGLE_TICK)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(19), Easing.CUBIC_OUT))
                                 .build())
                         // If the player lands before it can move into the falling animation, go straight to the landing animation as long as the jump state is fully transitioned.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.LAND)
@@ -731,14 +738,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .setTiming(Transition.SINGLE_TICK)
                                 .build())
                         .build())
-                .addState(State.builder(GroundMovementStates.FALLING, fallingAnimationPlayer)
-                        .resetUponEntry(true)
+                .defineState(State.builder(GroundMovementStates.FALLING, fallingPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
                         // Move into the landing animation if the player is no longer falling
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.LAND)
                                 .isTakenIfTrue(
                                         StateTransition.booleanDriverPredicate(IS_GROUNDED)
                                 )
-                                .setTiming(Transition.of(TimeSpan.ofTicks(1), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.SINGLE_TICK)
                                 .setPriority(50)
                                 .build())
                         // Move into the landing animation if the player is no longer falling, but only just began falling.
@@ -747,15 +754,15 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         StateTransition.booleanDriverPredicate(IS_GROUNDED)
                                         .and(StateTransition.CURRENT_TRANSITION_FINISHED.negate())
                                 )
-                                .setTiming(Transition.of(TimeSpan.ofTicks(1), Easing.LINEAR))
+                                .setTiming(Transition.SINGLE_TICK)
                                 .setPriority(60)
                                 .build())
                         .build())
-                .addState(State.builder(GroundMovementStates.SOFT_LAND, softLandAnimationPlayer)
-                        .resetUponEntry(true)
+                .defineState(State.builder(GroundMovementStates.SOFT_LAND, softLandPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
                         .build())
-                .addState(State.builder(GroundMovementStates.LAND, landAnimationPlayer)
-                        .resetUponEntry(true)
+                .defineState(State.builder(GroundMovementStates.LAND, landPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
                         .build())
                 .addStateAlias(StateAlias.builder(
                         Set.of(
@@ -763,8 +770,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 GroundMovementStates.WALKING,
                                 GroundMovementStates.STOPPING,
                                 GroundMovementStates.LAND,
-                                GroundMovementStates.SOFT_LAND)
-                        )
+                                GroundMovementStates.SOFT_LAND
+                        ))
                         // Transition to the jumping animation if the player is jumping.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.JUMP)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_JUMPING)
@@ -775,7 +782,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         // Transition to the jumping animation if the player is falling.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.FALLING)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_GROUNDED).negate())
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.LINEAR))
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_OUT))
                                 .setPriority(50)
                                 .build())
                         .build())
@@ -786,15 +793,15 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 ))
                         // If the falling animation is finishing and the player is not walking, play the idle animation.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
-                                .isTakenIfTrue(walkingCondition.negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING))
-                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(9), Easing.SINE_IN_OUT))
+                                .isTakenIfTrue(walkingCondition.negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
+                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build())
                         // If the falling animation is finishing and the player is walking, play the walking animation.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
-                                .isTakenIfTrue(walkingCondition.and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING))
+                                .isTakenIfTrue(walkingCondition)
                                 .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(9), Easing.SINE_IN_OUT))
-                                .setPriority(50)
+                                .setPriority(60)
                                 .build())
                         .build())
                 .build();

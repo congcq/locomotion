@@ -1,5 +1,7 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
+import com.trainguy9512.locomotion.animation.driver.Driver;
+import com.trainguy9512.locomotion.animation.driver.DriverKey;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.util.TimeSpan;
@@ -93,6 +95,10 @@ public class BlendSpace1DPlayerFunction extends TimeBasedPoseFunction<LocalSpace
         return new Builder<>(blendValueFunction);
     }
 
+    public static Builder<?> builder(DriverKey<? extends Driver<Float>> floatDriverKey) {
+        return builder(evaluationState -> evaluationState.driverContainer().getDriverValue(floatDriverKey));
+    }
+
     private record BlendSpace1DEntry(ResourceLocation animationSequence, float playRate) {
 
     }
@@ -112,6 +118,10 @@ public class BlendSpace1DPlayerFunction extends TimeBasedPoseFunction<LocalSpace
         public B addEntry(float position, ResourceLocation animationSequence, float playRate) {
             this.blendSpaceEntries.put(position, new BlendSpace1DEntry(animationSequence, playRate));
             return (B) this;
+        }
+
+        public B addEntry(float position, ResourceLocation animationSequence) {
+            return this.addEntry(position, animationSequence, 1);
         }
 
         public BlendSpace1DPlayerFunction build() {

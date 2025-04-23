@@ -1,10 +1,8 @@
 package com.trainguy9512.locomotion.animation.pose.function.statemachine;
 
 import com.trainguy9512.locomotion.LocomotionMain;
-import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
-import net.minecraft.util.Mth;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,7 +72,7 @@ public class State<S extends Enum<S>> {
         /**
          * If true, this state will reset its pose function every time it is entered.
          */
-        public Builder<S> resetUponEntry(boolean resetUponEntry) {
+        public Builder<S> resetsPoseFunctionUponEntry(boolean resetUponEntry) {
             this.resetUponEntry = resetUponEntry;
             return this;
         }

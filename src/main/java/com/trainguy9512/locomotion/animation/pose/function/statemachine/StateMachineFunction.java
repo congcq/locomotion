@@ -2,8 +2,6 @@ package com.trainguy9512.locomotion.animation.pose.function.statemachine;
 
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
-import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
-import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.AnimationPlayer;
@@ -158,7 +156,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                     boolean targetIsNotCurrentActiveState = stateTransition.target() != currentActiveStateIdentifier;
                     if(transitionTargetIncludedInThisMachine && targetIsNotCurrentActiveState){
                         StateTransition.TransitionContext transitionContext = StateTransition.TransitionContext.of(
-                                evaluationState.dataContainer(),
+                                evaluationState.driverContainer(),
                                 TimeSpan.ofTicks(this.ticksElapsed.getCurrentValue()),
                                 this.stateBlendLayerStack.getLast().weight.getCurrentValue(),
                                 this.stateBlendLayerStack.getLast().weight.getPreviousValue(),
@@ -189,7 +187,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         Builder<S> builder = StateMachineFunction.builder(this.initialState);
         builder.resetUponRelevant(this.resetUponRelevant);
         this.states.forEach((identifier, state) ->
-                builder.addState(
+                builder.defineState(
                         State.builder(state).wrapUniquePoseFunction().build()
                 )
         );
@@ -237,8 +235,18 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         }
     }
 
-    public static <S extends Enum<S>> Builder<S> builder(Function<FunctionEvaluationState, S> initialState) {
-        return new Builder<>(initialState);
+    /**
+     * Creates a new state machine builder.
+     *
+     * <p>Every time the state machine is initialized, the provided function is
+     * ran to determine the entry state.</p>
+     *
+     * @param entryStateFunction        Function to determine the entry state
+     * @return
+     * @param <S>
+     */
+    public static <S extends Enum<S>> Builder<S> builder(Function<FunctionEvaluationState, S> entryStateFunction) {
+        return new Builder<>(entryStateFunction);
     }
 
     public static class Builder<S extends Enum<S>> {
@@ -261,7 +269,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
          * Adds a state to the state machine builder.
          * @param state                 State created with a {@link State.Builder}
          */
-        public Builder<S> addState(State<S> state) {
+        public Builder<S> defineState(State<S> state) {
             if (this.states.containsKey(state.identifier)) {
                 throw new IllegalStateException("Cannot add state " + state.identifier + " twice to the same state machine.");
             } else {
