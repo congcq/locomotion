@@ -698,7 +698,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .build())
                         .build())
                 .defineState(State.builder(GroundMovementStates.WALKING, walkingPoseFunction)
-                        .resetsPoseFunctionUponEntry(false)
+                        .resetsPoseFunctionUponEntry(true)
                         // Stop walking with the walk-to-stop animation if the player's already been walking for a bit.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.STOPPING)
                                 .isTakenIfTrue(walkingCondition.negate()
@@ -757,6 +757,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .setTiming(Transition.SINGLE_TICK)
                                 .setPriority(60)
                                 .build())
+                        // Transition to the jumping animation if the player is jumping.
+                        .addOutboundTransition(StateTransition.builder(GroundMovementStates.JUMP)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_JUMPING).and(StateTransition.booleanDriverPredicate(IS_GROUNDED)))
+                                .setTiming(Transition.SINGLE_TICK)
+                                .setPriority(70)
+                                .build())
                         .build())
                 .defineState(State.builder(GroundMovementStates.SOFT_LAND, softLandPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
@@ -794,13 +800,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         // If the falling animation is finishing and the player is not walking, play the idle animation.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
                                 .isTakenIfTrue(walkingCondition.negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
-                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(5), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(1), Easing.SINE_IN_OUT))
                                 .setPriority(50)
                                 .build())
                         // If the falling animation is finishing and the player is walking, play the walking animation.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
                                 .isTakenIfTrue(walkingCondition)
-                                .setTiming(Transition.of(TimeSpan.of30FramesPerSecond(9), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(40), Easing.CUBIC_IN_OUT))
                                 .setPriority(60)
                                 .build())
                         .build())
@@ -910,7 +916,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         Vector3f velocity = new Vector3f((float) (dataReference.getX() - dataReference.xo), (float) (dataReference.getY() - dataReference.yo), (float) (dataReference.getZ() - dataReference.zo));
         // We don't want vertical velocity to be factored into the movement direction offset as much as the horizontal velocity.
-        velocity.mul(1, 0.25f, 1).mul(dataReference.isSprinting() ? 4f : 3f).min(new Vector3f(1)).max(new Vector3f(-1));
+        velocity.mul(1, 0f, 1).mul(dataReference.isSprinting() ? 4f : 3f).min(new Vector3f(1)).max(new Vector3f(-1));
         driverContainer.getDriver(DAMPED_VELOCITY).setValue(velocity);
 
         Vector3f dampedVelocity = new Vector3f(driverContainer.getDriverValue(DAMPED_VELOCITY));
