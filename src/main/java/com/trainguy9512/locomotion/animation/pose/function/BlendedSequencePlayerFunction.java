@@ -13,13 +13,13 @@ import java.util.Optional;
 import java.util.TreeMap;
 import java.util.function.Function;
 
-public class BlendSpace1DPlayerFunction extends TimeBasedPoseFunction<LocalSpacePose> {
+public class BlendedSequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose> {
 
     private final TreeMap<Float, BlendSpace1DEntry> blendSpaceEntries;
     private final Function<FunctionEvaluationState, Float> blendPositionFunction;
     private final VariableDriver<Float> blendPosition;
 
-    private BlendSpace1DPlayerFunction(Function<FunctionEvaluationState, Boolean> isPlayingFunction, Function<FunctionEvaluationState, Float> playRateFunction, float resetStartTimeOffsetTicks, TreeMap<Float, BlendSpace1DEntry> blendSpaceEntries, Function<FunctionEvaluationState, Float> blendPositionFunction) {
+    private BlendedSequencePlayerFunction(Function<FunctionEvaluationState, Boolean> isPlayingFunction, Function<FunctionEvaluationState, Float> playRateFunction, float resetStartTimeOffsetTicks, TreeMap<Float, BlendSpace1DEntry> blendSpaceEntries, Function<FunctionEvaluationState, Float> blendPositionFunction) {
         super(isPlayingFunction, playRateFunction, resetStartTimeOffsetTicks);
         this.blendSpaceEntries = blendSpaceEntries;
         this.blendPositionFunction = blendPositionFunction;
@@ -82,7 +82,7 @@ public class BlendSpace1DPlayerFunction extends TimeBasedPoseFunction<LocalSpace
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        return new BlendSpace1DPlayerFunction(this.isPlayingFunction, this.playRateFunction, this.resetStartTimeOffsetTicks, this.blendSpaceEntries, this.blendPositionFunction);
+        return new BlendedSequencePlayerFunction(this.isPlayingFunction, this.playRateFunction, this.resetStartTimeOffsetTicks, this.blendSpaceEntries, this.blendPositionFunction);
     }
 
     @Override
@@ -124,11 +124,11 @@ public class BlendSpace1DPlayerFunction extends TimeBasedPoseFunction<LocalSpace
             return this.addEntry(position, animationSequence, 1);
         }
 
-        public BlendSpace1DPlayerFunction build() {
+        public BlendedSequencePlayerFunction build() {
             if (this.blendSpaceEntries.isEmpty()) {
                 throw new IllegalArgumentException("Blend space player has no added entries.");
             }
-            return new BlendSpace1DPlayerFunction(this.isPlayingFunction, this.playRateFunction, this.resetStartTimeOffsetTicks, this.blendSpaceEntries, this.blendValueFunction);
+            return new BlendedSequencePlayerFunction(this.isPlayingFunction, this.playRateFunction, this.resetStartTimeOffsetTicks, this.blendSpaceEntries, this.blendValueFunction);
         }
     }
 }

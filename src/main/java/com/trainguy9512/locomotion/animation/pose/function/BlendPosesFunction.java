@@ -1,8 +1,6 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
 import com.google.common.collect.Maps;
-import com.trainguy9512.locomotion.LocomotionMain;
-import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import org.jetbrains.annotations.NotNull;
@@ -11,12 +9,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.function.Function;
 
-public class BlendFunction implements PoseFunction<LocalSpacePose> {
+public class BlendPosesFunction implements PoseFunction<LocalSpacePose> {
 
     private final PoseFunction<LocalSpacePose> baseFunction;
     private final Map<BlendInput, VariableDriver<Float>> inputs;
 
-    public BlendFunction(PoseFunction<LocalSpacePose> baseFunction, Map<BlendInput, VariableDriver<Float>> inputs){
+    public BlendPosesFunction(PoseFunction<LocalSpacePose> baseFunction, Map<BlendInput, VariableDriver<Float>> inputs){
         this.baseFunction = baseFunction;
         this.inputs = inputs;
     }
@@ -53,7 +51,7 @@ public class BlendFunction implements PoseFunction<LocalSpacePose> {
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        Builder builder = BlendFunction.builder(this.baseFunction.wrapUnique());
+        Builder builder = BlendPosesFunction.builder(this.baseFunction.wrapUnique());
         for(BlendInput blendInput : this.inputs.keySet()){
             builder.addBlendInput(blendInput.inputFunction.wrapUnique(), blendInput.weightFunction, blendInput.jointMask.orElse(null));
         }
@@ -101,8 +99,8 @@ public class BlendFunction implements PoseFunction<LocalSpacePose> {
             return this.addBlendInput(inputFunction, weightFunction, null);
         }
 
-        public BlendFunction build(){
-            return new BlendFunction(this.baseFunction, this.inputs);
+        public BlendPosesFunction build(){
+            return new BlendPosesFunction(this.baseFunction, this.inputs);
         }
     }
 

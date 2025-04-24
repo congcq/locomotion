@@ -108,7 +108,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> mainHandPose = this.constructHandPoseFunction(cachedPoseContainer, InteractionHand.MAIN_HAND);
         PoseFunction<LocalSpacePose> offHandPose = this.constructHandPoseFunction(cachedPoseContainer, InteractionHand.OFF_HAND);
 
-        PoseFunction<LocalSpacePose> combinedHandPose = BlendFunction.builder(mainHandPose)
+        PoseFunction<LocalSpacePose> combinedHandPose = BlendPosesFunction.builder(mainHandPose)
                 .addBlendInput(MirrorFunction.of(offHandPose), evaluationState -> 1f, LEFT_SIDE_JOINTS)
                 .build();
 
@@ -663,17 +663,17 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public PoseFunction<LocalSpacePose> constructAdditiveGroundMovementPoseFunction(CachedPoseContainer cachedPoseContainer) {
 
-        PoseFunction<LocalSpacePose> idleAnimationPlayer = BlendFunction.builder(SequenceEvaluatorFunction.of(GROUND_MOVEMENT_IDLE))
+        PoseFunction<LocalSpacePose> idleAnimationPlayer = BlendPosesFunction.builder(SequenceEvaluatorFunction.of(GROUND_MOVEMENT_IDLE))
                 .addBlendInput(SequencePlayerFunction.builder(GROUND_MOVEMENT_IDLE).looping(true).build(), evaluationState -> 0.6f)
                 .build();
         PoseFunction<LocalSpacePose> walkToStopPoseFunction = SequencePlayerFunction.builder(GROUND_MOVEMENT_WALK_TO_STOP).setPlayRate(0.6f).build();
         PoseFunction<LocalSpacePose> jumpPoseFunction = SequencePlayerFunction.builder(GROUND_MOVEMENT_JUMP).build();
-        PoseFunction<LocalSpacePose> fallingPoseFunction = BlendSpace1DPlayerFunction.builder(VERTICAL_MOVEMENT_SPEED)
+        PoseFunction<LocalSpacePose> fallingPoseFunction = BlendedSequencePlayerFunction.builder(VERTICAL_MOVEMENT_SPEED)
                 .addEntry(1f, GROUND_MOVEMENT_FALLING_UP)
                 .addEntry(-0f, GROUND_MOVEMENT_FALLING_IN_PLACE)
                 .addEntry(-2f, GROUND_MOVEMENT_FALLING_DOWN)
                 .build();
-        PoseFunction<LocalSpacePose> walkingPoseFunction = BlendSpace1DPlayerFunction.builder(MODIFIED_WALK_SPEED)
+        PoseFunction<LocalSpacePose> walkingPoseFunction = BlendedSequencePlayerFunction.builder(MODIFIED_WALK_SPEED)
                 .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
                 .addEntry(0.5f, GROUND_MOVEMENT_WALKING, 2f)
                 .addEntry(0.86f, GROUND_MOVEMENT_WALKING, 2.25f)
@@ -681,7 +681,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .build();
 
         PoseFunction<LocalSpacePose> landPoseFunction = SequencePlayerFunction.builder(GROUND_MOVEMENT_LAND).build();
-        PoseFunction<LocalSpacePose> softLandPoseFunction = BlendFunction.builder(SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0)))
+        PoseFunction<LocalSpacePose> softLandPoseFunction = BlendPosesFunction.builder(SequenceEvaluatorFunction.of(GROUND_MOVEMENT_POSE, TimeSpan.ofSeconds(0)))
                 .addBlendInput(SequencePlayerFunction.builder(GROUND_MOVEMENT_LAND).setPlayRate(1f).build(), evaluationState -> 0.5f)
                 .build();
 
