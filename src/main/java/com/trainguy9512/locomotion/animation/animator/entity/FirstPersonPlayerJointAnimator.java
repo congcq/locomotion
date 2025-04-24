@@ -669,9 +669,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> walkToStopPoseFunction = SequencePlayerFunction.builder(GROUND_MOVEMENT_WALK_TO_STOP).setPlayRate(0.6f).build();
         PoseFunction<LocalSpacePose> jumpPoseFunction = SequencePlayerFunction.builder(GROUND_MOVEMENT_JUMP).build();
         PoseFunction<LocalSpacePose> fallingPoseFunction = BlendedSequencePlayerFunction.builder(VERTICAL_MOVEMENT_SPEED)
-                .addEntry(1f, GROUND_MOVEMENT_FALLING_UP)
+                .addEntry(0.5f, GROUND_MOVEMENT_FALLING_UP)
                 .addEntry(-0f, GROUND_MOVEMENT_FALLING_IN_PLACE)
-                .addEntry(-2f, GROUND_MOVEMENT_FALLING_DOWN)
+                .addEntry(-1f, GROUND_MOVEMENT_FALLING_DOWN)
                 .build();
         PoseFunction<LocalSpacePose> walkingPoseFunction = BlendedSequencePlayerFunction.builder(MODIFIED_WALK_SPEED)
                 .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
@@ -694,7 +694,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         // Begin walking if the player is moving horizontally
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
                                 .isTakenIfTrue(walkingCondition)
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_OUT))
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_OUT))
                                 .build())
                         .build())
                 .defineState(State.builder(GroundMovementStates.WALKING, walkingPoseFunction)
@@ -715,8 +715,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .defineState(State.builder(GroundMovementStates.STOPPING, walkToStopPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
-                                .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(0f)
+                                .setTiming(Transition.of(TimeSpan.ofSeconds(1f), Easing.SINE_IN_OUT))
                                 .build())
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
                                 .isTakenIfTrue(walkingCondition.and(StateTransition.CURRENT_TRANSITION_FINISHED))
