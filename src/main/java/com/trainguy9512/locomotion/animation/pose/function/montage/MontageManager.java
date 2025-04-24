@@ -230,7 +230,11 @@ public class MontageManager {
                 weight = 1 - this.configuration.transitionOut().applyEasement(Math.min((elapsedTicksInterpolated - exitTransitionStartTime) / this.configuration.transitionOut().duration().inTicks(), 1f));
             }
             if (this.interrupted) {
-                weight *= (1 - this.interruptTransition.applyEasement(Math.max((elapsedTicksInterpolated - this.interruptTick) / this.interruptTransition.duration().inTicks(), 0)));
+                LocomotionMain.LOGGER.info("BEGIN");
+                LocomotionMain.LOGGER.info(weight);
+                weight *= (1 - this.interruptTransition.applyEasement(Math.min((elapsedTicksInterpolated - this.interruptTick) / this.interruptTransition.duration().inTicks(), 1)));
+
+                LocomotionMain.LOGGER.info(weight);
             }
             return weight;
         }
