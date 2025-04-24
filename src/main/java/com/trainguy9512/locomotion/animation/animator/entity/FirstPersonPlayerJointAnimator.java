@@ -185,7 +185,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                             SequenceEvaluatorFunction.of(HAND_TOOL_POSE),
                             SequencePlayerFunction.builder(HAND_TOOL_PICKAXE_MINE_SWING)
                                     .looping(true)
-                                    .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(16))
+                                    .setResetStartTimeOffset(TimeSpan.of60FramesPerSecond(16))
                                     .setPlayRate(evaluationState -> 1.15f * LocomotionMain.CONFIG.data().firstPersonPlayer.miningAnimationSpeedMultiplier)
                                     .build(),
                             SequencePlayerFunction.builder(HAND_TOOL_PICKAXE_MINE_FINISH).build(),
@@ -196,7 +196,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     SequenceEvaluatorFunction.of(HAND_EMPTY_POSE),
                                     SequencePlayerFunction.builder(HAND_EMPTY_MINE_SWING)
                                             .looping(true)
-                                            .setResetStartTimeOffsetTicks(TimeSpan.of60FramesPerSecond(20))
+                                            .setResetStartTimeOffset(TimeSpan.of60FramesPerSecond(20))
                                             .setPlayRate(evaluationState -> 1.35f * LocomotionMain.CONFIG.data().firstPersonPlayer.miningAnimationSpeedMultiplier)
                                             .build(),
                                     SequencePlayerFunction.builder(HAND_EMPTY_MINE_FINISH).build(),
@@ -381,7 +381,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(HAS_ATTACKED)).or(StateTransition.booleanDriverPredicate(HAS_USED_MAIN_HAND_ITEM));
 
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.driverContainer().getDriver(renderedItemDriver).setValue(evaluationState.driverContainer().getDriverValue(itemDriver).copy());
-        Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT);
+        Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.INSTANT);
 
         State.Builder<HandPoseStates> raisingStateBuilder = State.builder(handPose.raisingState, raisingPoseFunction)
                 .resetsPoseFunctionUponEntry(true)
@@ -674,6 +674,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .addEntry(-1f, GROUND_MOVEMENT_FALLING_DOWN)
                 .build();
         PoseFunction<LocalSpacePose> walkingPoseFunction = BlendedSequencePlayerFunction.builder(MODIFIED_WALK_SPEED)
+                .setResetStartTimeOffset(TimeSpan.of30FramesPerSecond(5))
                 .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
                 .addEntry(0.5f, GROUND_MOVEMENT_WALKING, 2f)
                 .addEntry(0.86f, GROUND_MOVEMENT_WALKING, 2.25f)
@@ -905,6 +906,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(HAS_BLOCKED_ATTACK).runIfTriggered(() -> montageManager.playMontage(SHIELD_BLOCK_IMPACT_MONTAGE, driverContainer));
         driverContainer.getDriver(IS_USING_MAIN_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.MAIN_HAND);
         driverContainer.getDriver(IS_USING_OFF_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.OFF_HAND);
+
+        if (driverContainer.getDriver(IS_MINING).getCurrentValue()) {
+            montageManager.interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.of(TimeSpan.ofTicks(2)));
+        }
 
         driverContainer.getDriver(IS_MAIN_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)));
         driverContainer.getDriver(IS_OFF_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_OFF_HAND_ITEM)));

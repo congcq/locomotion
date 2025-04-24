@@ -96,7 +96,7 @@ public abstract class TimeBasedPoseFunction<P extends Pose> implements PoseFunct
          * @param startTimeOffset           Offset time.
          */
         @SuppressWarnings("unchecked")
-        public B setResetStartTimeOffsetTicks(TimeSpan startTimeOffset) {
+        public B setResetStartTimeOffset(TimeSpan startTimeOffset) {
             this.resetStartTimeOffsetTicks = startTimeOffset.inTicks();
             return (B) this;
         }

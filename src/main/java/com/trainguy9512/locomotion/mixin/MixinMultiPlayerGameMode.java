@@ -26,7 +26,12 @@ public class MixinMultiPlayerGameMode {
     public void disableMiningAnimationOnNoLongerMining(CallbackInfo ci) {
         assert this.minecraft.player != null;
         if (!this.minecraft.player.getAbilities().instabuild) {
-            JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(false));
+            JointAnimatorDispatcher.getInstance().getFirstPersonPlayerDataContainer().ifPresent(dataContainer -> {
+                if (dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).getCurrentValue() && !dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).getPreviousValue()) {
+                    dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_ATTACKED).trigger();
+                }
+                dataContainer.getDriver(FirstPersonPlayerJointAnimator.IS_MINING).setValue(false);
+            });
         }
     }
 

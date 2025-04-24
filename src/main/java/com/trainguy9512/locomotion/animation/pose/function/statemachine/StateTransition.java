@@ -151,7 +151,7 @@ public record StateTransition<S extends Enum<S>>(
             if (this.conditionPredicate == null) {
                 this.conditionPredicate = context -> false;
                 if (!this.automaticTransition) {
-                    LocomotionMain.LOGGER.error("State transition to target {} has no passable conditions, and will go unused.", this.target);
+                    LocomotionMain.LOGGER.error("State transition to target {}.{} has no passable conditions, and will go unused.", this.target.getClass().getSimpleName(), this.target);
                 }
             }
             if (this.automaticTransition) {
