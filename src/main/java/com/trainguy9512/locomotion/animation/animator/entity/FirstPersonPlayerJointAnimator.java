@@ -138,6 +138,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         EMPTY (HandPoseStates.EMPTY_RAISE, HandPoseStates.EMPTY_LOWER, HandPoseStates.EMPTY, HAND_EMPTY_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE),
         GENERIC_ITEM (HandPoseStates.GENERIC_ITEM_RAISE, HandPoseStates.GENERIC_ITEM_LOWER, HandPoseStates.GENERIC_ITEM, HAND_GENERIC_ITEM_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE),
         TOOL (HandPoseStates.TOOL_RAISE, HandPoseStates.TOOL_LOWER, HandPoseStates.TOOL, HAND_TOOL_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE),
+        SWORD (HandPoseStates.SWORD_RAISE, HandPoseStates.SWORD_LOWER, HandPoseStates.SWORD, HAND_TOOL_POSE, null),
         SHIELD (HandPoseStates.SHIELD_RAISE, HandPoseStates.SHIELD_LOWER, HandPoseStates.SHIELD, HAND_SHIELD_POSE, HAND_TOOL_ATTACK_PICKAXE_MONTAGE);
 
         public final HandPoseStates raisingState;
@@ -158,8 +159,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 ItemTags.PICKAXES,
                 ItemTags.AXES,
                 ItemTags.SHOVELS,
-                ItemTags.HOES,
-                ItemTags.SWORDS
+                ItemTags.HOES
         );
 
         private static HandPose fromItem(ItemStack itemStack) {
@@ -168,6 +168,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             }
             if (itemStack.is(Items.SHIELD)) {
                 return SHIELD;
+            }
+            if (itemStack.is(ItemTags.SWORDS)) {
+                return SWORD;
             }
             for (TagKey<Item> tag : TOOL_ITEM_TAGS) {
                 if (itemStack.is(tag)) {
@@ -220,6 +223,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         TOOL,
         TOOL_RAISE,
         TOOL_LOWER,
+        SWORD,
+        SWORD_RAISE,
+        SWORD_LOWER,
         SHIELD,
         SHIELD_RAISE,
         SHIELD_LOWER,
@@ -268,6 +274,17 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 interactionHand,
                 HandPose.TOOL,
                 HandPose.TOOL.getMiningStateMachine(cachedPoseContainer, interactionHand),
+                SequencePlayerFunction.builder(HAND_TOOL_LOWER).build(),
+                SequencePlayerFunction.builder(HAND_TOOL_RAISE).build(),
+                Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT),
+                Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT)
+        );
+        this.addStatesForHandPose(
+                handPoseStateMachineBuilder,
+                stateAliasBuilder,
+                interactionHand,
+                HandPose.SWORD,
+                handSwordPoseFunction(cachedPoseContainer, interactionHand),
                 SequencePlayerFunction.builder(HAND_TOOL_LOWER).build(),
                 SequencePlayerFunction.builder(HAND_TOOL_RAISE).build(),
                 Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT),
@@ -458,6 +475,58 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .bindToOnTransitionTaken(updateRenderedItem)
                         .bindToOnTransitionTaken(clearAttackMontages)
                         .build());
+    }
+
+    public static final ResourceLocation HAND_TOOL_SWORD_SWING_LEFT = makeAnimationSequenceResourceLocation("hand/tool/sword/swing_left");
+    public static final ResourceLocation HAND_TOOL_SWORD_SWING_RIGHT = makeAnimationSequenceResourceLocation("hand/tool/sword/swing_right");
+
+    public enum SwordSwingStates {
+        IDLE,
+        SWING_LEFT,
+        SWING_RIGHT
+    }
+
+    public static PoseFunction<LocalSpacePose> handSwordPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
+        return switch (interactionHand) {
+            case MAIN_HAND -> StateMachineFunction.builder(evaluationState -> SwordSwingStates.IDLE)
+                    .defineState(State.builder(SwordSwingStates.IDLE, HandPose.SWORD.getMiningStateMachine(cachedPoseContainer, interactionHand))
+                            .resetsPoseFunctionUponEntry(true)
+                            .addOutboundTransition(StateTransition.builder(SwordSwingStates.SWING_LEFT)
+                                    .isTakenIfTrue(StateTransition.booleanDriverPredicate(HAS_ATTACKED))
+                                    .setTiming(Transition.of(TimeSpan.ofTicks(2)))
+                                    .build())
+                            .build())
+                    .defineState(State.builder(SwordSwingStates.SWING_LEFT, SequencePlayerFunction.builder(HAND_TOOL_SWORD_SWING_LEFT).build())
+                            .resetsPoseFunctionUponEntry(true)
+                            .addOutboundTransition(StateTransition.builder(SwordSwingStates.SWING_RIGHT)
+                                    .isTakenIfTrue(StateTransition.booleanDriverPredicate(HAS_ATTACKED))
+                                    .setTiming(Transition.of(TimeSpan.ofTicks(2)))
+                                    .build())
+                            .build())
+                    .defineState(State.builder(SwordSwingStates.SWING_RIGHT, SequencePlayerFunction.builder(HAND_TOOL_SWORD_SWING_RIGHT).build())
+                            .resetsPoseFunctionUponEntry(true)
+                            .addOutboundTransition(StateTransition.builder(SwordSwingStates.SWING_LEFT)
+                                    .isTakenIfTrue(StateTransition.booleanDriverPredicate(HAS_ATTACKED))
+                                    .setTiming(Transition.of(TimeSpan.ofTicks(2)))
+                                    .build())
+                            .build())
+                    .addStateAlias(StateAlias.builder(
+                                    Set.of(
+                                            SwordSwingStates.SWING_LEFT,
+                                            SwordSwingStates.SWING_RIGHT
+                                    ))
+                            .addOutboundTransition(StateTransition.builder(SwordSwingStates.IDLE)
+                                    .isTakenIfMostRelevantAnimationPlayerFinishing(0)
+                                    .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                    .build())
+                            .addOutboundTransition(StateTransition.builder(SwordSwingStates.IDLE)
+                                    .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING))
+                                    .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
+                                    .build())
+                            .build())
+                    .build();
+            case OFF_HAND -> HandPose.SWORD.getMiningStateMachine(cachedPoseContainer, interactionHand);
+        };
     }
 
     public static final ResourceLocation HAND_SHIELD_POSE = makeAnimationSequenceResourceLocation("hand/shield/pose");
@@ -902,7 +971,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(HAS_USED_OFF_HAND_ITEM).runIfTriggered(() -> montageManager.playMontage(USE_OFF_HAND_MONTAGE, driverContainer));
         driverContainer.getDriver(HAS_DROPPED_ITEM).runIfTriggered(() -> montageManager.playMontage(USE_MAIN_HAND_MONTAGE, driverContainer));
 
-        driverContainer.getDriver(HAS_ATTACKED).runIfTriggered(() -> montageManager.playMontage(HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage, driverContainer));
+        driverContainer.getDriver(HAS_ATTACKED).runIfTriggered(() -> {
+            MontageConfiguration montageConfiguration = HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage;
+            if (montageConfiguration != null) {
+                montageManager.playMontage(montageConfiguration, driverContainer);
+            }
+        });
         driverContainer.getDriver(HAS_BLOCKED_ATTACK).runIfTriggered(() -> montageManager.playMontage(SHIELD_BLOCK_IMPACT_MONTAGE, driverContainer));
         driverContainer.getDriver(IS_USING_MAIN_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.MAIN_HAND);
         driverContainer.getDriver(IS_USING_OFF_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.OFF_HAND);
