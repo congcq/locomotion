@@ -252,7 +252,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
         StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(
-                evaluationState -> HandPose.fromItem(evaluationState.driverContainer().getDriverValue(interactionHand == InteractionHand.MAIN_HAND ? RENDERED_MAIN_HAND_ITEM : RENDERED_OFF_HAND_ITEM)).poseState
+                evaluationState -> evaluationState.driverContainer().getDriverValue(interactionHand == InteractionHand.MAIN_HAND ? RENDERED_MAIN_HAND_POSE : RENDERED_OFF_HAND_POSE).poseState
         );
         handPoseStateMachineBuilder.resetUponRelevant(true);
         StateAlias.Builder<HandPoseStates> stateAliasBuilder = StateAlias.builder(Set.of(HandPoseStates.EMPTY_LOWER));
@@ -378,14 +378,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case MAIN_HAND -> RENDERED_MAIN_HAND_ITEM;
             case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
         };
+        DriverKey<VariableDriver<HandPose>> renderedHandPoseDriver = switch (interactionHand) {
+            case MAIN_HAND -> RENDERED_MAIN_HAND_POSE;
+            case OFF_HAND -> RENDERED_OFF_HAND_POSE;
+        };
         Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> {
-
             if (interactionHand == InteractionHand.MAIN_HAND) {
-                // Don't switch hands if the player has just dropped an item.
-//                if (context.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered()) {
-//                    return false;
-
-//                }
                 if (context.driverContainer().getDriver(HOTBAR_SLOT).hasValueChanged()) {
                     if (!context.driverContainer().getDriverValue(itemDriver).isEmpty() && !context.driverContainer().getDriverValue(renderedItemDriver).isEmpty()) {
                         // If this hand pose function is the main hand item, and the selected hot bar slot has changed, and the old and new items are not empty, play the item switch animation
@@ -397,7 +395,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         };
         Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(HAS_ATTACKED)).or(StateTransition.booleanDriverPredicate(HAS_USED_MAIN_HAND_ITEM));
 
-        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> evaluationState.driverContainer().getDriver(renderedItemDriver).setValue(evaluationState.driverContainer().getDriverValue(itemDriver).copy());
+        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> {
+            evaluationState.driverContainer().getDriver(renderedItemDriver).setValue(evaluationState.driverContainer().getDriverValue(itemDriver).copy());
+            evaluationState.driverContainer().getDriver(renderedHandPoseDriver).setValue(HandPose.fromItem(evaluationState.driverContainer().getDriverValue(itemDriver)));
+        };
         Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.INSTANT);
 
         State.Builder<HandPoseStates> raisingStateBuilder = State.builder(handPose.raisingState, raisingPoseFunction)
@@ -899,6 +900,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<ItemStack>> OFF_HAND_ITEM = DriverKey.of("off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> RENDERED_MAIN_HAND_ITEM = DriverKey.of("rendered_main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> RENDERED_OFF_HAND_ITEM = DriverKey.of("rendered_off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
+    public static final DriverKey<VariableDriver<HandPose>> RENDERED_MAIN_HAND_POSE = DriverKey.of("rendered_main_hand_pose", () -> VariableDriver.ofConstant(() -> HandPose.EMPTY));
+    public static final DriverKey<VariableDriver<HandPose>> RENDERED_OFF_HAND_POSE = DriverKey.of("rendered_off_hand_pose", () -> VariableDriver.ofConstant(() -> HandPose.EMPTY));
+
 
     public static final DriverKey<VariableDriver<Float>> HORIZONTAL_MOVEMENT_SPEED = DriverKey.of("horizontal_movement_speed", () -> VariableDriver.ofFloat(() -> 0f));
     public static final DriverKey<VariableDriver<Float>> VERTICAL_MOVEMENT_SPEED = DriverKey.of("vertical_movement_speed", () -> VariableDriver.ofFloat(() -> 0f));
@@ -927,21 +931,21 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
-            .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)).basePoseLocation)
+            .makeAdditive(driverContainer -> driverContainer.getDriverValue(RENDERED_MAIN_HAND_POSE).basePoseLocation)
             .build();
     public static final MontageConfiguration USE_MAIN_HAND_MONTAGE = MontageConfiguration.builder("hand_use_main_hand", HAND_TOOL_USE)
             .playsInSlot(MAIN_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(16), Easing.SINE_IN_OUT))
-            .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)).basePoseLocation)
+            .makeAdditive(driverContainer -> driverContainer.getDriverValue(RENDERED_MAIN_HAND_POSE).basePoseLocation)
             .build();
     public static final MontageConfiguration USE_OFF_HAND_MONTAGE = MontageConfiguration.builder("hand_use_off_hand", HAND_TOOL_USE)
             .playsInSlot(OFF_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(16), Easing.SINE_IN_OUT))
-            .makeAdditive(driverContainer -> HandPose.fromItem(driverContainer.getDriverValue(RENDERED_OFF_HAND_ITEM)).basePoseLocation)
+            .makeAdditive(driverContainer -> driverContainer.getDriverValue(RENDERED_OFF_HAND_POSE).basePoseLocation)
             .build();
     public static final MontageConfiguration SHIELD_BLOCK_IMPACT_MONTAGE = MontageConfiguration.builder("shield_block_impact", HAND_SHIELD_IMPACT)
             .playsInSlot(SHIELD_BLOCK_SLOT)
@@ -972,7 +976,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(HAS_DROPPED_ITEM).runIfTriggered(() -> montageManager.playMontage(USE_MAIN_HAND_MONTAGE, driverContainer));
 
         driverContainer.getDriver(HAS_ATTACKED).runIfTriggered(() -> {
-            MontageConfiguration montageConfiguration = HandPose.fromItem(driverContainer.getDriverValue(MAIN_HAND_ITEM)).attackMontage;
+            MontageConfiguration montageConfiguration = driverContainer.getDriverValue(RENDERED_MAIN_HAND_POSE).attackMontage;
             if (montageConfiguration != null) {
                 montageManager.playMontage(montageConfiguration, driverContainer);
             }

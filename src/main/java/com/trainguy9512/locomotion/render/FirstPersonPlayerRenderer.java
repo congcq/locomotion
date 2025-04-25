@@ -88,8 +88,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                             ItemStack leftHandItem = dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.MAIN_HAND_ITEM : FirstPersonPlayerJointAnimator.OFF_HAND_ITEM);
                             ItemStack rightHandItem = dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.OFF_HAND_ITEM : FirstPersonPlayerJointAnimator.MAIN_HAND_ITEM);
 
-                            leftHandItem = leftHandItem.is(leftHandRenderedItem.getItem()) ? leftHandItem : leftHandRenderedItem;
-                            rightHandItem = rightHandItem.is(rightHandRenderedItem.getItem()) ? rightHandItem : rightHandRenderedItem;
+                            leftHandItem = ItemStack.isSameItemSameComponents(leftHandItem, leftHandRenderedItem) ? leftHandItem : leftHandRenderedItem;
+                            rightHandItem = ItemStack.isSameItemSameComponents(rightHandItem, rightHandRenderedItem) ? rightHandItem : rightHandRenderedItem;
 
                             this.renderItem(abstractClientPlayer, rightHandItem, ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, poseStack, rightItemPose, buffer, combinedLight, HumanoidArm.RIGHT);
                             this.renderItem(abstractClientPlayer, leftHandItem, ItemDisplayContext.THIRD_PERSON_LEFT_HAND, poseStack, leftItemPose, buffer, combinedLight, HumanoidArm.LEFT);
