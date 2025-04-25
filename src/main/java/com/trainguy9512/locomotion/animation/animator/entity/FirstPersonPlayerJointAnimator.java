@@ -162,7 +162,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 ItemTags.HOES
         );
 
-        private static HandPose fromItem(ItemStack itemStack) {
+        private static HandPose fromItemStack(ItemStack itemStack) {
             if (itemStack.isEmpty()) {
                 return EMPTY;
             }
@@ -382,6 +382,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case MAIN_HAND -> RENDERED_MAIN_HAND_POSE;
             case OFF_HAND -> RENDERED_OFF_HAND_POSE;
         };
+
+        Predicate<StateTransition.TransitionContext> itemHasChanged = context -> context.driverContainer().getDriverValue(itemDriver).getItem() != context.driverContainer().getDriverValue(renderedItemDriver).getItem();
+        Predicate<StateTransition.TransitionContext> hotbarHasChanged = context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HOTBAR_SLOT).hasValueChanged();
+        Predicate<StateTransition.TransitionContext> handPoseHasChanged = context -> HandPose.fromItemStack(context.driverContainer().getDriverValue(itemDriver)) != HandPose.fromItemStack(context.driverContainer().getDriverValue(renderedItemDriver));
+        Predicate<StateTransition.TransitionContext> newItemIsEmpty = context -> context.driverContainer().getDriverValue(itemDriver).isEmpty();
+
         Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> {
             if (interactionHand == InteractionHand.MAIN_HAND) {
                 if (context.driverContainer().getDriver(HOTBAR_SLOT).hasValueChanged()) {
@@ -391,13 +397,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                     }
                 }
             }
-            return context.driverContainer().getDriverValue(itemDriver).getItem() != context.driverContainer().getDriverValue(renderedItemDriver).getItem();
         };
         Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(HAS_ATTACKED)).or(StateTransition.booleanDriverPredicate(HAS_USED_MAIN_HAND_ITEM));
 
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> {
             evaluationState.driverContainer().getDriver(renderedItemDriver).setValue(evaluationState.driverContainer().getDriverValue(itemDriver).copy());
-            evaluationState.driverContainer().getDriver(renderedHandPoseDriver).setValue(HandPose.fromItem(evaluationState.driverContainer().getDriverValue(itemDriver)));
+            evaluationState.driverContainer().getDriver(renderedHandPoseDriver).setValue(HandPose.fromItemStack(evaluationState.driverContainer().getDriverValue(itemDriver)));
         };
         Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.INSTANT);
 
@@ -428,39 +433,35 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 handPose.raisingState
                         ))
                         .addOutboundTransition(StateTransition.builder(handPose.loweringState)
-                                .isTakenIfTrue(switchHandsCondition)
+                                .isTakenIfTrue(itemHasChanged.and(handPoseHasChanged).or(hotbarHasChanged))
                                 .setTiming(poseToLoweringTiming)
-                                .setPriority(50)
+                                .setPriority(60)
                                 .build())
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.DROPPING_LAST_ITEM)
-                                .isTakenIfTrue(transitionContext -> {
+                                .isTakenIfTrue(newItemIsEmpty.and(transitionContext -> {
                                     if (interactionHand == InteractionHand.MAIN_HAND) {
-                                        if (transitionContext.driverContainer().getDriver(itemDriver).getCurrentValue().isEmpty()) {
-                                            return transitionContext.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered();
-                                        }
+                                        return transitionContext.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered();
                                     }
                                     return false;
-                                })
-                                .setPriority(60)
+                                }))
+                                .setPriority(50)
                                 .setTiming(Transition.of(TimeSpan.ofTicks(2)))
                                 .bindToOnTransitionTaken(updateRenderedItem)
                                 .bindToOnTransitionTaken(clearAttackMontages)
                                 .build())
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.USING_LAST_ITEM)
-                                .isTakenIfTrue(transitionContext -> {
-                                    if (transitionContext.driverContainer().getDriver(itemDriver).getCurrentValue().isEmpty()) {
-                                        if (interactionHand == InteractionHand.MAIN_HAND) {
-                                            if (transitionContext.driverContainer().getDriver(HAS_ATTACKED).hasBeenTriggered()) {
-                                                return true;
-                                            }
-                                        }
-                                        if (transitionContext.driverContainer().getDriver(interactionHand == InteractionHand.MAIN_HAND ? HAS_USED_MAIN_HAND_ITEM : HAS_USED_OFF_HAND_ITEM).hasBeenTriggered()) {
+                                .isTakenIfTrue(newItemIsEmpty.and(transitionContext -> {
+                                    if (interactionHand == InteractionHand.MAIN_HAND) {
+                                        if (transitionContext.driverContainer().getDriver(HAS_ATTACKED).hasBeenTriggered()) {
                                             return true;
                                         }
                                     }
+                                    if (transitionContext.driverContainer().getDriver(interactionHand == InteractionHand.MAIN_HAND ? HAS_USED_MAIN_HAND_ITEM : HAS_USED_OFF_HAND_ITEM).hasBeenTriggered()) {
+                                        return true;
+                                    }
                                     return false;
-                                })
-                                .setPriority(60)
+                                }))
+                                .setPriority(70)
                                 .setTiming(Transition.of(TimeSpan.ofTicks(2)))
                                 .bindToOnTransitionTaken(updateRenderedItem)
                                 .bindToOnTransitionTaken(clearAttackMontages)
@@ -471,7 +472,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .addOutboundTransition(StateTransition.builder(handPose.raisingState)
                         .setTiming(Transition.INSTANT)
                         .isTakenIfTrue(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING
-                                .and(context -> HandPose.fromItem(context.driverContainer().getDriverValue(itemDriver)) == handPose)
+                                .and(context -> HandPose.fromItemStack(context.driverContainer().getDriverValue(itemDriver)) == handPose)
                         )
                         .bindToOnTransitionTaken(updateRenderedItem)
                         .bindToOnTransitionTaken(clearAttackMontages)
