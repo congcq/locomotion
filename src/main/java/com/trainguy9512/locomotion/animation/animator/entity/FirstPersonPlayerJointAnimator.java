@@ -2,10 +2,7 @@ package com.trainguy9512.locomotion.animation.animator.entity;
 
 import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.*;
-import com.trainguy9512.locomotion.animation.driver.SpringDriver;
-import com.trainguy9512.locomotion.animation.driver.TriggerDriver;
-import com.trainguy9512.locomotion.animation.driver.VariableDriver;
-import com.trainguy9512.locomotion.animation.driver.DriverKey;
+import com.trainguy9512.locomotion.animation.driver.*;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.*;
@@ -382,11 +379,20 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case MAIN_HAND -> RENDERED_MAIN_HAND_POSE;
             case OFF_HAND -> RENDERED_OFF_HAND_POSE;
         };
+        DriverKey<TriggerDriver> hasUsedItemDriver = switch (interactionHand) {
+            case MAIN_HAND -> HAS_USED_MAIN_HAND_ITEM;
+            case OFF_HAND -> HAS_USED_OFF_HAND_ITEM;
+        };
 
         Predicate<StateTransition.TransitionContext> itemHasChanged = context -> context.driverContainer().getDriverValue(itemDriver).getItem() != context.driverContainer().getDriverValue(renderedItemDriver).getItem();
         Predicate<StateTransition.TransitionContext> hotbarHasChanged = context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HOTBAR_SLOT).hasValueChanged();
         Predicate<StateTransition.TransitionContext> handPoseHasChanged = context -> HandPose.fromItemStack(context.driverContainer().getDriverValue(itemDriver)) != HandPose.fromItemStack(context.driverContainer().getDriverValue(renderedItemDriver));
         Predicate<StateTransition.TransitionContext> newItemIsEmpty = context -> context.driverContainer().getDriverValue(itemDriver).isEmpty();
+
+        Predicate<StateTransition.TransitionContext> hardSwitchCondition = hotbarHasChanged.or(itemHasChanged);
+        Predicate<StateTransition.TransitionContext> dropLastItemCondition = newItemIsEmpty.and(context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered());
+        Predicate<StateTransition.TransitionContext> useLastItemCondition = itemHasChanged.and(newItemIsEmpty).and(context -> context.driverContainer().getDriver(hasUsedItemDriver).hasBeenTriggered() || (interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_ATTACKED).hasBeenTriggered()));
+
 
         Predicate<StateTransition.TransitionContext> switchHandsCondition = context -> {
             if (interactionHand == InteractionHand.MAIN_HAND) {
@@ -397,6 +403,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                     }
                 }
             }
+            return false;
         };
         Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(HAS_ATTACKED)).or(StateTransition.booleanDriverPredicate(HAS_USED_MAIN_HAND_ITEM));
 
@@ -404,7 +411,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             evaluationState.driverContainer().getDriver(renderedItemDriver).setValue(evaluationState.driverContainer().getDriverValue(itemDriver).copy());
             evaluationState.driverContainer().getDriver(renderedHandPoseDriver).setValue(HandPose.fromItemStack(evaluationState.driverContainer().getDriverValue(itemDriver)));
         };
-        Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.INSTANT);
+        Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> {
+            LocomotionMain.LOGGER.info("interrupted, {}, {}", evaluationState.driverContainer().getDriverValue(HAS_USED_MAIN_HAND_ITEM), evaluationState.currentTick());
+            evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.INSTANT);
+        };
 
         State.Builder<HandPoseStates> raisingStateBuilder = State.builder(handPose.raisingState, raisingPoseFunction)
                 .resetsPoseFunctionUponEntry(true)
@@ -433,35 +443,20 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 handPose.raisingState
                         ))
                         .addOutboundTransition(StateTransition.builder(handPose.loweringState)
-                                .isTakenIfTrue(itemHasChanged.and(handPoseHasChanged).or(hotbarHasChanged))
+                                .isTakenIfTrue(hardSwitchCondition)
                                 .setTiming(poseToLoweringTiming)
-                                .setPriority(60)
+                                .setPriority(50)
                                 .build())
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.DROPPING_LAST_ITEM)
-                                .isTakenIfTrue(newItemIsEmpty.and(transitionContext -> {
-                                    if (interactionHand == InteractionHand.MAIN_HAND) {
-                                        return transitionContext.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered();
-                                    }
-                                    return false;
-                                }))
-                                .setPriority(50)
+                                .isTakenIfTrue(dropLastItemCondition)
+                                .setPriority(60)
                                 .setTiming(Transition.of(TimeSpan.ofTicks(2)))
                                 .bindToOnTransitionTaken(updateRenderedItem)
                                 .bindToOnTransitionTaken(clearAttackMontages)
                                 .build())
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.USING_LAST_ITEM)
-                                .isTakenIfTrue(newItemIsEmpty.and(transitionContext -> {
-                                    if (interactionHand == InteractionHand.MAIN_HAND) {
-                                        if (transitionContext.driverContainer().getDriver(HAS_ATTACKED).hasBeenTriggered()) {
-                                            return true;
-                                        }
-                                    }
-                                    if (transitionContext.driverContainer().getDriver(interactionHand == InteractionHand.MAIN_HAND ? HAS_USED_MAIN_HAND_ITEM : HAS_USED_OFF_HAND_ITEM).hasBeenTriggered()) {
-                                        return true;
-                                    }
-                                    return false;
-                                }))
-                                .setPriority(70)
+                                .isTakenIfTrue(useLastItemCondition)
+                                .setPriority(60)
                                 .setTiming(Transition.of(TimeSpan.ofTicks(2)))
                                 .bindToOnTransitionTaken(updateRenderedItem)
                                 .bindToOnTransitionTaken(clearAttackMontages)
@@ -762,7 +757,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         PoseFunction<LocalSpacePose> movementStateMachine = StateMachineFunction.builder(evaluationState -> GroundMovementStates.IDLE)
                 .defineState(State.builder(GroundMovementStates.IDLE, idleAnimationPlayer)
-                        .resetsPoseFunctionUponEntry(false)
                         // Begin walking if the player is moving horizontally
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
                                 .isTakenIfTrue(walkingCondition)
@@ -770,7 +764,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .build())
                         .build())
                 .defineState(State.builder(GroundMovementStates.WALKING, walkingPoseFunction)
-                        .resetsPoseFunctionUponEntry(true)
                         // Stop walking with the walk-to-stop animation if the player's already been walking for a bit.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.STOPPING)
                                 .isTakenIfTrue(walkingCondition.negate()
@@ -972,7 +965,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         /*driverContainer.getDriver(HOTBAR_SLOT).setValue(dataReference.getInventory().selected);*/
 
 
-        driverContainer.getDriver(HAS_USED_MAIN_HAND_ITEM).runIfTriggered(() -> montageManager.playMontage(USE_MAIN_HAND_MONTAGE, driverContainer));
+        driverContainer.getDriver(HAS_USED_MAIN_HAND_ITEM).runIfTriggered(() -> {
+            montageManager.playMontage(USE_MAIN_HAND_MONTAGE, driverContainer);
+            LocomotionMain.LOGGER.info("used!");
+        });
         driverContainer.getDriver(HAS_USED_OFF_HAND_ITEM).runIfTriggered(() -> montageManager.playMontage(USE_OFF_HAND_MONTAGE, driverContainer));
         driverContainer.getDriver(HAS_DROPPED_ITEM).runIfTriggered(() -> montageManager.playMontage(USE_MAIN_HAND_MONTAGE, driverContainer));
 
