@@ -117,6 +117,6 @@ public class LocalSpacePose extends Pose {
     }
 
     public void invert() {
-        this.jointChannels.forEach((joint, channel) -> channel.invert());
+        this.jointChannels.values().forEach(JointChannel::invert);
     }
 }

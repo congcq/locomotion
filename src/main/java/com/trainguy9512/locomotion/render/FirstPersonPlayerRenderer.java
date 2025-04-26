@@ -95,6 +95,10 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                             this.renderItem(abstractClientPlayer, leftHandItem, ItemDisplayContext.THIRD_PERSON_LEFT_HAND, poseStack, leftItemPose, buffer, combinedLight, HumanoidArm.LEFT);
 
 
+//                            if (!this.minecraft.isPaused()) {
+//                                LocomotionMain.LOGGER.info(rightItemPose.getTransform().getScale(new Vector3f()));
+//                            }
+
                             //this.renderItemInHand(abstractClientPlayer, ItemStack.EMPTY, poseStack, HumanoidArm.LEFT, animationPose, bufferSource, i);
 
 
