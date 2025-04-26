@@ -37,18 +37,6 @@ public abstract class MixinMinecraft {
 
     @Shadow @Nullable public MultiPlayerGameMode gameMode;
 
-    @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiling/ProfilerFiller;popPush(Ljava/lang/String;)V", ordinal = 5))
-    public void tickJointAnimators(CallbackInfo ci, @Local ProfilerFiller profilerFiller) {
-        profilerFiller.popPush("jointAnimatorTick");
-        if (!this.pause && this.isLevelRunningNormally()) {
-            // There's a condition in Minecraft.java that only allows this to run if the level != null, but the mixin does not know this.
-            assert this.level != null;
-            JointAnimatorDispatcher jointAnimatorDispatcher = JointAnimatorDispatcher.getInstance();
-            jointAnimatorDispatcher.tickEntityJointAnimators(this.level.entitiesForRendering());
-            jointAnimatorDispatcher.tickFirstPersonPlayerJointAnimator();
-        }
-    }
-
     @Inject(
             method = "handleKeybinds",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;swing(Lnet/minecraft/world/InteractionHand;)V")

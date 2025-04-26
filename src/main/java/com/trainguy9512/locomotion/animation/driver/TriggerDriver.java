@@ -9,20 +9,26 @@ import java.util.function.Consumer;
  */
 public class TriggerDriver implements Driver<Boolean> {
 
-    private boolean triggered;
+    private final int triggerTickDuration;
+
+    private int triggerCooldown;
     private boolean triggerConsumed;
 
-    private TriggerDriver() {
-        this.triggered = false;
-        this.triggerConsumed = false;
+    private TriggerDriver(int triggerTickDuration) {
+        this.triggerTickDuration = triggerTickDuration;
+        this.triggerCooldown = 0;
     }
 
     public static TriggerDriver of() {
-        return new TriggerDriver();
+        return new TriggerDriver(1);
+    }
+
+    public static TriggerDriver of(int triggerTickDuration) {
+        return new TriggerDriver(Math.max(1, triggerTickDuration));
     }
 
     public void trigger() {
-        this.triggered = true;
+        this.triggerCooldown = this.triggerTickDuration;
         this.triggerConsumed = false;
     }
 
@@ -31,14 +37,14 @@ public class TriggerDriver implements Driver<Boolean> {
      * @param runnable          Function to run if triggered.
      */
     public void runIfTriggered(Runnable runnable) {
-        if (this.triggered && !this.triggerConsumed) {
+        if (this.triggerCooldown > 0 && !this.triggerConsumed) {
             runnable.run();
             this.triggerConsumed = true;
         }
     }
 
     public boolean hasBeenTriggered() {
-        return this.triggered;
+        return this.triggerCooldown > 0;
     }
 
     @Override
@@ -48,7 +54,7 @@ public class TriggerDriver implements Driver<Boolean> {
 
     @Override
     public Boolean getValueInterpolated(float partialTicks) {
-        return this.triggered;
+        return triggerCooldown > 0;
     }
 
     @Override
@@ -59,13 +65,12 @@ public class TriggerDriver implements Driver<Boolean> {
     @Override
     public void postTick() {
         if (this.triggerConsumed) {
-            this.triggered = false;
-            this.triggerConsumed = false;
+            this.triggerCooldown = Math.max(triggerCooldown - 1, 0);
         }
     }
 
     @Override
     public String toString() {
-        return this.triggered ? "Triggered!" : "Waiting...";
+        return this.hasBeenTriggered() ? "Triggered!" : "Waiting...";
     }
 }
