@@ -49,6 +49,14 @@ loom {
         }
     }
 
+    sourceSets {
+        main {
+            resources {
+                srcDir(project.file("versions/$minecraft/src/main/generated"))
+            }
+        }
+    }
+
     runConfigs.all {
         isIdeConfigGenerated = true
     }
@@ -141,6 +149,13 @@ tasks.register<Copy>("buildAndCollect") {
     from(tasks.remapJar.get().archiveFile, tasks.remapSourcesJar.get().archiveFile)
     into(rootProject.layout.buildDirectory.file("libs/${prop("mod.version")}/$loader"))
     dependsOn("build")
+}
+
+fabricApi {
+    configureDataGeneration {
+        client = true
+        modId = "${prop("mod.id")}"
+    }
 }
 
 stonecutter {

@@ -8,6 +8,8 @@ import org.jetbrains.annotations.NotNull;
  */
 public class TimeSpan implements Comparable<TimeSpan> {
 
+    public static final TimeSpan ZERO = TimeSpan.ofTicks(0);
+
     private final float timeInTicks;
 
     private TimeSpan(float timeInTicks){

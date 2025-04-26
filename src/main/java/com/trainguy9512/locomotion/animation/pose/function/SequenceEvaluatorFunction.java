@@ -1,5 +1,6 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
+import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import net.minecraft.resources.ResourceLocation;
@@ -11,24 +12,20 @@ import java.util.function.Function;
 
 public class SequenceEvaluatorFunction implements PoseFunction<LocalSpacePose> {
 
-    private final ResourceLocation animationSequenceLocation;
+    private final Function<FunctionInterpolationContext, ResourceLocation> animationSequenceFunction;
     private final Function<FunctionInterpolationContext, TimeSpan> sequenceTimeFunction;
 
-    private SequenceEvaluatorFunction(ResourceLocation animationSequenceLocation, Function<FunctionInterpolationContext, TimeSpan> sequenceTimeFunction) {
-        this.animationSequenceLocation = animationSequenceLocation;
+    private SequenceEvaluatorFunction(Function<FunctionInterpolationContext, ResourceLocation> animationSequenceFunction, Function<FunctionInterpolationContext, TimeSpan> sequenceTimeFunction) {
+        this.animationSequenceFunction = animationSequenceFunction;
         this.sequenceTimeFunction = sequenceTimeFunction;
     }
 
-    public static SequenceEvaluatorFunction of(ResourceLocation animationSequenceLocation, Function<FunctionInterpolationContext, TimeSpan> sequenceTimeFunction) {
-        return new SequenceEvaluatorFunction(animationSequenceLocation, sequenceTimeFunction);
+    public static Builder builder(Function<FunctionInterpolationContext, ResourceLocation> animationSequenceFunction) {
+        return new Builder(animationSequenceFunction);
     }
 
-    public static SequenceEvaluatorFunction of(ResourceLocation animationSequenceLocation, TimeSpan sequenceTime) {
-        return new SequenceEvaluatorFunction(animationSequenceLocation, context -> sequenceTime);
-    }
-
-    public static SequenceEvaluatorFunction of(ResourceLocation animationSequenceLocation) {
-        return new SequenceEvaluatorFunction(animationSequenceLocation, context -> TimeSpan.ofTicks(0));
+    public static Builder builder(ResourceLocation animationSequence) {
+        return builder(context -> animationSequence);
     }
 
     @Override
@@ -36,7 +33,7 @@ public class SequenceEvaluatorFunction implements PoseFunction<LocalSpacePose> {
         TimeSpan time = this.sequenceTimeFunction.apply(context);
         return LocalSpacePose.fromAnimationSequence(
                 context.dataContainer().getJointSkeleton(),
-                this.animationSequenceLocation,
+                this.animationSequenceFunction.apply(context),
                 time,
                 false
         );
@@ -49,11 +46,35 @@ public class SequenceEvaluatorFunction implements PoseFunction<LocalSpacePose> {
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        return new SequenceEvaluatorFunction(this.animationSequenceLocation, this.sequenceTimeFunction);
+        return new SequenceEvaluatorFunction(this.animationSequenceFunction, this.sequenceTimeFunction);
     }
 
     @Override
     public Optional<AnimationPlayer> testForMostRelevantAnimationPlayer() {
         return Optional.empty();
+    }
+
+    public static class Builder {
+        private final Function<FunctionInterpolationContext, ResourceLocation> animationSequenceFunction;
+        private Function<FunctionInterpolationContext, TimeSpan> sequenceTimeFunction;
+
+        public Builder(Function<FunctionInterpolationContext, ResourceLocation> animationSequenceFunction) {
+            this.animationSequenceFunction = animationSequenceFunction;
+            this.sequenceTimeFunction = context -> TimeSpan.ZERO;
+        }
+
+        public Builder evaluatesPoseAt(Function<FunctionInterpolationContext, TimeSpan> sequenceTimeFunction) {
+            this.sequenceTimeFunction = sequenceTimeFunction;
+            return this;
+        }
+
+        public Builder evaluatesPoseAt(TimeSpan sequenceTime) {
+            this.sequenceTimeFunction = context -> sequenceTime;
+            return this;
+        }
+
+        public SequenceEvaluatorFunction build() {
+            return new SequenceEvaluatorFunction(this.animationSequenceFunction, this.sequenceTimeFunction);
+        }
     }
 }

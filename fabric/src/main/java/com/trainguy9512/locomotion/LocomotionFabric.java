@@ -17,12 +17,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-public class LocomotionFabric implements ModInitializer {
-    @Override
-    public void onInitialize() {
-        LocomotionMain.initialize();
-        this.registerResourceReloader();
-    }
+public class LocomotionFabric implements ClientModInitializer {
     
     private void registerResourceReloader() {
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new IdentifiableResourceReloadListener() {
@@ -36,5 +31,11 @@ public class LocomotionFabric implements ModInitializer {
                 return ResourceLocation.fromNamespaceAndPath(LocomotionMain.MOD_ID, "animation_sequence_loader");
             }
         });
+    }
+
+    @Override
+    public void onInitializeClient() {
+        LocomotionMain.initialize();
+        this.registerResourceReloader();
     }
 }

@@ -18,11 +18,14 @@
 
   "environment": "*",
   "entrypoints": {
-    "main": [
+    "client": [
       "com.trainguy9512.locomotion.LocomotionFabric"
     ],
     "modmenu": [
       "com.trainguy9512.locomotion.integration.ModMenuIntegration"
+    ],
+    "fabric-datagen": [
+      "com.trainguy9512.locomotion.LocomotionDataGenerator"
     ]
   },
   "mixins": [

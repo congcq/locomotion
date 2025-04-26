@@ -12,6 +12,11 @@ stonecutter registerChiseled tasks.register("chiseledBuild", stonecutter.chisele
 	ofTask("buildAndCollect")
 }
 
+stonecutter registerChiseled tasks.register("chiseledRunDatagen", stonecutter.chiseled) {
+	group = "project"
+	ofTask("runDatagen")
+}
+
 // Builds loader-specific versions into `build/libs/{mod.version}/{loader}`
 for (it in stonecutter.tree.branches) {
 	if (it.id.isEmpty()) continue
