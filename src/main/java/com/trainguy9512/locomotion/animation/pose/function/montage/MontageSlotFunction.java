@@ -15,7 +15,7 @@ public record MontageSlotFunction(PoseFunction<LocalSpacePose> inputPose, String
 
     @Override
     public @NotNull LocalSpacePose compute(FunctionInterpolationContext context) {
-        return context.montageManager().getLayeredSlotPose(this.inputPose.compute(context), this.slot, context.dataContainer().getJointSkeleton(), context.partialTicks());
+        return context.montageManager().getLayeredSlotPose(this.inputPose.compute(context), this.slot, context.driverContainer().getJointSkeleton(), context.partialTicks());
     }
 
     @Override

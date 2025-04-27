@@ -39,7 +39,7 @@ public final class JointChannel {
     }
 
     public static JointChannel ofTranslationRotationScaleQuaternion(Vector3f translation, Quaternionf rotation, Vector3f scale, boolean visibility){
-        return of(new Matrix4f().translate(translation).rotate(rotation).scale(scale), visibility);
+        return of(new Matrix4f().translationRotateScale(translation, rotation, scale), visibility);
     }
 
     public static JointChannel ofJointFromAnimationSequence(ResourceLocation sequenceLocation, String jointIdentifier, TimeSpan time, boolean looping){
@@ -172,11 +172,11 @@ public final class JointChannel {
 
     public JointChannel interpolated(JointChannel other, float weight) {
         Vector3f translation = this.transform.getTranslation(new Vector3f());
-        Quaternionf rotation = this.transform.getNormalizedRotation(new Quaternionf());
+        Quaternionf rotation = this.transform.getUnnormalizedRotation(new Quaternionf());
         Vector3f scale = this.transform.getScale(new Vector3f());
 
         Vector3f otherTranslation = other.transform.getTranslation(new Vector3f());
-        Quaternionf otherRotation = other.transform.getNormalizedRotation(new Quaternionf());
+        Quaternionf otherRotation = other.transform.getUnnormalizedRotation(new Quaternionf());
         Vector3f otherScale = other.transform.getScale(new Vector3f());
 
         translation.lerp(otherTranslation, weight);

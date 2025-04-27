@@ -74,7 +74,7 @@ public interface PoseFunction<P extends Pose> {
         }
     }
 
-    record FunctionInterpolationContext(PoseCalculationDataContainer dataContainer, MontageManager montageManager, float partialTicks, TimeSpan gameTime) {
+    record FunctionInterpolationContext(PoseCalculationDataContainer driverContainer, MontageManager montageManager, float partialTicks, TimeSpan gameTime) {
         public static FunctionInterpolationContext of(PoseCalculationDataContainer dataContainer, MontageManager montageManager, float partialTicks, TimeSpan gameTime){
             return new FunctionInterpolationContext(dataContainer, montageManager, partialTicks, gameTime);
         }

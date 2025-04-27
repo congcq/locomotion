@@ -1,11 +1,9 @@
 package com.trainguy9512.locomotion.animation.pose.function;
 
-import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.function.Function;
@@ -32,7 +30,7 @@ public class SequenceEvaluatorFunction implements PoseFunction<LocalSpacePose> {
     public @NotNull LocalSpacePose compute(FunctionInterpolationContext context) {
         TimeSpan time = this.sequenceTimeFunction.apply(context);
         return LocalSpacePose.fromAnimationSequence(
-                context.dataContainer().getJointSkeleton(),
+                context.driverContainer().getJointSkeleton(),
                 this.animationSequenceFunction.apply(context),
                 time,
                 false

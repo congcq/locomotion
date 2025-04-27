@@ -150,10 +150,16 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
             ItemRenderType renderType = ItemRenderType.fromItemStack(itemStack);
             ItemStack itemStackToRender = renderType == ItemRenderType.THIRD_PERSON_ITEM_STATIC ? itemStack.copy() : itemStack;
-            //? if >= 1.21.5 {
-            this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());
-            //?} else
-            /*this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, side == HumanoidArm.LEFT, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());*/
+
+            switch (renderType) {
+                case THIRD_PERSON_ITEM, THIRD_PERSON_ITEM_STATIC -> {
+                    //? if >= 1.21.5 {
+                    this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());
+                    //?} else
+                    /*this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, side == HumanoidArm.LEFT, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());*/
+                }
+                case DEFAULT_BLOCK_STATE -> this.blockRenderer.renderSingleBlock(((BlockItem)itemStack.getItem()).getBlock().defaultBlockState(), poseStack, buffer, combinedLight, OverlayTexture.NO_OVERLAY);
+            }
             poseStack.popPose();
         }
     }
@@ -180,7 +186,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
     private enum ItemRenderType {
         THIRD_PERSON_ITEM,
-        THIRD_PERSON_ITEM_STATIC;
+        THIRD_PERSON_ITEM_STATIC,
+        DEFAULT_BLOCK_STATE;
 
         public static final List<Item> STATIC_ITEMS = List.of(
                 Items.SHIELD
@@ -192,6 +199,9 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
         public static ItemRenderType fromItemStack(ItemStack itemStack) {
             Item item = itemStack.getItem();
+            if (FirstPersonPlayerJointAnimator.GenericItemPose.fromItemStack(itemStack) == FirstPersonPlayerJointAnimator.GenericItemPose.BLOCK && itemStack.getItem() instanceof BlockItem) {
+                return DEFAULT_BLOCK_STATE;
+            }
             if (STATIC_ITEMS.contains(item)) {
                 return THIRD_PERSON_ITEM_STATIC;
             }

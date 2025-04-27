@@ -38,6 +38,7 @@ import org.joml.Vector3f;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator<LocalPlayer, PlayerRenderState> {
@@ -117,12 +118,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> movementDirectionOffsetTransformer =
                 JointTransformerFunction.localOrParentSpaceBuilder(mirroredBasedOnHandednessPose, ARM_BUFFER_JOINT)
                         .setTranslation(
-                                context -> context.dataContainer().getDriverValue(MOVEMENT_DIRECTION_OFFSET, context.partialTicks()).mul(1.5f, new Vector3f()),
+                                context -> context.driverContainer().getDriverValue(MOVEMENT_DIRECTION_OFFSET, context.partialTicks()).mul(1.5f, new Vector3f()),
                                 JointChannel.TransformType.ADD,
                                 JointChannel.TransformSpace.COMPONENT
                         )
                         .setRotationEuler(
-                                context -> context.dataContainer().getDriverValue(CAMERA_ROTATION_DAMPING, context.partialTicks()).mul(-0.15f, -0.15f, 0, new Vector3f()),
+                                context -> context.driverContainer().getDriverValue(CAMERA_ROTATION_DAMPING, context.partialTicks()).mul(-0.15f, -0.15f, 0, new Vector3f()),
                                 JointChannel.TransformType.ADD,
                                 JointChannel.TransformSpace.COMPONENT
                         )
@@ -149,7 +150,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             this.basePoseLocation = basePoseLocation;
         }
 
-        private static final List<Item> ROD_ITEMS = List.of(
+        public static final List<Item> ROD_ITEMS = List.of(
                 Items.BONE,
                 Items.STICK,
                 Items.BLAZE_ROD,
@@ -159,7 +160,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.DEBUG_STICK
         );
 
-        private static GenericItemPose fromItemStack(ItemStack itemStack) {
+        public static GenericItemPose fromItemStack(ItemStack itemStack) {
             if (itemStack.getItem() instanceof BlockItem) {
                 return BLOCK;
             }
@@ -298,9 +299,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 fromLoweringAliasBuilder,
                 interactionHand,
                 HandPose.GENERIC_ITEM,
-                HandPose.GENERIC_ITEM.getMiningStateMachine(cachedPoseContainer, interactionHand),
-                makeDynamicAdditiveLowerSequencePlayer(HAND_GENERIC_ITEM_2D_ITEM_POSE),
-                makeDynamicAdditiveRaiseSequencePlayer(HAND_GENERIC_ITEM_2D_ITEM_POSE),
+                genericItemPoseFunction(cachedPoseContainer, interactionHand),
+                makeDynamicAdditiveLowerSequencePlayer(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation),
+                makeDynamicAdditiveRaiseSequencePlayer(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation),
                 Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT),
                 Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT)
         );
@@ -332,8 +333,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 interactionHand,
                 HandPose.SHIELD,
                 handShieldPoseFunction(cachedPoseContainer, interactionHand),
-                makeDynamicAdditiveLowerSequencePlayer(HAND_SHIELD_POSE),
-                makeDynamicAdditiveRaiseSequencePlayer(HAND_SHIELD_POSE),
+                makeDynamicAdditiveLowerSequencePlayer(context -> HAND_SHIELD_POSE),
+                makeDynamicAdditiveRaiseSequencePlayer(context -> HAND_SHIELD_POSE),
                 Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT),
                 Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT)
         );
@@ -387,12 +388,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         return handPoseStateMachineBuilder.build();
     }
 
-    public PoseFunction<LocalSpacePose> makeDynamicAdditiveLowerSequencePlayer(ResourceLocation basePoseLocation) {
-        return ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(basePoseLocation).build(), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_EMPTY_LOWER).build(), SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build()));
+    public PoseFunction<LocalSpacePose> makeDynamicAdditiveLowerSequencePlayer(Function<PoseFunction.FunctionInterpolationContext, ResourceLocation> basePoseLocationFunction) {
+        return ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(basePoseLocationFunction).build(), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_EMPTY_LOWER).build(), SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build()));
     }
 
-    public PoseFunction<LocalSpacePose> makeDynamicAdditiveRaiseSequencePlayer(ResourceLocation basePoseLocation) {
-        return ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(basePoseLocation).build(), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_EMPTY_RAISE).build(), SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build()));
+    public PoseFunction<LocalSpacePose> makeDynamicAdditiveRaiseSequencePlayer(Function<PoseFunction.FunctionInterpolationContext, ResourceLocation> basePoseLocationFunction) {
+        return ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(basePoseLocationFunction).build(), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_EMPTY_RAISE).build(), SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build()));
     }
 
     public void addStatesForHandPose(
@@ -406,26 +407,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             Transition poseToLoweringTiming,
             Transition raisingToPoseTiming
     ) {
-        DriverKey<VariableDriver<ItemStack>> itemDriver = switch (interactionHand) {
-            case MAIN_HAND -> MAIN_HAND_ITEM;
-            case OFF_HAND -> OFF_HAND_ITEM;
-        };
-        DriverKey<VariableDriver<ItemStack>> renderedItemDriver = switch (interactionHand) {
-            case MAIN_HAND -> RENDERED_MAIN_HAND_ITEM;
-            case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
-        };
-        DriverKey<VariableDriver<HandPose>> renderedHandPoseDriver = switch (interactionHand) {
-            case MAIN_HAND -> MAIN_HAND_POSE;
-            case OFF_HAND -> OFF_HAND_POSE;
-        };
         DriverKey<TriggerDriver> hasUsedItemDriver = switch (interactionHand) {
             case MAIN_HAND -> HAS_USED_MAIN_HAND_ITEM;
             case OFF_HAND -> HAS_USED_OFF_HAND_ITEM;
         };
 
-        Predicate<StateTransition.TransitionContext> itemHasChanged = context -> context.driverContainer().getDriverValue(itemDriver).getItem() != context.driverContainer().getDriverValue(renderedItemDriver).getItem();
+        Predicate<StateTransition.TransitionContext> itemHasChanged = context -> context.driverContainer().getDriverValue(getItemDriver(interactionHand)).getItem() != context.driverContainer().getDriverValue(getRenderedItemDriver(interactionHand)).getItem();
         Predicate<StateTransition.TransitionContext> hotbarHasChanged = context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HOTBAR_SLOT).hasValueChanged();
-        Predicate<StateTransition.TransitionContext> newItemIsEmpty = context -> context.driverContainer().getDriverValue(itemDriver).isEmpty();
+        Predicate<StateTransition.TransitionContext> newItemIsEmpty = context -> context.driverContainer().getDriverValue(getItemDriver(interactionHand)).isEmpty();
 
         Predicate<StateTransition.TransitionContext> hardSwitchCondition = hotbarHasChanged.or(itemHasChanged);
         Predicate<StateTransition.TransitionContext> dropLastItemCondition = newItemIsEmpty.and(context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered());
@@ -491,11 +480,31 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .addOutboundTransition(StateTransition.builder(handPose.raisingState)
                         .setTiming(Transition.INSTANT)
                         .isTakenIfTrue(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING
-                                .and(context -> HandPose.fromItemStack(context.driverContainer().getDriverValue(itemDriver)) == handPose)
+                                .and(context -> HandPose.fromItemStack(context.driverContainer().getDriverValue(getItemDriver(interactionHand))) == handPose)
                         )
                         .bindToOnTransitionTaken(updateRenderedItem)
                         .bindToOnTransitionTaken(clearAttackMontages)
                         .build());
+    }
+
+    public static PoseFunction<LocalSpacePose> genericItemPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
+        PoseFunction<LocalSpacePose> miningStateMachine = switch (interactionHand) {
+            case MAIN_HAND -> ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation).build(), MakeDynamicAdditiveFunction.of(
+                    makeMiningLoopStateMachine(
+                            cachedPoseContainer,
+                            SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build(),
+                            SequencePlayerFunction.builder(HAND_EMPTY_MINE_SWING)
+                                    .looping(true)
+                                    .setResetStartTimeOffset(TimeSpan.of60FramesPerSecond(20))
+                                    .setPlayRate(evaluationState -> 1.35f * LocomotionMain.CONFIG.data().firstPersonPlayer.miningAnimationSpeedMultiplier)
+                                    .build(),
+                            SequencePlayerFunction.builder(HAND_EMPTY_MINE_FINISH).build(),
+                            Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)),
+                    SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build()));
+            case OFF_HAND -> SequenceEvaluatorFunction.builder(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation).build();
+        };
+
+        return miningStateMachine;
     }
 
     public static final ResourceLocation HAND_TOOL_SWORD_SWING_LEFT = makeAnimationSequenceResourceLocation("hand/tool/sword/swing_left");
@@ -910,28 +919,40 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     }
 
     public static void updateRenderedItem(OnTickDriverContainer driverContainer, InteractionHand interactionHand) {
-        DriverKey<VariableDriver<ItemStack>> itemDriver = switch (interactionHand) {
-            case MAIN_HAND -> MAIN_HAND_ITEM;
-            case OFF_HAND -> OFF_HAND_ITEM;
-        };
-        DriverKey<VariableDriver<ItemStack>> renderedItemDriver = switch (interactionHand) {
-            case MAIN_HAND -> RENDERED_MAIN_HAND_ITEM;
-            case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
-        };
-        DriverKey<VariableDriver<HandPose>> handPoseDriver = switch (interactionHand) {
+        driverContainer.getDriver(getRenderedItemDriver(interactionHand)).setValue(driverContainer.getDriverValue(getItemDriver(interactionHand)).copy());
+        HandPose handPose = HandPose.fromItemStack(driverContainer.getDriver(getRenderedItemDriver(interactionHand)).getCurrentValue());
+        driverContainer.getDriver(getHandPoseDriver(interactionHand)).setValue(handPose);
+        if (handPose == HandPose.GENERIC_ITEM) {
+            driverContainer.getDriver(getGenericItemPoseDriver(interactionHand)).setValue(GenericItemPose.fromItemStack(driverContainer.getDriver(getRenderedItemDriver(interactionHand)).getCurrentValue()));
+        }
+    }
+
+    public static DriverKey<VariableDriver<HandPose>> getHandPoseDriver(InteractionHand interactionHand) {
+        return switch (interactionHand) {
             case MAIN_HAND -> MAIN_HAND_POSE;
             case OFF_HAND -> OFF_HAND_POSE;
         };
-        DriverKey<VariableDriver<GenericItemPose>> genericItemPoseDriver = switch (interactionHand) {
+    }
+
+    public static DriverKey<VariableDriver<GenericItemPose>> getGenericItemPoseDriver(InteractionHand interactionHand) {
+        return switch (interactionHand) {
             case MAIN_HAND -> MAIN_HAND_GENERIC_ITEM_POSE;
             case OFF_HAND -> OFF_HAND_GENERIC_ITEM_POSE;
         };
-        driverContainer.getDriver(renderedItemDriver).setValue(driverContainer.getDriverValue(itemDriver).copy());
-        HandPose handPose = HandPose.fromItemStack(driverContainer.getDriver(renderedItemDriver).getCurrentValue());
-        driverContainer.getDriver(handPoseDriver).setValue(handPose);
-        if (handPose == HandPose.GENERIC_ITEM) {
-            driverContainer.getDriver(genericItemPoseDriver).setValue(GenericItemPose.fromItemStack(driverContainer.getDriver(renderedItemDriver).getCurrentValue()));
-        }
+    }
+
+    public static DriverKey<VariableDriver<ItemStack>> getItemDriver(InteractionHand interactionHand) {
+        return switch (interactionHand) {
+            case MAIN_HAND -> MAIN_HAND_ITEM;
+            case OFF_HAND -> OFF_HAND_ITEM;
+        };
+    }
+
+    public static DriverKey<VariableDriver<ItemStack>> getRenderedItemDriver(InteractionHand interactionHand) {
+        return switch (interactionHand) {
+            case MAIN_HAND -> RENDERED_MAIN_HAND_ITEM;
+            case OFF_HAND -> RENDERED_OFF_HAND_ITEM;
+        };
     }
 
     public static final DriverKey<SpringDriver<Vector3f>> DAMPED_VELOCITY = DriverKey.of("damped_velocity", () -> SpringDriver.ofVector3f(0.8f, 0.6f, 1f, Vector3f::new, false));
@@ -976,21 +997,39 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
-            .makeAdditive(driverContainer -> driverContainer.getDriverValue(MAIN_HAND_POSE).basePoseLocation)
+            .makeAdditive(driverContainer -> {
+                HandPose handPose = driverContainer.getDriverValue(MAIN_HAND_POSE);
+                if (handPose == HandPose.GENERIC_ITEM) {
+                    return driverContainer.getDriverValue(MAIN_HAND_GENERIC_ITEM_POSE).basePoseLocation;
+                }
+                return handPose.basePoseLocation;
+            })
             .build();
     public static final MontageConfiguration USE_MAIN_HAND_MONTAGE = MontageConfiguration.builder("hand_use_main_hand", HAND_TOOL_USE)
             .playsInSlot(MAIN_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(16), Easing.SINE_IN_OUT))
-            .makeAdditive(driverContainer -> driverContainer.getDriverValue(MAIN_HAND_POSE).basePoseLocation)
+            .makeAdditive(driverContainer -> {
+                HandPose handPose = driverContainer.getDriverValue(MAIN_HAND_POSE);
+                if (handPose == HandPose.GENERIC_ITEM) {
+                    return driverContainer.getDriverValue(MAIN_HAND_GENERIC_ITEM_POSE).basePoseLocation;
+                }
+                return handPose.basePoseLocation;
+            })
             .build();
     public static final MontageConfiguration USE_OFF_HAND_MONTAGE = MontageConfiguration.builder("hand_use_off_hand", HAND_TOOL_USE)
             .playsInSlot(OFF_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
             .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
             .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(16), Easing.SINE_IN_OUT))
-            .makeAdditive(driverContainer -> driverContainer.getDriverValue(OFF_HAND_POSE).basePoseLocation)
+            .makeAdditive(driverContainer -> {
+                HandPose handPose = driverContainer.getDriverValue(OFF_HAND_POSE);
+                if (handPose == HandPose.GENERIC_ITEM) {
+                    return driverContainer.getDriverValue(OFF_HAND_GENERIC_ITEM_POSE).basePoseLocation;
+                }
+                return handPose.basePoseLocation;
+            })
             .build();
     public static final MontageConfiguration SHIELD_BLOCK_IMPACT_MONTAGE = MontageConfiguration.builder("shield_block_impact", HAND_SHIELD_IMPACT)
             .playsInSlot(SHIELD_BLOCK_SLOT)

@@ -41,7 +41,7 @@ public class SequencePlayerFunction extends TimeBasedPoseFunction<LocalSpacePose
     @Override
     public @NotNull LocalSpacePose compute(FunctionInterpolationContext context) {
         return LocalSpacePose.fromAnimationSequence(
-                context.dataContainer().getJointSkeleton(),
+                context.driverContainer().getJointSkeleton(),
                 this.animationSequence,
                 this.getInterpolatedTimeElapsed(context),
                 this.looping

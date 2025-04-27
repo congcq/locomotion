@@ -89,12 +89,12 @@ public class LocalSpacePose extends Pose {
     public LocalSpacePose interpolatedFilteredByJoints(LocalSpacePose other, float weight, Set<String> joints) {
         LocalSpacePose pose = LocalSpacePose.of(this);
         // If the weight is 0, don't interpolate anything and just return this.
-        if(weight == 0) {
+        if (weight == 0) {
             return pose;
         }
 
         joints.forEach(joint -> {
-            if(this.getJointSkeleton().containsJoint(joint)){
+            if (this.getJointSkeleton().containsJoint(joint)) {
                 pose.setJointChannel(joint, weight == 1 ? other.getJointChannel(joint) :
                         pose.getJointChannel(joint).interpolated(other.getJointChannel(joint), weight));
             }

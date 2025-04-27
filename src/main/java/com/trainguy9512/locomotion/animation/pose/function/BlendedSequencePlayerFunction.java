@@ -65,17 +65,17 @@ public class BlendedSequencePlayerFunction extends TimeBasedPoseFunction<LocalSp
         var ceilingEntry = this.blendSpaceEntries.ceilingEntry(interpolatedPosition);
 
         if (floorEntry == null)
-            return LocalSpacePose.fromAnimationSequence(context.dataContainer().getJointSkeleton(), ceilingEntry.getValue().animationSequence(), time, true);
+            return LocalSpacePose.fromAnimationSequence(context.driverContainer().getJointSkeleton(), ceilingEntry.getValue().animationSequence(), time, true);
         if (ceilingEntry == null)
-            return LocalSpacePose.fromAnimationSequence(context.dataContainer().getJointSkeleton(), floorEntry.getValue().animationSequence(), time, true);
+            return LocalSpacePose.fromAnimationSequence(context.driverContainer().getJointSkeleton(), floorEntry.getValue().animationSequence(), time, true);
 
         // If they're both the same frame
         if (floorEntry.getKey().equals(ceilingEntry.getKey()))
-            return LocalSpacePose.fromAnimationSequence(context.dataContainer().getJointSkeleton(), floorEntry.getValue().animationSequence(), time, true);
+            return LocalSpacePose.fromAnimationSequence(context.driverContainer().getJointSkeleton(), floorEntry.getValue().animationSequence(), time, true);
 
         float relativeTime = (interpolatedPosition - floorEntry.getKey()) / (ceilingEntry.getKey() - floorEntry.getKey());
-        LocalSpacePose floorPose = LocalSpacePose.fromAnimationSequence(context.dataContainer().getJointSkeleton(), floorEntry.getValue().animationSequence(), time, true);
-        LocalSpacePose ceilingPose = LocalSpacePose.fromAnimationSequence(context.dataContainer().getJointSkeleton(), ceilingEntry.getValue().animationSequence(), time, true);
+        LocalSpacePose floorPose = LocalSpacePose.fromAnimationSequence(context.driverContainer().getJointSkeleton(), floorEntry.getValue().animationSequence(), time, true);
+        LocalSpacePose ceilingPose = LocalSpacePose.fromAnimationSequence(context.driverContainer().getJointSkeleton(), ceilingEntry.getValue().animationSequence(), time, true);
 
         return floorPose.interpolated(ceilingPose, relativeTime);
     }
