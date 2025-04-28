@@ -60,7 +60,7 @@ public class LocalSpacePose extends Pose {
 
     public LocalSpacePose mirrored() {
         LocalSpacePose mirroredPose = new LocalSpacePose(this);
-        this.jointChannels.forEach((joint, transform) -> {
+        this.jointChannels.keySet().forEach(joint -> {
             JointSkeleton.JointConfiguration configuration = this.getJointSkeleton().getJointConfiguration(joint);
             String mirrorJoint = configuration.mirrorJoint() != null ? configuration.mirrorJoint() : joint;
             JointChannel mirroredTransform = this.getJointChannel(mirrorJoint).mirrored();

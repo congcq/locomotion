@@ -1,5 +1,6 @@
 package com.trainguy9512.locomotion.render;
 
+import com.mojang.blaze3d.Blaze3D;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.trainguy9512.locomotion.LocomotionMain;
@@ -22,11 +23,17 @@ import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.PlayerSkin;
+import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.item.*;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import org.jetbrains.annotations.NotNull;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.List;
@@ -145,11 +152,11 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             HumanoidArm side
     ) {
         if (!itemStack.isEmpty()) {
-            poseStack.pushPose();
-            jointChannel.transformPoseStack(poseStack, 16f);
-
             ItemRenderType renderType = ItemRenderType.fromItemStack(itemStack);
             ItemStack itemStackToRender = renderType == ItemRenderType.THIRD_PERSON_ITEM_STATIC ? itemStack.copy() : itemStack;
+
+            poseStack.pushPose();
+            jointChannel.transformPoseStack(poseStack, 16f);
 
             switch (renderType) {
                 case THIRD_PERSON_ITEM, THIRD_PERSON_ITEM_STATIC -> {
@@ -158,7 +165,23 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                     //?} else
                     /*this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, side == HumanoidArm.LEFT, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());*/
                 }
-                case DEFAULT_BLOCK_STATE -> this.blockRenderer.renderSingleBlock(((BlockItem)itemStack.getItem()).getBlock().defaultBlockState(), poseStack, buffer, combinedLight, OverlayTexture.NO_OVERLAY);
+                case DEFAULT_BLOCK_STATE -> {
+                    BlockState state = ((BlockItem)itemStack.getItem()).getBlock().defaultBlockState();
+                    if (state.hasProperty(BlockStateProperties.WEST)) {
+                        state = state.setValue(BlockStateProperties.WEST, true);
+                    }
+                    if (state.hasProperty(BlockStateProperties.EAST)) {
+                        state = state.setValue(BlockStateProperties.EAST, true);
+                    }
+                    if (side == HumanoidArm.LEFT) {
+                        poseStack.translate(-1, 0, 0);
+                    }
+                    this.blockRenderer.renderSingleBlock(state, poseStack, buffer, combinedLight, OverlayTexture.NO_OVERLAY);
+                    if (state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) {
+                        poseStack.translate(0, 1, 0);
+                        this.blockRenderer.renderSingleBlock(state.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.UPPER), poseStack, buffer, combinedLight, OverlayTexture.NO_OVERLAY);
+                    }
+                }
             }
             poseStack.popPose();
         }

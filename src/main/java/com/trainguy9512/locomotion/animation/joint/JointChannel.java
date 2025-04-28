@@ -166,7 +166,8 @@ public final class JointChannel {
 
     public JointChannel mirrored() {
         Vector3f mirroredTranslation = this.getTranslation().mul(-1, 1, 1);
-        Vector3f mirroredRotation = this.getEulerRotationZYX().mul(1, -1, -1);
+        AxisAngle4f rotation = this.transform.getUnnormalizedRotation(new Quaternionf()).get(new AxisAngle4f());
+        Vector3f mirroredRotation = this.getEulerRotationZYX().mul(1, -1, 1);
         return JointChannel.ofTranslationRotationScaleEuler(mirroredTranslation, mirroredRotation, this.getScale(), this.visibility);
     }
 

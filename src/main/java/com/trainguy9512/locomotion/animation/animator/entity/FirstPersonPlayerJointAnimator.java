@@ -1045,6 +1045,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(HORIZONTAL_MOVEMENT_SPEED).setValue(new Vector3f((float) (dataReference.getX() - dataReference.xo), 0.0f, (float) (dataReference.getZ() - dataReference.zo)).length());
         driverContainer.getDriver(VERTICAL_MOVEMENT_SPEED).setValue((float) (dataReference.getY() - dataReference.yo));
 
+        // DEBUG ITEMS
+//        updateRenderedItem(driverContainer, InteractionHand.MAIN_HAND);
+//        updateRenderedItem(driverContainer, InteractionHand.OFF_HAND);
 //        LocomotionMain.LOGGER.info("-------------------");
 //        LocomotionMain.LOGGER.info(driverContainer.getDriverValue(HAS_USED_MAIN_HAND_ITEM));
 //        LocomotionMain.LOGGER.info(dataReference.getMainHandItem());
