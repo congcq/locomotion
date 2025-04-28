@@ -135,13 +135,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public static final ResourceLocation HAND_GENERIC_ITEM_2D_ITEM_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/2d_item_pose");
     public static final ResourceLocation HAND_GENERIC_ITEM_BLOCK_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/block_pose");
-    public static final ResourceLocation HAND_GENERIC_ITEM_FLAT_BLOCK_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/flat_block_pose");
+    public static final ResourceLocation HAND_GENERIC_ITEM_SMALL_BLOCK_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/small_block_pose");
     public static final ResourceLocation HAND_GENERIC_ITEM_ROD_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/rod_pose");
 
     public enum GenericItemPose {
         DEFAULT_2D_ITEM (HAND_GENERIC_ITEM_2D_ITEM_POSE),
         BLOCK (HAND_GENERIC_ITEM_BLOCK_POSE),
-        FLAT_BLOCK (HAND_GENERIC_ITEM_FLAT_BLOCK_POSE),
+        SMALL_BLOCK (HAND_GENERIC_ITEM_SMALL_BLOCK_POSE),
         ROD (HAND_GENERIC_ITEM_ROD_POSE);
 
         public final ResourceLocation basePoseLocation;
@@ -160,8 +160,27 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.DEBUG_STICK
         );
 
+        public static final List<Item> SMALL_BLOCK_ITEMS = List.of(
+                Items.HEAVY_CORE
+        );
+
+        public static final List<TagKey<Item>> SMALL_BLOCK_ITEM_TAGS = List.of(
+                ItemTags.SKULLS,
+                ItemTags.BUTTONS
+        );
+
         public static GenericItemPose fromItemStack(ItemStack itemStack) {
             if (itemStack.getItem() instanceof BlockItem) {
+                for (Item item : SMALL_BLOCK_ITEMS) {
+                    if (itemStack.is(item)) {
+                        return SMALL_BLOCK;
+                    }
+                }
+                for (TagKey<Item> tag : SMALL_BLOCK_ITEM_TAGS) {
+                    if (itemStack.is(tag)) {
+                        return SMALL_BLOCK;
+                    }
+                }
                 return BLOCK;
             }
             for (Item item : ROD_ITEMS) {
@@ -169,6 +188,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                     return ROD;
                 }
             }
+
             return DEFAULT_2D_ITEM;
         }
     }

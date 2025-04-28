@@ -25,6 +25,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.PlayerModelPart;
@@ -95,11 +96,34 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                             ItemStack leftHandItem = dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.MAIN_HAND_ITEM : FirstPersonPlayerJointAnimator.OFF_HAND_ITEM);
                             ItemStack rightHandItem = dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.OFF_HAND_ITEM : FirstPersonPlayerJointAnimator.MAIN_HAND_ITEM);
 
+                            FirstPersonPlayerJointAnimator.GenericItemPose leftHandGenericItemPose = dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.getGenericItemPoseDriver(leftHanded ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND));
+                            FirstPersonPlayerJointAnimator.GenericItemPose rightHandGenericItemPose = dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.getGenericItemPoseDriver(!leftHanded ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND));
+
                             leftHandItem = ItemStack.isSameItemSameComponents(leftHandItem, leftHandRenderedItem) ? leftHandItem : leftHandRenderedItem;
                             rightHandItem = ItemStack.isSameItemSameComponents(rightHandItem, rightHandRenderedItem) ? rightHandItem : rightHandRenderedItem;
 
-                            this.renderItem(abstractClientPlayer, rightHandItem, ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, poseStack, rightItemPose, buffer, combinedLight, HumanoidArm.RIGHT);
-                            this.renderItem(abstractClientPlayer, leftHandItem, ItemDisplayContext.THIRD_PERSON_LEFT_HAND, poseStack, leftItemPose, buffer, combinedLight, HumanoidArm.LEFT);
+                            this.renderItem(
+                                    abstractClientPlayer,
+                                    rightHandItem,
+                                    ItemDisplayContext.THIRD_PERSON_RIGHT_HAND,
+                                    poseStack,
+                                    rightItemPose,
+                                    buffer,
+                                    combinedLight,
+                                    HumanoidArm.RIGHT,
+                                    rightHandGenericItemPose
+                            );
+                            this.renderItem(
+                                    abstractClientPlayer,
+                                    leftHandItem,
+                                    ItemDisplayContext.THIRD_PERSON_LEFT_HAND,
+                                    poseStack,
+                                    leftItemPose,
+                                    buffer,
+                                    combinedLight,
+                                    HumanoidArm.LEFT,
+                                    leftHandGenericItemPose
+                            );
 
 
 //                            if (!this.minecraft.isPaused()) {
@@ -149,10 +173,11 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             JointChannel jointChannel,
             MultiBufferSource buffer,
             int combinedLight,
-            HumanoidArm side
+            HumanoidArm side,
+            FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose
     ) {
         if (!itemStack.isEmpty()) {
-            ItemRenderType renderType = ItemRenderType.fromItemStack(itemStack);
+            ItemRenderType renderType = ItemRenderType.fromItemStack(itemStack, genericItemPose);
             ItemStack itemStackToRender = renderType == ItemRenderType.THIRD_PERSON_ITEM_STATIC ? itemStack.copy() : itemStack;
 
             poseStack.pushPose();
@@ -220,9 +245,14 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                 Items.COBWEB
         );
 
-        public static ItemRenderType fromItemStack(ItemStack itemStack) {
+        public static final List<FirstPersonPlayerJointAnimator.GenericItemPose> BLOCKSTATE_RENDERING_ITEM_POSES = List.of(
+                FirstPersonPlayerJointAnimator.GenericItemPose.BLOCK,
+                FirstPersonPlayerJointAnimator.GenericItemPose.SMALL_BLOCK
+        );
+
+        public static ItemRenderType fromItemStack(ItemStack itemStack, FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose) {
             Item item = itemStack.getItem();
-            if (FirstPersonPlayerJointAnimator.GenericItemPose.fromItemStack(itemStack) == FirstPersonPlayerJointAnimator.GenericItemPose.BLOCK && itemStack.getItem() instanceof BlockItem) {
+            if (BLOCKSTATE_RENDERING_ITEM_POSES.contains(genericItemPose) && itemStack.getItem() instanceof BlockItem) {
                 return DEFAULT_BLOCK_STATE;
             }
             if (STATIC_ITEMS.contains(item)) {
