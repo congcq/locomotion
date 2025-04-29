@@ -30,9 +30,12 @@ import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.item.*;
+import net.minecraft.world.level.block.SkullBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.block.state.properties.Property;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -192,24 +195,35 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                 }
                 case DEFAULT_BLOCK_STATE -> {
                     BlockState state = ((BlockItem)itemStack.getItem()).getBlock().defaultBlockState();
-                    if (state.hasProperty(BlockStateProperties.WEST)) {
-                        state = state.setValue(BlockStateProperties.WEST, true);
-                    }
-                    if (state.hasProperty(BlockStateProperties.EAST)) {
-                        state = state.setValue(BlockStateProperties.EAST, true);
-                    }
+
+                    state = state.trySetValue(BlockStateProperties.WEST, true);
+                    state = state.trySetValue(BlockStateProperties.EAST, true);
+                    state = state.trySetValue(BlockStateProperties.FACING, Direction.NORTH);
+                    state = state.trySetValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH);
+                    state = state.trySetValue(BlockStateProperties.ROTATION_16, 8);
+                    state = state.trySetValue(BlockStateProperties.ATTACH_FACE, AttachFace.FLOOR);
+
                     if (side == HumanoidArm.LEFT) {
                         poseStack.translate(-1, 0, 0);
                     }
+//                    this.minecraft.getBlockEntityRenderDispatcher().getRenderer()
                     this.blockRenderer.renderSingleBlock(state, poseStack, buffer, combinedLight, OverlayTexture.NO_OVERLAY);
                     if (state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) {
                         poseStack.translate(0, 1, 0);
-                        this.blockRenderer.renderSingleBlock(state.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.UPPER), poseStack, buffer, combinedLight, OverlayTexture.NO_OVERLAY);
+                        state = stateWithPropertyIfPresent(state, BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.UPPER);
+                        this.blockRenderer.renderSingleBlock(state, poseStack, buffer, combinedLight, OverlayTexture.NO_OVERLAY);
                     }
                 }
             }
             poseStack.popPose();
         }
+    }
+
+    private static <P extends Comparable<P>> BlockState stateWithPropertyIfPresent(BlockState blockState, Property<P> property, P value) {
+        if (blockState.hasProperty(property)) {
+            return blockState.setValue(property, value);
+        }
+        return blockState;
     }
 
     public void transformCamera(PoseStack poseStack){
