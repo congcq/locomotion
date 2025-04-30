@@ -23,6 +23,7 @@ import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
@@ -32,6 +33,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -169,7 +171,69 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 ItemTags.BUTTONS
         );
 
+        public static final List<Item> BLOCK_2D_OVERRIDE_ITEMS = List.of(
+                Items.IRON_BARS,
+                Items.CHAIN,
+                Items.GLASS_PANE,
+                Items.WHITE_STAINED_GLASS_PANE,
+                Items.ORANGE_STAINED_GLASS_PANE,
+                Items.MAGENTA_STAINED_GLASS_PANE,
+                Items.LIGHT_BLUE_STAINED_GLASS_PANE,
+                Items.YELLOW_STAINED_GLASS_PANE,
+                Items.LIME_STAINED_GLASS_PANE,
+                Items.PINK_STAINED_GLASS_PANE,
+                Items.GRAY_STAINED_GLASS_PANE,
+                Items.LIGHT_GRAY_STAINED_GLASS_PANE,
+                Items.CYAN_STAINED_GLASS_PANE,
+                Items.PURPLE_STAINED_GLASS_PANE,
+                Items.BLUE_STAINED_GLASS_PANE,
+                Items.BROWN_STAINED_GLASS_PANE,
+                Items.GREEN_STAINED_GLASS_PANE,
+                Items.RED_STAINED_GLASS_PANE,
+                Items.BLACK_STAINED_GLASS_PANE,
+                Items.PALE_HANGING_MOSS,
+                Items.POINTED_DRIPSTONE,
+                Items.SMALL_AMETHYST_BUD,
+                Items.MEDIUM_AMETHYST_BUD,
+                Items.LARGE_AMETHYST_BUD,
+                Items.AMETHYST_CLUSTER,
+                Items.RED_MUSHROOM,
+                Items.BROWN_MUSHROOM,
+                Items.DEAD_BUSH,
+                Items.SHORT_GRASS,
+                Items.FERN,
+                Items.CRIMSON_FUNGUS,
+                Items.WARPED_FUNGUS,
+                Items.BAMBOO,
+                Items.SUGAR_CANE,
+                Items.SMALL_DRIPLEAF,
+                Items.CRIMSON_ROOTS,
+                Items.WARPED_FUNGUS,
+                Items.NETHER_SPROUTS,
+
+                //? >= 1.21.5 {
+                Items.DRY_SHORT_GRASS,
+                Items.DRY_TALL_GRASS,
+                Items.BUSH,
+                Items.FIREFLY_BUSH
+                //}
+        );
+
+        public static final List<TagKey<Item>> BLOCK_2D_OVERRIDE_ITEM_TAGS = List.of(
+                ItemTags.CANDLES,
+                ItemTags.BANNERS,
+                ItemTags.FLOWERS,
+                ItemTags.VILLAGER_PLANTABLE_SEEDS,
+                ItemTags.SAPLINGS
+
+        );
+
         public static GenericItemPose fromItemStack(ItemStack itemStack) {
+            for (Item item : ROD_ITEMS) {
+                if (itemStack.is(item)) {
+                    return ROD;
+                }
+            }
             if (itemStack.getItem() instanceof BlockItem) {
                 for (Item item : SMALL_BLOCK_ITEMS) {
                     if (itemStack.is(item)) {
@@ -181,12 +245,17 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         return SMALL_BLOCK;
                     }
                 }
-                return BLOCK;
-            }
-            for (Item item : ROD_ITEMS) {
-                if (itemStack.is(item)) {
-                    return ROD;
+                for (Item item : BLOCK_2D_OVERRIDE_ITEMS) {
+                    if (itemStack.is(item)) {
+                        return DEFAULT_2D_ITEM;
+                    }
                 }
+                for (TagKey<Item> tag : BLOCK_2D_OVERRIDE_ITEM_TAGS) {
+                    if (itemStack.is(tag)) {
+                        return DEFAULT_2D_ITEM;
+                    }
+                }
+                return BLOCK;
             }
 
             return DEFAULT_2D_ITEM;

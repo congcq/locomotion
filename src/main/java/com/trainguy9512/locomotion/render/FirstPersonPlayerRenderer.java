@@ -30,12 +30,9 @@ import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.item.*;
-import net.minecraft.world.level.block.SkullBlock;
+import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.AttachFace;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
-import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.block.state.properties.*;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -174,7 +171,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             ItemDisplayContext displayContext,
             PoseStack poseStack,
             JointChannel jointChannel,
-            MultiBufferSource buffer,
+            MultiBufferSource bufferSource,
             int combinedLight,
             HumanoidArm side,
             FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose
@@ -189,29 +186,26 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             switch (renderType) {
                 case THIRD_PERSON_ITEM, THIRD_PERSON_ITEM_STATIC -> {
                     //? if >= 1.21.5 {
-                    this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());
+                    this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, poseStack, bufferSource, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());
                     //?} else
                     /*this.itemRenderer.renderStatic(entity, itemStackToRender, displayContext, side == HumanoidArm.LEFT, poseStack, buffer, entity.level(), combinedLight, OverlayTexture.NO_OVERLAY, entity.getId() + displayContext.ordinal());*/
                 }
                 case DEFAULT_BLOCK_STATE -> {
-                    BlockState state = ((BlockItem)itemStack.getItem()).getBlock().defaultBlockState();
-
-                    state = state.trySetValue(BlockStateProperties.WEST, true);
-                    state = state.trySetValue(BlockStateProperties.EAST, true);
-                    state = state.trySetValue(BlockStateProperties.FACING, Direction.NORTH);
-                    state = state.trySetValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH);
-                    state = state.trySetValue(BlockStateProperties.ROTATION_16, 8);
-                    state = state.trySetValue(BlockStateProperties.ATTACH_FACE, AttachFace.FLOOR);
+                    Block block = ((BlockItem)itemStack.getItem()).getBlock();
+                    BlockState blockState = this.getDefaultBlockState(block);
 
                     if (side == HumanoidArm.LEFT) {
                         poseStack.translate(-1, 0, 0);
                     }
-//                    this.minecraft.getBlockEntityRenderDispatcher().getRenderer()
-                    this.blockRenderer.renderSingleBlock(state, poseStack, buffer, combinedLight, OverlayTexture.NO_OVERLAY);
-                    if (state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) {
-                        poseStack.translate(0, 1, 0);
-                        state = stateWithPropertyIfPresent(state, BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.UPPER);
-                        this.blockRenderer.renderSingleBlock(state, poseStack, buffer, combinedLight, OverlayTexture.NO_OVERLAY);
+                    if (block instanceof WallBlock) {
+                        this.renderWallBlock(blockState, poseStack, bufferSource, combinedLight);
+                    } else if (block instanceof FenceBlock) {
+                        this.renderFenceBlock(blockState, poseStack, bufferSource, combinedLight);
+                    } else {
+                        this.blockRenderer.renderSingleBlock(blockState, poseStack, bufferSource, combinedLight, OverlayTexture.NO_OVERLAY);
+                        if (blockState.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) {
+                            this.renderUpperHalfBlock(blockState, poseStack, bufferSource, combinedLight);
+                        }
                     }
                 }
             }
@@ -219,11 +213,53 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
         }
     }
 
-    private static <P extends Comparable<P>> BlockState stateWithPropertyIfPresent(BlockState blockState, Property<P> property, P value) {
-        if (blockState.hasProperty(property)) {
-            return blockState.setValue(property, value);
+    private BlockState getDefaultBlockState(Block block) {
+        BlockState blockState = block.defaultBlockState();
+        blockState = blockState.trySetValue(BlockStateProperties.ROTATION_16, 8);
+        blockState = blockState.trySetValue(BlockStateProperties.ATTACH_FACE, AttachFace.FLOOR);
+        blockState = blockState.trySetValue(BlockStateProperties.DOWN, true);
+        blockState = blockState.trySetValue(BlockStateProperties.IN_WALL, true);
+        if (block instanceof StairBlock) {
+            blockState = blockState.trySetValue(BlockStateProperties.FACING, Direction.NORTH);
+            blockState = blockState.trySetValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH);
+        } else {
+            blockState = blockState.trySetValue(BlockStateProperties.FACING, Direction.SOUTH);
+            blockState = blockState.trySetValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH);
         }
         return blockState;
+    }
+
+    private void renderFenceBlock(
+            BlockState blockState,
+            PoseStack poseStack,
+            MultiBufferSource bufferSource,
+            int combinedLight
+    ) {
+        blockState = blockState.setValue(BlockStateProperties.EAST, true);
+        blockState = blockState.setValue(BlockStateProperties.WEST, true);
+        this.blockRenderer.renderSingleBlock(blockState, poseStack, bufferSource, combinedLight, OverlayTexture.NO_OVERLAY);
+    }
+
+    private void renderWallBlock(
+            BlockState blockState,
+            PoseStack poseStack,
+            MultiBufferSource bufferSource,
+            int combinedLight
+    ) {
+         blockState = blockState.setValue(BlockStateProperties.EAST_WALL, WallSide.LOW);
+         blockState = blockState.setValue(BlockStateProperties.WEST_WALL, WallSide.LOW);
+         this.blockRenderer.renderSingleBlock(blockState, poseStack, bufferSource, combinedLight, OverlayTexture.NO_OVERLAY);
+    }
+
+    private void renderUpperHalfBlock(
+            BlockState blockState,
+            PoseStack poseStack,
+            MultiBufferSource bufferSource,
+            int combinedLight
+    ) {
+        poseStack.translate(0, 1, 0);
+        blockState = blockState.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.UPPER);
+        this.blockRenderer.renderSingleBlock(blockState, poseStack, bufferSource, combinedLight, OverlayTexture.NO_OVERLAY);
     }
 
     public void transformCamera(PoseStack poseStack){
