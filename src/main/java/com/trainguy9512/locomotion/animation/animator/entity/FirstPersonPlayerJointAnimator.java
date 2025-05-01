@@ -159,11 +159,15 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.BREEZE_ROD,
                 Items.POINTED_DRIPSTONE,
                 Items.BAMBOO,
-                Items.DEBUG_STICK
+                Items.DEBUG_STICK,
+                Items.END_ROD
         );
 
         public static final List<Item> SMALL_BLOCK_ITEMS = List.of(
-                Items.HEAVY_CORE
+                Items.HEAVY_CORE,
+                Items.FLOWER_POT,
+                Items.LANTERN,
+                Items.SOUL_LANTERN
         );
 
         public static final List<TagKey<Item>> SMALL_BLOCK_ITEM_TAGS = List.of(
@@ -191,7 +195,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.GREEN_STAINED_GLASS_PANE,
                 Items.RED_STAINED_GLASS_PANE,
                 Items.BLACK_STAINED_GLASS_PANE,
-                Items.PALE_HANGING_MOSS,
                 Items.POINTED_DRIPSTONE,
                 Items.SMALL_AMETHYST_BUD,
                 Items.MEDIUM_AMETHYST_BUD,
@@ -201,31 +204,99 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.BROWN_MUSHROOM,
                 Items.DEAD_BUSH,
                 Items.SHORT_GRASS,
+                Items.TALL_GRASS,
                 Items.FERN,
+                Items.LARGE_FERN,
                 Items.CRIMSON_FUNGUS,
                 Items.WARPED_FUNGUS,
                 Items.BAMBOO,
                 Items.SUGAR_CANE,
                 Items.SMALL_DRIPLEAF,
+                Items.BIG_DRIPLEAF,
                 Items.CRIMSON_ROOTS,
-                Items.WARPED_FUNGUS,
+                Items.WARPED_ROOTS,
                 Items.NETHER_SPROUTS,
-
+                Items.WEEPING_VINES,
+                Items.TWISTING_VINES,
+                Items.VINE,
+                Items.GLOW_BERRIES,
+                Items.COCOA_BEANS,
+                Items.LILY_PAD,
+                Items.BRAIN_CORAL,
+                Items.BUBBLE_CORAL,
+                Items.HORN_CORAL,
+                Items.FIRE_CORAL,
+                Items.TUBE_CORAL,
+                Items.DEAD_BRAIN_CORAL,
+                Items.DEAD_BUBBLE_CORAL,
+                Items.DEAD_HORN_CORAL,
+                Items.DEAD_FIRE_CORAL,
+                Items.DEAD_TUBE_CORAL,
+                Items.BRAIN_CORAL_FAN,
+                Items.BUBBLE_CORAL_FAN,
+                Items.HORN_CORAL_FAN,
+                Items.FIRE_CORAL_FAN,
+                Items.TUBE_CORAL_FAN,
+                Items.DEAD_BRAIN_CORAL_FAN,
+                Items.DEAD_BUBBLE_CORAL_FAN,
+                Items.DEAD_HORN_CORAL_FAN,
+                Items.DEAD_FIRE_CORAL_FAN,
+                Items.DEAD_TUBE_CORAL_FAN,
+                Items.COBWEB,
+                Items.LILAC,
+                Items.PEONY,
+                Items.ROSE_BUSH,
+                Items.SUNFLOWER,
+                Items.MANGROVE_PROPAGULE,
+                Items.PINK_PETALS,
+                Items.PITCHER_PLANT,
+                Items.MELON_SEEDS,
+                Items.PUMPKIN_SEEDS,
+                Items.GLOW_LICHEN,
+                Items.SCULK_VEIN,
+                Items.NETHER_WART,
+                Items.SWEET_BERRIES,
+                Items.SEAGRASS,
+                Items.KELP,
+                Items.TORCH,
+                Items.SOUL_TORCH,
+                Items.REDSTONE_TORCH,
+                Items.BELL,
+                Items.CAMPFIRE,
+                Items.SOUL_CAMPFIRE,
+                Items.LADDER,
+                Items.LIGHTNING_ROD,
+                Items.DECORATED_POT,
+                Items.REDSTONE,
+                Items.STRING,
+                Items.TRIPWIRE_HOOK,
+                Items.LEVER,
+                Items.RAIL,
+                Items.ACTIVATOR_RAIL,
+                Items.DETECTOR_RAIL,
+                Items.POWERED_RAIL,
                 //? >= 1.21.5 {
                 Items.DRY_SHORT_GRASS,
                 Items.DRY_TALL_GRASS,
                 Items.BUSH,
-                Items.FIREFLY_BUSH
+                Items.FIREFLY_BUSH,
+                Items.LEAF_LITTER,
+                Items.CACTUS_FLOWER,
+                Items.WILDFLOWERS,
+                //}
+                //? >= 1.21.4 {
+                Items.PALE_HANGING_MOSS
                 //}
         );
 
         public static final List<TagKey<Item>> BLOCK_2D_OVERRIDE_ITEM_TAGS = List.of(
                 ItemTags.CANDLES,
                 ItemTags.BANNERS,
-                ItemTags.FLOWERS,
+                ItemTags.SMALL_FLOWERS,
                 ItemTags.VILLAGER_PLANTABLE_SEEDS,
-                ItemTags.SAPLINGS
-
+                ItemTags.SAPLINGS,
+                ItemTags.SIGNS,
+                ItemTags.HANGING_SIGNS
         );
 
         public static GenericItemPose fromItemStack(ItemStack itemStack) {

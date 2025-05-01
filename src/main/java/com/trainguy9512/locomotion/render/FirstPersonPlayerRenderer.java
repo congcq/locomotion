@@ -197,15 +197,24 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                     if (side == HumanoidArm.LEFT) {
                         poseStack.translate(-1, 0, 0);
                     }
+                    if (block instanceof FenceGateBlock || block instanceof ConduitBlock) {
+                        poseStack.translate(0, -0.4f, 0);
+                    }
+                    if (block instanceof SporeBlossomBlock) {
+                        poseStack.translate(0, 1, 1);
+                        poseStack.mulPose(Axis.XP.rotation(Mth.PI));
+                    }
+
                     if (block instanceof WallBlock) {
                         this.renderWallBlock(blockState, poseStack, bufferSource, combinedLight);
                     } else if (block instanceof FenceBlock) {
                         this.renderFenceBlock(blockState, poseStack, bufferSource, combinedLight);
+                    } else if (block instanceof BedBlock) {
+                        this.renderBedBlock(blockState, poseStack, bufferSource, combinedLight);
+                    } else if (block instanceof DoorBlock) {
+                        this.renderDoorBlock(blockState, poseStack, bufferSource, combinedLight);
                     } else {
                         this.blockRenderer.renderSingleBlock(blockState, poseStack, bufferSource, combinedLight, OverlayTexture.NO_OVERLAY);
-                        if (blockState.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) {
-                            this.renderUpperHalfBlock(blockState, poseStack, bufferSource, combinedLight);
-                        }
                     }
                 }
             }
@@ -218,7 +227,6 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
         blockState = blockState.trySetValue(BlockStateProperties.ROTATION_16, 8);
         blockState = blockState.trySetValue(BlockStateProperties.ATTACH_FACE, AttachFace.FLOOR);
         blockState = blockState.trySetValue(BlockStateProperties.DOWN, true);
-        blockState = blockState.trySetValue(BlockStateProperties.IN_WALL, true);
         if (block instanceof StairBlock) {
             blockState = blockState.trySetValue(BlockStateProperties.FACING, Direction.NORTH);
             blockState = blockState.trySetValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH);
@@ -227,6 +235,29 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             blockState = blockState.trySetValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH);
         }
         return blockState;
+    }
+
+    private void renderBedBlock(
+            BlockState blockState,
+            PoseStack poseStack,
+            MultiBufferSource bufferSource,
+            int combinedLight
+    ) {
+        poseStack.translate(1f, -0.25f, 0.5f);
+        poseStack.mulPose(Axis.YP.rotation(Mth.PI));
+        this.blockRenderer.renderSingleBlock(blockState, poseStack, bufferSource, combinedLight, OverlayTexture.NO_OVERLAY);
+    }
+
+    private void renderDoorBlock(
+            BlockState blockState,
+            PoseStack poseStack,
+            MultiBufferSource bufferSource,
+            int combinedLight
+    ) {
+        poseStack.translate(0f, 0f, -0.5f);
+        poseStack.mulPose(Axis.YP.rotation(Mth.PI));
+        this.blockRenderer.renderSingleBlock(blockState, poseStack, bufferSource, combinedLight, OverlayTexture.NO_OVERLAY);
+        this.renderUpperHalfBlock(blockState, poseStack, bufferSource, combinedLight);
     }
 
     private void renderFenceBlock(
@@ -289,10 +320,6 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
         public static final List<Item> STATIC_ITEMS = List.of(
                 Items.SHIELD
-        );
-
-        public static final List<Item> BLOCK_ITEM_OVERRIDES = List.of(
-                Items.COBWEB
         );
 
         public static final List<FirstPersonPlayerJointAnimator.GenericItemPose> BLOCKSTATE_RENDERING_ITEM_POSES = List.of(
