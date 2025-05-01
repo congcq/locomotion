@@ -10,18 +10,18 @@ public abstract class TimeBasedPoseFunction<P extends Pose> implements PoseFunct
 
     protected final Function<FunctionEvaluationState, Boolean> isPlayingFunction;
     protected final Function<FunctionEvaluationState, Float> playRateFunction;
-    protected final float resetStartTimeOffsetTicks;
+    protected final TimeSpan resetStartTimeOffset;
 
     protected final VariableDriver<Float> ticksElapsed;
     protected float playRate;
     protected boolean isPlaying;
 
-    protected TimeBasedPoseFunction(Function<FunctionEvaluationState, Boolean> isPlayingFunction, Function<FunctionEvaluationState, Float> playRateFunction, float resetStartTimeOffsetTicks){
+    protected TimeBasedPoseFunction(Function<FunctionEvaluationState, Boolean> isPlayingFunction, Function<FunctionEvaluationState, Float> playRateFunction, TimeSpan resetStartTimeOffset){
         this.isPlayingFunction = isPlayingFunction;
         this.playRateFunction = playRateFunction;
-        this.resetStartTimeOffsetTicks = resetStartTimeOffsetTicks;
+        this.resetStartTimeOffset = resetStartTimeOffset;
 
-        this.ticksElapsed = VariableDriver.ofFloat(() -> this.resetStartTimeOffsetTicks);
+        this.ticksElapsed = VariableDriver.ofFloat(this.resetStartTimeOffset::inTicks);
     }
 
     @Override
@@ -52,12 +52,12 @@ public abstract class TimeBasedPoseFunction<P extends Pose> implements PoseFunct
 
         protected Function<FunctionEvaluationState, Float> playRateFunction;
         protected Function<FunctionEvaluationState, Boolean> isPlayingFunction;
-        protected float resetStartTimeOffsetTicks;
+        protected TimeSpan resetStartTimeOffsetTicks;
 
         protected Builder() {
             this.playRateFunction = (interpolationContext) -> 1f;
             this.isPlayingFunction = (interpolationContext) -> true;
-            this.resetStartTimeOffsetTicks = 0;
+            this.resetStartTimeOffsetTicks = TimeSpan.ZERO;
         }
 
         /**
@@ -97,7 +97,7 @@ public abstract class TimeBasedPoseFunction<P extends Pose> implements PoseFunct
          */
         @SuppressWarnings("unchecked")
         public B setResetStartTimeOffset(TimeSpan startTimeOffset) {
-            this.resetStartTimeOffsetTicks = startTimeOffset.inTicks();
+            this.resetStartTimeOffsetTicks = startTimeOffset;
             return (B) this;
         }
     }

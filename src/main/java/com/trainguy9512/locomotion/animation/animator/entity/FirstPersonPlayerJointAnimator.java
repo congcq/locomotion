@@ -139,17 +139,26 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation HAND_GENERIC_ITEM_BLOCK_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/block_pose");
     public static final ResourceLocation HAND_GENERIC_ITEM_SMALL_BLOCK_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/small_block_pose");
     public static final ResourceLocation HAND_GENERIC_ITEM_ROD_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/rod_pose");
+    public static final ResourceLocation HAND_GENERIC_ITEM_DOOR_BLOCK_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/door_block_pose");
+    public static final ResourceLocation HAND_GENERIC_ITEM_BANNER_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/banner_pose");
+
+    public static final ResourceLocation HAND_GENERIC_ITEM_RAISE = makeAnimationSequenceResourceLocation("hand/generic_item/raise");
+    public static final ResourceLocation HAND_GENERIC_ITEM_LOWER = makeAnimationSequenceResourceLocation("hand/generic_item/lower");
 
     public enum GenericItemPose {
-        DEFAULT_2D_ITEM (HAND_GENERIC_ITEM_2D_ITEM_POSE),
-        BLOCK (HAND_GENERIC_ITEM_BLOCK_POSE),
-        SMALL_BLOCK (HAND_GENERIC_ITEM_SMALL_BLOCK_POSE),
-        ROD (HAND_GENERIC_ITEM_ROD_POSE);
+        DEFAULT_2D_ITEM (HAND_GENERIC_ITEM_2D_ITEM_POSE, false),
+        BLOCK (HAND_GENERIC_ITEM_BLOCK_POSE, true),
+        SMALL_BLOCK (HAND_GENERIC_ITEM_SMALL_BLOCK_POSE, true),
+        ROD (HAND_GENERIC_ITEM_ROD_POSE, false),
+        DOOR_BLOCK (HAND_GENERIC_ITEM_DOOR_BLOCK_POSE, true),
+        BANNER (HAND_GENERIC_ITEM_BANNER_POSE, false);
 
         public final ResourceLocation basePoseLocation;
+        public final boolean rendersBlockState;
 
-        GenericItemPose(ResourceLocation basePoseLocation) {
+        GenericItemPose(ResourceLocation basePoseLocation, boolean rendersBlockState) {
             this.basePoseLocation = basePoseLocation;
+            this.rendersBlockState = rendersBlockState;
         }
 
         public static final List<Item> ROD_ITEMS = List.of(
@@ -300,6 +309,12 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         );
 
         public static GenericItemPose fromItemStack(ItemStack itemStack) {
+            if (itemStack.is(ItemTags.BANNERS)) {
+                return BANNER;
+            }
+            if (itemStack.is(ItemTags.DOORS)) {
+                return DOOR_BLOCK;
+            }
             for (Item item : ROD_ITEMS) {
                 if (itemStack.is(item)) {
                     return ROD;
@@ -328,7 +343,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 }
                 return BLOCK;
             }
-
             return DEFAULT_2D_ITEM;
         }
     }
@@ -460,10 +474,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 interactionHand,
                 HandPose.GENERIC_ITEM,
                 genericItemPoseFunction(cachedPoseContainer, interactionHand),
-                makeDynamicAdditiveLowerSequencePlayer(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation),
-                makeDynamicAdditiveRaiseSequencePlayer(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation),
-                Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT),
-                Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT)
+                ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation).build(), SequencePlayerFunction.builder(HAND_GENERIC_ITEM_LOWER).isAdditive(true, SequenceReferencePoint.BEGINNING).build()),
+                ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation).build(), SequencePlayerFunction.builder(HAND_GENERIC_ITEM_RAISE).isAdditive(true, SequenceReferencePoint.END).build()),
+                Transition.of(TimeSpan.of60FramesPerSecond(5), Easing.SINE_IN_OUT),
+                Transition.of(TimeSpan.of60FramesPerSecond(13), Easing.SINE_IN_OUT)
         );
         this.addStatesForHandPose(
                 handPoseStateMachineBuilder,
@@ -493,8 +507,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 interactionHand,
                 HandPose.SHIELD,
                 handShieldPoseFunction(cachedPoseContainer, interactionHand),
-                makeDynamicAdditiveLowerSequencePlayer(context -> HAND_SHIELD_POSE),
-                makeDynamicAdditiveRaiseSequencePlayer(context -> HAND_SHIELD_POSE),
+                ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(HAND_SHIELD_POSE).build(), SequencePlayerFunction.builder(HAND_EMPTY_LOWER).isAdditive(true, SequenceReferencePoint.BEGINNING).build()),
+                ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(HAND_SHIELD_POSE).build(), SequencePlayerFunction.builder(HAND_EMPTY_RAISE).isAdditive(true, SequenceReferencePoint.END).build()),
                 Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT),
                 Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT)
         );
@@ -546,14 +560,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
 
         return handPoseStateMachineBuilder.build();
-    }
-
-    public PoseFunction<LocalSpacePose> makeDynamicAdditiveLowerSequencePlayer(Function<PoseFunction.FunctionInterpolationContext, ResourceLocation> basePoseLocationFunction) {
-        return ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(basePoseLocationFunction).build(), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_EMPTY_LOWER).build(), SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build()));
-    }
-
-    public PoseFunction<LocalSpacePose> makeDynamicAdditiveRaiseSequencePlayer(Function<PoseFunction.FunctionInterpolationContext, ResourceLocation> basePoseLocationFunction) {
-        return ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(basePoseLocationFunction).build(), MakeDynamicAdditiveFunction.of(SequencePlayerFunction.builder(HAND_EMPTY_RAISE).build(), SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build()));
     }
 
     public void addStatesForHandPose(

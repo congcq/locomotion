@@ -19,8 +19,14 @@ public class BlendedSequencePlayerFunction extends TimeBasedPoseFunction<LocalSp
     private final Function<FunctionEvaluationState, Float> blendPositionFunction;
     private final VariableDriver<Float> blendPosition;
 
-    private BlendedSequencePlayerFunction(Function<FunctionEvaluationState, Boolean> isPlayingFunction, Function<FunctionEvaluationState, Float> playRateFunction, float resetStartTimeOffsetTicks, TreeMap<Float, BlendSpace1DEntry> blendSpaceEntries, Function<FunctionEvaluationState, Float> blendPositionFunction) {
-        super(isPlayingFunction, playRateFunction, resetStartTimeOffsetTicks);
+    private BlendedSequencePlayerFunction(
+            Function<FunctionEvaluationState, Boolean> isPlayingFunction,
+            Function<FunctionEvaluationState, Float> playRateFunction,
+            TimeSpan resetStartTimeOffset,
+            TreeMap<Float, BlendSpace1DEntry> blendSpaceEntries,
+            Function<FunctionEvaluationState, Float> blendPositionFunction
+    ) {
+        super(isPlayingFunction, playRateFunction, resetStartTimeOffset);
         this.blendSpaceEntries = blendSpaceEntries;
         this.blendPositionFunction = blendPositionFunction;
         this.blendPosition = VariableDriver.ofFloat(() -> 0f);
@@ -82,7 +88,7 @@ public class BlendedSequencePlayerFunction extends TimeBasedPoseFunction<LocalSp
 
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
-        return new BlendedSequencePlayerFunction(this.isPlayingFunction, this.playRateFunction, this.resetStartTimeOffsetTicks, this.blendSpaceEntries, this.blendPositionFunction);
+        return new BlendedSequencePlayerFunction(this.isPlayingFunction, this.playRateFunction, this.resetStartTimeOffset, this.blendSpaceEntries, this.blendPositionFunction);
     }
 
     @Override

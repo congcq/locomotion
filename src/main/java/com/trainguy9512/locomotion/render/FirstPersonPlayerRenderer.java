@@ -254,8 +254,6 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             MultiBufferSource bufferSource,
             int combinedLight
     ) {
-        poseStack.translate(0f, 0f, -0.5f);
-        poseStack.mulPose(Axis.YP.rotation(Mth.PI));
         this.blockRenderer.renderSingleBlock(blockState, poseStack, bufferSource, combinedLight, OverlayTexture.NO_OVERLAY);
         this.renderUpperHalfBlock(blockState, poseStack, bufferSource, combinedLight);
     }
@@ -322,14 +320,9 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                 Items.SHIELD
         );
 
-        public static final List<FirstPersonPlayerJointAnimator.GenericItemPose> BLOCKSTATE_RENDERING_ITEM_POSES = List.of(
-                FirstPersonPlayerJointAnimator.GenericItemPose.BLOCK,
-                FirstPersonPlayerJointAnimator.GenericItemPose.SMALL_BLOCK
-        );
-
         public static ItemRenderType fromItemStack(ItemStack itemStack, FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose) {
             Item item = itemStack.getItem();
-            if (BLOCKSTATE_RENDERING_ITEM_POSES.contains(genericItemPose) && itemStack.getItem() instanceof BlockItem) {
+            if (genericItemPose.rendersBlockState && itemStack.getItem() instanceof BlockItem) {
                 return DEFAULT_BLOCK_STATE;
             }
             if (STATIC_ITEMS.contains(item)) {

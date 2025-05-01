@@ -37,7 +37,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     private final boolean resetUponRelevant;
 
     private StateMachineFunction(Map<S, State<S>> states, Function<FunctionEvaluationState, S> initialState, boolean resetUponRelevant) {
-        super(evaluationState -> true, evaluationState -> 1f, 0);
+        super(evaluationState -> true, evaluationState -> 1f, TimeSpan.ZERO);
         this.states = states;
         this.initialState = initialState;
         this.stateBlendLayerStack = new ArrayList<>();
