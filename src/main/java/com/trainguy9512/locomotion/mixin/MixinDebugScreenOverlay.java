@@ -88,7 +88,6 @@ public class MixinDebugScreenOverlay {
                     int nameLineLeftPosition = guiGraphics.guiWidth() - driverNameWidth - MARGIN_RIGHT - BOX_MARGIN - NAME_BOX_WIDTH;
                     int dataLineLeftPosition = guiGraphics.guiWidth() - driverDataWidth - MARGIN_RIGHT - BOX_MARGIN;
                     int nameLineTopPosition = currentLineTop + LABEL_TOP_MARGIN + BOX_MARGIN;
-                    int randomColor = (driverNameString.hashCode() & 11184810) + 4473924;
 
                     guiGraphics.drawString(this.font, driverNameString, nameLineLeftPosition, nameLineTopPosition, COLOR_GREY, true);
 
@@ -102,7 +101,8 @@ public class MixinDebugScreenOverlay {
                         guiGraphics.pose().scale(1F, 2F, 1F);
                         guiGraphics.pose().popPose();
                     } else {
-                        guiGraphics.drawString(this.font, dataString, dataLineLeftPosition, nameLineTopPosition, valueTextColor, true);
+                        int randomColor = (dataString.hashCode() & 11184810) + 4473924;
+                        guiGraphics.drawString(this.font, dataString, dataLineLeftPosition, nameLineTopPosition, driver.getValueInterpolated(1) instanceof Enum ? randomColor : valueTextColor, true);
                     }
 
                     currentLineTop += lineHeight + LINE_MARGIN * 2;

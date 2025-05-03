@@ -69,8 +69,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             LEFT_ITEM_JOINT
     );
 
-    public static final String ADDITIVE_GROUND_MOVEMENT_CACHE = "additive_ground_movement";
-
     @Override
     public void postProcessModelParts(EntityModel<PlayerRenderState> entityModel, PlayerRenderState entityRenderState) {
     }
@@ -99,9 +97,11 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         return PoseCalculationFrequency.CALCULATE_EVERY_FRAME;
     }
 
+    public static final String ADDITIVE_GROUND_MOVEMENT_CACHE = "additive_ground_movement";
+
     @Override
     public PoseFunction<LocalSpacePose> constructPoseFunction(CachedPoseContainer cachedPoseContainer) {
-        cachedPoseContainer.register(ADDITIVE_GROUND_MOVEMENT_CACHE, constructAdditiveGroundMovementPoseFunction(cachedPoseContainer));
+        cachedPoseContainer.register(ADDITIVE_GROUND_MOVEMENT_CACHE, constructAdditiveGroundMovementPoseFunction(cachedPoseContainer), false);
 
         PoseFunction<LocalSpacePose> mainHandPose = this.constructHandPoseFunction(cachedPoseContainer, InteractionHand.MAIN_HAND);
         PoseFunction<LocalSpacePose> offHandPose = this.constructHandPoseFunction(cachedPoseContainer, InteractionHand.OFF_HAND);
@@ -109,6 +109,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> combinedHandPose = BlendPosesFunction.builder(mainHandPose)
                 .addBlendInput(MirrorFunction.of(offHandPose), evaluationState -> 1f, LEFT_SIDE_JOINTS)
                 .build();
+
+        combinedHandPose = twoHandedOverridePoseFunction(combinedHandPose, cachedPoseContainer);
 
         PoseFunction<LocalSpacePose> handPoseWithAdditive = ApplyAdditiveFunction.of(combinedHandPose, cachedPoseContainer.getOrThrow(ADDITIVE_GROUND_MOVEMENT_CACHE));
 
@@ -130,6 +132,49 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .build();
 
         return movementDirectionOffsetTransformer;
+    }
+
+    public enum TwoHandedOverrideStates {
+        NORMAL,
+        BOW_PULL_MAIN_HAND,
+        BOW_PULL_OFF_HAND,
+        BOW_RELEASE_MAIN_HAND,
+        BOW_RELEASE_OFF_HAND
+    }
+
+    public static PoseFunction<LocalSpacePose> twoHandedOverridePoseFunction(PoseFunction<LocalSpacePose> normalPoseFunction, CachedPoseContainer cachedPoseContainer) {
+        return StateMachineFunction.builder(evaluationState -> TwoHandedOverrideStates.NORMAL)
+                .defineState(State.builder(TwoHandedOverrideStates.NORMAL, normalPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
+                        .build())
+                .defineState(State.builder(TwoHandedOverrideStates.BOW_PULL_MAIN_HAND, SequencePlayerFunction.builder(HAND_BOW_PULL).build())
+                        .resetsPoseFunctionUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.BOW_RELEASE_MAIN_HAND)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_USING_MAIN_HAND_ITEM).negate())
+                                .setTiming(Transition.SINGLE_TICK)
+                                .build())
+                        .build())
+                .defineState(State.builder(TwoHandedOverrideStates.BOW_RELEASE_MAIN_HAND, SequencePlayerFunction.builder(HAND_BOW_RELEASE).build())
+                        .resetsPoseFunctionUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.NORMAL)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1)
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
+                                .build())
+                        .build())
+                .addStateAlias(StateAlias.builder(
+                        Set.of(
+                                TwoHandedOverrideStates.NORMAL,
+                                TwoHandedOverrideStates.BOW_RELEASE_MAIN_HAND
+                        ))
+                        .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.BOW_PULL_MAIN_HAND)
+                                .isTakenIfTrue(
+                                        StateTransition.booleanDriverPredicate(IS_USING_MAIN_HAND_ITEM)
+                                                .and(transitionContext -> transitionContext.driverContainer().getDriverValue(MAIN_HAND_POSE) == HandPose.BOW)
+                                )
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                .build())
+                        .build())
+                .build();
     }
 
     public enum GenericItemPose {
@@ -435,9 +480,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         SHIELD_LOWER,
         BOW,
         BOW_RAISE,
-        BOW_LOWER,
-        BOW_PULL,
-        BOW_RELEASE
+        BOW_LOWER
     }
 
     public static final ResourceLocation HAND_EMPTY_LOWERED = makeAnimationSequenceResourceLocation("hand/empty/lowered");
@@ -465,13 +508,17 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation HAND_GENERIC_ITEM_LOWER = makeAnimationSequenceResourceLocation("hand/generic_item/lower");
 
     public static final ResourceLocation HAND_BOW_POSE = makeAnimationSequenceResourceLocation("hand/bow/pose");
+    public static final ResourceLocation HAND_BOW_PULL = makeAnimationSequenceResourceLocation("hand/bow/pull");
+    public static final ResourceLocation HAND_BOW_RELEASE = makeAnimationSequenceResourceLocation("hand/bow/release");
 
 
     public PoseFunction<LocalSpacePose> constructHandPoseFunction(CachedPoseContainer cachedPoseContainer, InteractionHand interactionHand) {
 
-        StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = StateMachineFunction.builder(
-                evaluationState -> evaluationState.driverContainer().getDriverValue(interactionHand == InteractionHand.MAIN_HAND ? MAIN_HAND_POSE : OFF_HAND_POSE).poseState
-        );
+        StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = switch (interactionHand) {
+            case MAIN_HAND -> StateMachineFunction.builder(evaluationState -> evaluationState.driverContainer().getDriverValue(MAIN_HAND_POSE).poseState);
+            case OFF_HAND -> StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER);
+        };
+
         handPoseStateMachineBuilder.resetsUponRelevant(true);
         StateAlias.Builder<HandPoseStates> fromLoweringAliasBuilder = StateAlias.builder(Set.of(HandPoseStates.EMPTY_LOWER));
 
@@ -1278,7 +1325,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             }
         });
         driverContainer.getDriver(HAS_DROPPED_ITEM).runIfTriggered(() -> montageManager.playMontage(USE_MAIN_HAND_MONTAGE, driverContainer));
-
         driverContainer.getDriver(HAS_ATTACKED).runIfTriggered(() -> {
             MontageConfiguration montageConfiguration = driverContainer.getDriverValue(MAIN_HAND_POSE).attackMontage;
             if (montageConfiguration != null) {
@@ -1286,20 +1332,19 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             }
         });
         driverContainer.getDriver(HAS_BLOCKED_ATTACK).runIfTriggered(() -> montageManager.playMontage(SHIELD_BLOCK_IMPACT_MONTAGE, driverContainer));
+
         driverContainer.getDriver(IS_USING_MAIN_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.MAIN_HAND);
         driverContainer.getDriver(IS_USING_OFF_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.OFF_HAND);
+        driverContainer.getDriver(IS_MAIN_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)));
+        driverContainer.getDriver(IS_OFF_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_OFF_HAND_ITEM)));
 
         if (driverContainer.getDriver(IS_MINING).getCurrentValue()) {
             montageManager.interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.of(TimeSpan.ofTicks(2)));
         }
 
-        driverContainer.getDriver(IS_MAIN_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)));
-        driverContainer.getDriver(IS_OFF_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_OFF_HAND_ITEM)));
-
         driverContainer.getDriver(IS_MOVING).setValue(dataReference.input.keyPresses.forward() || dataReference.input.keyPresses.backward() || dataReference.input.keyPresses.left() || dataReference.input.keyPresses.right());
         driverContainer.getDriver(IS_GROUNDED).setValue(dataReference.onGround());
         driverContainer.getDriver(IS_JUMPING).setValue(dataReference.input.keyPresses.jump());
-
 
         Vector3f velocity = new Vector3f((float) (dataReference.getX() - dataReference.xo), (float) (dataReference.getY() - dataReference.yo), (float) (dataReference.getZ() - dataReference.zo));
         // We don't want vertical velocity to be factored into the movement direction offset as much as the horizontal velocity.

@@ -34,16 +34,16 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     private final List<StateBlendLayer> stateBlendLayerStack;
 
     private long lastUpdateTick;
-    private final boolean resetUponRelevant;
+    private final boolean resetsUponRelevant;
 
-    private StateMachineFunction(Map<S, State<S>> states, Function<FunctionEvaluationState, S> initialState, boolean resetUponRelevant) {
+    private StateMachineFunction(Map<S, State<S>> states, Function<FunctionEvaluationState, S> initialState, boolean resetsUponRelevant) {
         super(evaluationState -> true, evaluationState -> 1f, TimeSpan.ZERO);
         this.states = states;
         this.initialState = initialState;
         this.stateBlendLayerStack = new ArrayList<>();
 
         this.lastUpdateTick = 0;
-        this.resetUponRelevant = resetUponRelevant;
+        this.resetsUponRelevant = resetsUponRelevant;
     }
 
     @Override
@@ -84,7 +84,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         // If the state machine has no active states, initialize it using the initial state function.
         // If the state machine is just now becoming relevant again after not being relevant, re-initialize it.
-        if(this.stateBlendLayerStack.isEmpty() || (evaluationState.currentTick() - 1 > this.lastUpdateTick && this.resetUponRelevant)){
+        if (this.stateBlendLayerStack.isEmpty() || (evaluationState.currentTick() - 1 > this.lastUpdateTick && this.resetsUponRelevant)) {
             this.stateBlendLayerStack.clear();
             S initialStateIdentifier = this.initialState.apply(evaluationState);
             if (this.states.containsKey(initialStateIdentifier)) {
@@ -186,7 +186,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
         Builder<S> builder = StateMachineFunction.builder(this.initialState);
-        builder.resetsUponRelevant(this.resetUponRelevant);
+        builder.resetsUponRelevant(this.resetsUponRelevant);
         this.states.forEach((identifier, state) ->
                 builder.defineState(
                         State.builder(state).wrapUniquePoseFunction().build()

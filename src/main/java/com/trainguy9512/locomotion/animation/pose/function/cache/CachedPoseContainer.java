@@ -19,11 +19,11 @@ public class CachedPoseContainer {
         return new CachedPoseContainer();
     }
 
-    public void register(String identifier, PoseFunction<LocalSpacePose> poseFunction) {
+    public void register(String identifier, PoseFunction<LocalSpacePose> poseFunction, boolean resetsUponRelevant) {
         if(this.cachedPoseFunctions.containsKey(identifier)){
             throw new IllegalArgumentException("Failed to register saved cached pose for identifier " + identifier + " due to it being already registered.");
         } else {
-            this.cachedPoseFunctions.put(identifier, CachedPoseFunction.of(poseFunction));
+            this.cachedPoseFunctions.put(identifier, CachedPoseFunction.of(poseFunction, resetsUponRelevant));
         }
     }
 
