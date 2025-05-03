@@ -50,7 +50,8 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     public @NotNull LocalSpacePose compute(FunctionInterpolationContext context) {
         // If the list of active states is empty, throw an error because this should never be the case unless something has gone wrong.
         if(this.stateBlendLayerStack.isEmpty()){
-            throw new IllegalStateException("State machine's active states list found to be empty.");
+            LocomotionMain.LOGGER.error("State machine of enum type {}'s active states list found to be empty. Throwing error...", this.states.keySet().stream().findAny().get().getClass().getSimpleName());
+            throw new IllegalStateException("State machine found to have no active states");
         }
         // Add all calculated poses to a map, because there can be multiple instances of the same
         // state in the stack but each state should only have its pose calculated once.
@@ -185,7 +186,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     @Override
     public PoseFunction<LocalSpacePose> wrapUnique() {
         Builder<S> builder = StateMachineFunction.builder(this.initialState);
-        builder.resetUponRelevant(this.resetUponRelevant);
+        builder.resetsUponRelevant(this.resetUponRelevant);
         this.states.forEach((identifier, state) ->
                 builder.defineState(
                         State.builder(state).wrapUniquePoseFunction().build()
@@ -281,7 +282,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         /**
          * Sets this state machine to reset to the initial state every time the state machine goes from being irrelevant to relevant.
          */
-        public Builder<S> resetUponRelevant(boolean resetUponRelevant) {
+        public Builder<S> resetsUponRelevant(boolean resetUponRelevant) {
             this.resetUponRelevant = resetUponRelevant;
             return this;
         }

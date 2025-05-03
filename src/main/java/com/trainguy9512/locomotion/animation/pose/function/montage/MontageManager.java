@@ -106,10 +106,11 @@ public class MontageManager {
 
     public boolean areAnyMontagesInSlotFullyOverriding(String slot) {
         for (MontageInstance montageInstance : this.montageStack) {
-            if (montageInstance.configuration.slots().contains(slot)) {
-                if (montageInstance.getWeightIsFull(1)) {
-                    return true;
-                }
+            if (!montageInstance.configuration.slots().contains(slot)) {
+                break;
+            }
+            if (montageInstance.getWeightIsFull(1) && montageInstance.getWeightIsFull(0)) {
+                return true;
             }
         }
         return false;
