@@ -183,7 +183,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         SMALL_BLOCK (HAND_GENERIC_ITEM_SMALL_BLOCK_POSE, true),
         ROD (HAND_GENERIC_ITEM_ROD_POSE, false),
         DOOR_BLOCK (HAND_GENERIC_ITEM_DOOR_BLOCK_POSE, true),
-        BANNER (HAND_GENERIC_ITEM_BANNER_POSE, false);
+        BANNER (HAND_GENERIC_ITEM_BANNER_POSE, false),
+        ARROW (HAND_GENERIC_ITEM_ARROW_POSE, false);
 
         public final ResourceLocation basePoseLocation;
         public final boolean rendersBlockState;
@@ -341,6 +342,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         );
 
         public static GenericItemPose fromItemStack(ItemStack itemStack) {
+            if (itemStack.is(ItemTags.ARROWS)) {
+                return ARROW;
+            }
             if (itemStack.is(ItemTags.BANNERS)) {
                 return BANNER;
             }
@@ -504,6 +508,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final ResourceLocation HAND_GENERIC_ITEM_ROD_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/rod_pose");
     public static final ResourceLocation HAND_GENERIC_ITEM_DOOR_BLOCK_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/door_block_pose");
     public static final ResourceLocation HAND_GENERIC_ITEM_BANNER_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/banner_pose");
+    public static final ResourceLocation HAND_GENERIC_ITEM_ARROW_POSE = makeAnimationSequenceResourceLocation("hand/generic_item/arrow_pose");
     public static final ResourceLocation HAND_GENERIC_ITEM_RAISE = makeAnimationSequenceResourceLocation("hand/generic_item/raise");
     public static final ResourceLocation HAND_GENERIC_ITEM_LOWER = makeAnimationSequenceResourceLocation("hand/generic_item/lower");
 

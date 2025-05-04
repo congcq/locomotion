@@ -98,6 +98,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
 
                             FirstPersonPlayerJointAnimator.GenericItemPose leftHandGenericItemPose = dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.getGenericItemPoseDriver(leftHanded ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND));
                             FirstPersonPlayerJointAnimator.GenericItemPose rightHandGenericItemPose = dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.getGenericItemPoseDriver(!leftHanded ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND));
+                            FirstPersonPlayerJointAnimator.HandPose leftHandPose = dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.getHandPoseDriver(leftHanded ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND));
+                            FirstPersonPlayerJointAnimator.HandPose rightHandPose = dataContainer.getDriverValue(FirstPersonPlayerJointAnimator.getHandPoseDriver(!leftHanded ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND));
 
                             leftHandItem = ItemStack.isSameItemSameComponents(leftHandItem, leftHandRenderedItem) ? leftHandItem : leftHandRenderedItem;
                             rightHandItem = ItemStack.isSameItemSameComponents(rightHandItem, rightHandRenderedItem) ? rightHandItem : rightHandRenderedItem;
@@ -111,6 +113,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                                     buffer,
                                     combinedLight,
                                     HumanoidArm.RIGHT,
+                                    rightHandPose,
                                     rightHandGenericItemPose
                             );
                             this.renderItem(
@@ -122,6 +125,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                                     buffer,
                                     combinedLight,
                                     HumanoidArm.LEFT,
+                                    leftHandPose,
                                     leftHandGenericItemPose
                             );
 
@@ -174,14 +178,26 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             MultiBufferSource bufferSource,
             int combinedLight,
             HumanoidArm side,
+            FirstPersonPlayerJointAnimator.HandPose handPose,
             FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose
     ) {
         if (!itemStack.isEmpty()) {
-            ItemRenderType renderType = ItemRenderType.fromItemStack(itemStack, genericItemPose);
+            ItemRenderType renderType = ItemRenderType.fromItemStack(itemStack, handPose, genericItemPose);
             ItemStack itemStackToRender = renderType == ItemRenderType.THIRD_PERSON_ITEM_STATIC ? itemStack.copy() : itemStack;
 
             poseStack.pushPose();
             jointChannel.transformPoseStack(poseStack, 16f);
+
+            if (shouldMirrorItem(side, handPose, genericItemPose)) {
+                poseStack.scale(-1, 1, 1);
+//                poseStack.mulPose(Axis.XP.rotation(Mth.PI));
+//                poseStack.last().normal().scale(-1, -1, 1);
+//                poseStack.scale(
+//                        -1,
+//                        -1,
+//                        Mth.sin((float) (Blaze3D.getTime() * 4))
+//                );
+            }
 
             switch (renderType) {
                 case THIRD_PERSON_ITEM, THIRD_PERSON_ITEM_STATIC -> {
@@ -220,6 +236,19 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             }
             poseStack.popPose();
         }
+    }
+
+    private boolean shouldMirrorItem(HumanoidArm side, FirstPersonPlayerJointAnimator.HandPose handPose, FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose) {
+        if (side == HumanoidArm.RIGHT) {
+            return false;
+        }
+        if (handPose != FirstPersonPlayerJointAnimator.HandPose.GENERIC_ITEM) {
+            return false;
+        }
+        if (genericItemPose == FirstPersonPlayerJointAnimator.GenericItemPose.ARROW) {
+            return true;
+        }
+        return false;
     }
 
     private BlockState getDefaultBlockState(Block block) {
@@ -320,9 +349,9 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                 Items.SHIELD
         );
 
-        public static ItemRenderType fromItemStack(ItemStack itemStack, FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose) {
+        public static ItemRenderType fromItemStack(ItemStack itemStack, FirstPersonPlayerJointAnimator.HandPose handPose, FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose) {
             Item item = itemStack.getItem();
-            if (genericItemPose.rendersBlockState && itemStack.getItem() instanceof BlockItem) {
+            if (genericItemPose.rendersBlockState && itemStack.getItem() instanceof BlockItem && handPose == FirstPersonPlayerJointAnimator.HandPose.GENERIC_ITEM) {
                 return DEFAULT_BLOCK_STATE;
             }
             if (STATIC_ITEMS.contains(item)) {
