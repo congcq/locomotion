@@ -116,7 +116,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                                     combinedLight,
                                     HumanoidArm.RIGHT,
                                     rightHandPose,
-                                    rightHandGenericItemPose
+                                    rightHandGenericItemPose,
+                                    dataContainer.getDriverValue(!leftHanded ? FirstPersonPlayerJointAnimator.RENDER_MAIN_HAND_ITEM_AS_STATIC : FirstPersonPlayerJointAnimator.RENDER_OFF_HAND_ITEM_AS_STATIC)
                             );
                             this.renderItem(
                                     abstractClientPlayer,
@@ -128,7 +129,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                                     combinedLight,
                                     HumanoidArm.LEFT,
                                     leftHandPose,
-                                    leftHandGenericItemPose
+                                    leftHandGenericItemPose,
+                                    dataContainer.getDriverValue(leftHanded ? FirstPersonPlayerJointAnimator.RENDER_MAIN_HAND_ITEM_AS_STATIC : FirstPersonPlayerJointAnimator.RENDER_OFF_HAND_ITEM_AS_STATIC)
                             );
 
 
@@ -181,10 +183,14 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             int combinedLight,
             HumanoidArm side,
             FirstPersonPlayerJointAnimator.HandPose handPose,
-            FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose
+            FirstPersonPlayerJointAnimator.GenericItemPose genericItemPose,
+            boolean overrideStatic
     ) {
         if (!itemStack.isEmpty()) {
             ItemRenderType renderType = ItemRenderType.fromItemStack(itemStack, handPose, genericItemPose);
+            if (overrideStatic) {
+                renderType = ItemRenderType.THIRD_PERSON_ITEM_STATIC;
+            }
             ItemStack itemStackToRender = renderType == ItemRenderType.THIRD_PERSON_ITEM_STATIC ? itemStack.copy() : itemStack;
 
             poseStack.pushPose();

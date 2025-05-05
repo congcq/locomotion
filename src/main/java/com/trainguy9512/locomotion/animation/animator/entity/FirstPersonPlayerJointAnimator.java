@@ -22,6 +22,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
+import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
@@ -143,18 +144,61 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     }
 
     public static PoseFunction<LocalSpacePose> twoHandedOverridePoseFunction(PoseFunction<LocalSpacePose> normalPoseFunction, CachedPoseContainer cachedPoseContainer) {
-        return StateMachineFunction.builder(evaluationState -> TwoHandedOverrideStates.NORMAL)
+        StateMachineFunction.Builder<TwoHandedOverrideStates> builder = StateMachineFunction.builder(evaluationState -> TwoHandedOverrideStates.NORMAL)
                 .defineState(State.builder(TwoHandedOverrideStates.NORMAL, normalPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
-                        .build())
-                .defineState(State.builder(TwoHandedOverrideStates.BOW_PULL_MAIN_HAND, SequencePlayerFunction.builder(HAND_BOW_PULL).build())
+                        .build());
+        defineBowStatesForHand(builder, InteractionHand.MAIN_HAND);
+        defineBowStatesForHand(builder, InteractionHand.OFF_HAND);
+        return builder.build();
+    }
+
+    public static void defineBowStatesForHand(StateMachineFunction.Builder<TwoHandedOverrideStates> stateMachineBuilder, InteractionHand interactionHand) {
+        InteractionHand oppositeHand = interactionHand == InteractionHand.MAIN_HAND ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
+        TwoHandedOverrideStates bowPullState = switch (interactionHand) {
+            case MAIN_HAND -> TwoHandedOverrideStates.BOW_PULL_MAIN_HAND;
+            case OFF_HAND -> TwoHandedOverrideStates.BOW_PULL_OFF_HAND;
+        };
+        TwoHandedOverrideStates bowReleaseState = switch (interactionHand) {
+            case MAIN_HAND -> TwoHandedOverrideStates.BOW_RELEASE_MAIN_HAND;
+            case OFF_HAND -> TwoHandedOverrideStates.BOW_RELEASE_OFF_HAND;
+        };
+        Consumer<PoseFunction.FunctionEvaluationState> onArrowLoadedIntoBow = evaluationState -> {};
+
+        PoseFunction<LocalSpacePose> pullPoseFunction = SequencePlayerFunction.builder(HAND_BOW_PULL)
+                .bindToTimeMarker("arrow_placed_in_bow", evaluationState -> {
+                    evaluationState.driverContainer().getDriver(getRenderedItemDriver(oppositeHand)).setValue(ItemStack.EMPTY);
+                    evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.EMPTY);
+                    evaluationState.driverContainer().getDriver(getRenderItemAsStaticDriver(interactionHand)).setValue(false);
+                    evaluationState.driverContainer().getDriver(getGenericItemPoseDriver(oppositeHand)).setValue(GenericItemPose.DEFAULT_2D_ITEM);
+                })
+                .bindToTimeMarker("get_new_arrow", evaluationState -> {
+                    evaluationState.driverContainer().getDriver(getRenderedItemDriver(oppositeHand)).setValue(Items.ARROW.getDefaultInstance());
+                    evaluationState.driverContainer().getDriver(getGenericItemPoseDriver(oppositeHand)).setValue(GenericItemPose.ARROW);
+                    evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.GENERIC_ITEM);
+                })
+                .build();
+        PoseFunction<LocalSpacePose> releasePoseFunction = SequencePlayerFunction.builder(HAND_BOW_RELEASE)
+                .build();
+        if (interactionHand == InteractionHand.OFF_HAND) {
+            pullPoseFunction = MirrorFunction.of(pullPoseFunction);
+            releasePoseFunction = MirrorFunction.of(releasePoseFunction);
+        }
+
+        stateMachineBuilder.defineState(State.builder(bowPullState, pullPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
-                        .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.BOW_RELEASE_MAIN_HAND)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_USING_MAIN_HAND_ITEM).negate())
+                        .addOutboundTransition(StateTransition.builder(bowReleaseState)
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(getUsingItemDriver(interactionHand)).negate())
+                                .bindToOnTransitionTaken(evaluationState -> {
+                                    evaluationState.driverContainer().getDriver(getRenderedItemDriver(oppositeHand)).setValue(ItemStack.EMPTY);
+                                    evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.EMPTY);
+                                    evaluationState.driverContainer().getDriver(getRenderItemAsStaticDriver(interactionHand)).setValue(false);
+                                    evaluationState.driverContainer().getDriver(getGenericItemPoseDriver(oppositeHand)).setValue(GenericItemPose.DEFAULT_2D_ITEM);
+                                })
                                 .setTiming(Transition.SINGLE_TICK)
                                 .build())
                         .build())
-                .defineState(State.builder(TwoHandedOverrideStates.BOW_RELEASE_MAIN_HAND, SequencePlayerFunction.builder(HAND_BOW_RELEASE).build())
+                .defineState(State.builder(bowReleaseState, releasePoseFunction)
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.NORMAL)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
@@ -162,19 +206,21 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .build())
                         .build())
                 .addStateAlias(StateAlias.builder(
-                        Set.of(
-                                TwoHandedOverrideStates.NORMAL,
-                                TwoHandedOverrideStates.BOW_RELEASE_MAIN_HAND
-                        ))
-                        .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.BOW_PULL_MAIN_HAND)
+                                Set.of(
+                                        TwoHandedOverrideStates.NORMAL,
+                                        bowReleaseState
+                                ))
+                        .addOutboundTransition(StateTransition.builder(bowPullState)
                                 .isTakenIfTrue(
-                                        StateTransition.booleanDriverPredicate(IS_USING_MAIN_HAND_ITEM)
-                                                .and(transitionContext -> transitionContext.driverContainer().getDriverValue(MAIN_HAND_POSE) == HandPose.BOW)
+                                        StateTransition.booleanDriverPredicate(getUsingItemDriver(interactionHand))
+                                                .and(transitionContext -> transitionContext.driverContainer().getDriverValue(getHandPoseDriver(interactionHand)) == HandPose.BOW)
                                 )
+                                .bindToOnTransitionTaken(evaluationState -> {
+                                    evaluationState.driverContainer().getDriver(getRenderItemAsStaticDriver(interactionHand)).setValue(true);
+                                })
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
                                 .build())
-                        .build())
-                .build();
+                        .build());
     }
 
     public enum GenericItemPose {
@@ -521,7 +567,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         StateMachineFunction.Builder<HandPoseStates> handPoseStateMachineBuilder = switch (interactionHand) {
             case MAIN_HAND -> StateMachineFunction.builder(evaluationState -> evaluationState.driverContainer().getDriverValue(MAIN_HAND_POSE).poseState);
-            case OFF_HAND -> StateMachineFunction.builder(evaluationState -> HandPoseStates.EMPTY_LOWER);
+            case OFF_HAND -> StateMachineFunction.builder(evaluationState -> evaluationState.driverContainer().getDriverValue(OFF_HAND_POSE).poseState);
         };
 
         handPoseStateMachineBuilder.resetsUponRelevant(true);
@@ -1029,7 +1075,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .build();
         PoseFunction<LocalSpacePose> walkingPoseFunction = BlendedSequencePlayerFunction.builder(MODIFIED_WALK_SPEED)
                 .setResetStartTimeOffset(TimeSpan.of30FramesPerSecond(5))
-                .addEntry(0f, GROUND_MOVEMENT_WALKING, 0.5f)
+                .addEntry(0f, GROUND_MOVEMENT_POSE, 0.5f)
                 .addEntry(0.5f, GROUND_MOVEMENT_WALKING, 2f)
                 .addEntry(0.86f, GROUND_MOVEMENT_WALKING, 2.25f)
                 .addEntry(1f, GROUND_MOVEMENT_WALKING, 3.5f)
@@ -1179,6 +1225,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(getHandPoseDriver(interactionHand)).setValue(handPose);
         if (handPose == HandPose.GENERIC_ITEM) {
             driverContainer.getDriver(getGenericItemPoseDriver(interactionHand)).setValue(GenericItemPose.fromItemStack(driverContainer.getDriver(getRenderedItemDriver(interactionHand)).getCurrentValue()));
+        } else {
+            driverContainer.getDriver(getGenericItemPoseDriver(interactionHand)).setValue(GenericItemPose.DEFAULT_2D_ITEM);
         }
     }
 
@@ -1210,6 +1258,20 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         };
     }
 
+    public static DriverKey<VariableDriver<Boolean>> getUsingItemDriver(InteractionHand interactionHand) {
+        return switch (interactionHand) {
+            case MAIN_HAND -> IS_USING_MAIN_HAND_ITEM;
+            case OFF_HAND -> IS_USING_OFF_HAND_ITEM;
+        };
+    }
+
+    public static DriverKey<VariableDriver<Boolean>> getRenderItemAsStaticDriver(InteractionHand interactionHand) {
+        return switch (interactionHand) {
+            case MAIN_HAND -> RENDER_MAIN_HAND_ITEM_AS_STATIC;
+            case OFF_HAND -> RENDER_OFF_HAND_ITEM_AS_STATIC;
+        };
+    }
+
     public static final DriverKey<SpringDriver<Vector3f>> DAMPED_VELOCITY = DriverKey.of("damped_velocity", () -> SpringDriver.ofVector3f(0.8f, 0.6f, 1f, Vector3f::new, false));
     public static final DriverKey<VariableDriver<Vector3f>> MOVEMENT_DIRECTION_OFFSET = DriverKey.of("movement_direction_offset", () -> VariableDriver.ofVector(Vector3f::new));
     public static final DriverKey<SpringDriver<Vector3f>> CAMERA_ROTATION_DAMPING = DriverKey.of("camera_rotation_damping", () -> SpringDriver.ofVector3f(LocomotionMain.CONFIG.data().firstPersonPlayer.cameraRotationStiffnessFactor, LocomotionMain.CONFIG.data().firstPersonPlayer.cameraRotationDampingFactor, 1f, Vector3f::new, true));
@@ -1219,6 +1281,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<ItemStack>> OFF_HAND_ITEM = DriverKey.of("off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> RENDERED_MAIN_HAND_ITEM = DriverKey.of("rendered_main_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
     public static final DriverKey<VariableDriver<ItemStack>> RENDERED_OFF_HAND_ITEM = DriverKey.of("rendered_off_hand_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
+    public static final DriverKey<VariableDriver<Boolean>> RENDER_MAIN_HAND_ITEM_AS_STATIC = DriverKey.of("render_main_hand_item_as_static", () -> VariableDriver.ofBoolean(() -> false));
+    public static final DriverKey<VariableDriver<Boolean>> RENDER_OFF_HAND_ITEM_AS_STATIC = DriverKey.of("render_off_hand_item_as_static", () -> VariableDriver.ofBoolean(() -> false));
     public static final DriverKey<VariableDriver<HandPose>> MAIN_HAND_POSE = DriverKey.of("main_hand_pose", () -> VariableDriver.ofConstant(() -> HandPose.EMPTY));
     public static final DriverKey<VariableDriver<HandPose>> OFF_HAND_POSE = DriverKey.of("off_hand_pose", () -> VariableDriver.ofConstant(() -> HandPose.EMPTY));
     public static final DriverKey<VariableDriver<GenericItemPose>> MAIN_HAND_GENERIC_ITEM_POSE = DriverKey.of("main_hand_generic_item_pose", () -> VariableDriver.ofConstant(() -> GenericItemPose.DEFAULT_2D_ITEM));
