@@ -6,7 +6,6 @@ import com.trainguy9512.locomotion.animation.pose.Pose;
 import java.util.Optional;
 
 public interface LivingEntityRenderStateAccess {
-
     void animationOverhaul$setInterpolatedAnimationPose(Pose interpolatedPose);
     Optional<Pose> animationOverhaul$getInterpolatedAnimationPose();
 
