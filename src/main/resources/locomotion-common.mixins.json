@@ -14,6 +14,7 @@
     "MixinGameRenderer",
     "MixinItemInHandLayer",
     "MixinItemInHandRenderer",
+    "MixinItemTransform",
     "MixinLivingEntityRenderer",
     "MixinLivingEntityRenderState",
     "MixinMinecraft",

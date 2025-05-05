@@ -48,6 +48,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
     private final ItemModelResolver itemModelResolver;
     private final JointAnimatorDispatcher jointAnimatorDispatcher;
 
+    public static boolean SHOULD_FLIP_ITEM_TRANSFORM = false;
+
     public FirstPersonPlayerRenderer(EntityRendererProvider.Context context) {
         this.minecraft = Minecraft.getInstance();
         this.entityRenderDispatcher = context.getEntityRenderDispatcher();
@@ -189,16 +191,8 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
             jointChannel.transformPoseStack(poseStack, 16f);
 
             if (shouldMirrorItem(side, handPose, genericItemPose)) {
-                poseStack.scale(-1, 1, 1);
-//                poseStack.mulPose(Axis.XP.rotation(Mth.PI));
-//                poseStack.last().normal().scale(-1, -1, 1);
-//                poseStack.scale(
-//                        -1,
-//                        -1,
-//                        Mth.sin((float) (Blaze3D.getTime() * 4))
-//                );
+                SHOULD_FLIP_ITEM_TRANSFORM = true;
             }
-
             switch (renderType) {
                 case THIRD_PERSON_ITEM, THIRD_PERSON_ITEM_STATIC -> {
                     //? if >= 1.21.5 {
@@ -234,6 +228,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                     }
                 }
             }
+            SHOULD_FLIP_ITEM_TRANSFORM = false;
             poseStack.popPose();
         }
     }
