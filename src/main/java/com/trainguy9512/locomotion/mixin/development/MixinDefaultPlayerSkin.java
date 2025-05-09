@@ -23,6 +23,6 @@ public abstract class MixinDefaultPlayerSkin {
             cancellable = true
     )
     private static void makeSteveDefault(UUID uuid, CallbackInfoReturnable<PlayerSkin> cir) {
-        cir.setReturnValue(DEFAULT_SKINS[14]);
+        cir.setReturnValue(DEFAULT_SKINS[11]);
     }
 }

@@ -218,7 +218,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.GENERIC_ITEM);
                                     evaluationState.driverContainer().getDriver(getRenderItemAsStaticDriver(interactionHand)).setValue(true);
                                 })
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(4), Easing.SINE_IN_OUT))
                                 .build())
                         .build());
     }
