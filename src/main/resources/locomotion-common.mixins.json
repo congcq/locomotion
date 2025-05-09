@@ -19,7 +19,8 @@
     "MixinLivingEntityRenderState",
     "MixinMinecraft",
     "MixinModelPart",
-    "MixinMultiPlayerGameMode"
+    "MixinMultiPlayerGameMode",
+    "development.MixinDefaultPlayerSkin"
   ],
   "injectors": {
     "defaultRequire": 1

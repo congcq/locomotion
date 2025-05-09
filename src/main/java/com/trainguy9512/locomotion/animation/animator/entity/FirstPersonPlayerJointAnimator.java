@@ -173,9 +173,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                     evaluationState.driverContainer().getDriver(getGenericItemPoseDriver(oppositeHand)).setValue(GenericItemPose.DEFAULT_2D_ITEM);
                 })
                 .bindToTimeMarker("get_new_arrow", evaluationState -> {
-                    evaluationState.driverContainer().getDriver(getRenderedItemDriver(oppositeHand)).setValue(Items.ARROW.getDefaultInstance());
-                    evaluationState.driverContainer().getDriver(getGenericItemPoseDriver(oppositeHand)).setValue(GenericItemPose.ARROW);
-                    evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.GENERIC_ITEM);
                 })
                 .build();
         PoseFunction<LocalSpacePose> releasePoseFunction = SequencePlayerFunction.builder(HAND_BOW_RELEASE)
@@ -216,6 +213,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                                 .and(transitionContext -> transitionContext.driverContainer().getDriverValue(getHandPoseDriver(interactionHand)) == HandPose.BOW)
                                 )
                                 .bindToOnTransitionTaken(evaluationState -> {
+                                    evaluationState.driverContainer().getDriver(getRenderedItemDriver(oppositeHand)).setValue(Items.ARROW.getDefaultInstance());
+                                    evaluationState.driverContainer().getDriver(getGenericItemPoseDriver(oppositeHand)).setValue(GenericItemPose.ARROW);
+                                    evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.GENERIC_ITEM);
                                     evaluationState.driverContainer().getDriver(getRenderItemAsStaticDriver(interactionHand)).setValue(true);
                                 })
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
