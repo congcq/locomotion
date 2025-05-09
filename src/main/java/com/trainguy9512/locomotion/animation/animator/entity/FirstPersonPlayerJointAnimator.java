@@ -715,8 +715,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         Predicate<StateTransition.TransitionContext> itemHasChanged = context -> context.driverContainer().getDriverValue(getItemDriver(interactionHand)).getItem() != context.driverContainer().getDriverValue(getRenderedItemDriver(interactionHand)).getItem();
         Predicate<StateTransition.TransitionContext> hotbarHasChanged = context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HOTBAR_SLOT).hasValueChanged();
         Predicate<StateTransition.TransitionContext> newItemIsEmpty = context -> context.driverContainer().getDriverValue(getItemDriver(interactionHand)).isEmpty();
+        Predicate<StateTransition.TransitionContext> oldItemIsEmpty = context -> context.driverContainer().getDriverValue(getRenderedItemDriver(interactionHand)).isEmpty();
 
-        Predicate<StateTransition.TransitionContext> hardSwitchCondition = hotbarHasChanged.or(itemHasChanged);
+        Predicate<StateTransition.TransitionContext> hardSwitchCondition = hotbarHasChanged.and(newItemIsEmpty.and(oldItemIsEmpty).negate()).or(itemHasChanged);
         Predicate<StateTransition.TransitionContext> dropLastItemCondition = newItemIsEmpty.and(context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered());
         Predicate<StateTransition.TransitionContext> useLastItemCondition = itemHasChanged.and(newItemIsEmpty).and(context -> context.driverContainer().getDriver(hasUsedItemDriver).hasBeenTriggered() || (interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_ATTACKED).hasBeenTriggered()));
 
