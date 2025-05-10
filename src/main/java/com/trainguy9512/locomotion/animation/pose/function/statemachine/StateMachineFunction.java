@@ -2,6 +2,8 @@ package com.trainguy9512.locomotion.animation.pose.function.statemachine;
 
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
+import com.trainguy9512.locomotion.animation.driver.Driver;
+import com.trainguy9512.locomotion.animation.driver.DriverKey;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.AnimationPlayer;
@@ -35,8 +37,14 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
     private long lastUpdateTick;
     private final boolean resetsUponRelevant;
+    private final List<DriverKey<VariableDriver<S>>> driversToUpdateOnStateChanged;
 
-    private StateMachineFunction(Map<S, State<S>> states, Function<FunctionEvaluationState, S> initialState, boolean resetsUponRelevant) {
+    private StateMachineFunction(
+            Map<S, State<S>> states,
+            Function<FunctionEvaluationState, S> initialState,
+            boolean resetsUponRelevant,
+            List<DriverKey<VariableDriver<S>>> driversToUpdateOnStateChanged
+    ) {
         super(evaluationState -> true, evaluationState -> 1f, TimeSpan.ZERO);
         this.states = states;
         this.initialState = initialState;
@@ -44,6 +52,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         this.lastUpdateTick = 0;
         this.resetsUponRelevant = resetsUponRelevant;
+        this.driversToUpdateOnStateChanged = driversToUpdateOnStateChanged;
     }
 
     @Override
@@ -100,6 +109,10 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         // If there is a transition occurring, add a new state blend layer instance to the layer stack, and resets the elapsed time in the state machine.
         potentialStateTransition.ifPresent(stateTransition -> {
             stateTransition.onTransitionTakenListener().accept(evaluationState);
+            this.driversToUpdateOnStateChanged.forEach(driverKey -> {
+                LocomotionMain.LOGGER.info(driverKey.getIdentifier());
+                evaluationState.driverContainer().getDriver(driverKey).setValue(stateTransition.target());
+            });
             this.stateBlendLayerStack.addLast(new StateBlendLayer(stateTransition.target(), stateTransition));
             this.resetTime();
         });
@@ -243,8 +256,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
      * ran to determine the entry state.</p>
      *
      * @param entryStateFunction        Function to determine the entry state
-     * @return
-     * @param <S>
+     * @param <S>                       State enum type
      */
     public static <S extends Enum<S>> Builder<S> builder(Function<FunctionEvaluationState, S> entryStateFunction) {
         return new Builder<>(entryStateFunction);
@@ -257,6 +269,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         private final List<StateAlias<S>> stateAliases;
 
         private boolean resetUponRelevant;
+        private final List<DriverKey<VariableDriver<S>>> driversToUpdateOnStateChanged;
 
         protected Builder(Function<FunctionEvaluationState, S> initialState) {
             this.initialState = initialState;
@@ -264,6 +277,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             this.stateAliases = new ArrayList<>();
 
             this.resetUponRelevant = false;
+            this.driversToUpdateOnStateChanged = new ArrayList<>();
         }
 
         /**
@@ -305,7 +319,12 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             return this;
         }
 
-        public StateMachineFunction<S> build(){
+        public Builder<S> bindDriverToCurrentActiveState(DriverKey<VariableDriver<S>> driverKey) {
+            this.driversToUpdateOnStateChanged.add(driverKey);
+            return this;
+        }
+
+        public PoseFunction<LocalSpacePose> build(){
             // Apply the state alias's outbound transitions to each of its origin states.
             for (StateAlias<S> stateAlias : this.stateAliases) {
                 for (S originState : stateAlias.originStates()) {
@@ -331,7 +350,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                     LocomotionMain.LOGGER.warn("State {} in state machine contains no outbound transitions. If this state is entered, it will have no valid path out without re-initializing the state!", state.identifier);
                 }
             }
-            return new StateMachineFunction<>(this.states, this.initialState, this.resetUponRelevant);
+            return new StateMachineFunction<>(this.states, this.initialState, this.resetUponRelevant, this.driversToUpdateOnStateChanged);
         }
     }
 

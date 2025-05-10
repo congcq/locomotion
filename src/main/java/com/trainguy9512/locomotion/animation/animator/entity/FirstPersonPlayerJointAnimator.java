@@ -145,6 +145,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
     public static PoseFunction<LocalSpacePose> twoHandedOverridePoseFunction(PoseFunction<LocalSpacePose> normalPoseFunction, CachedPoseContainer cachedPoseContainer) {
         StateMachineFunction.Builder<TwoHandedOverrideStates> builder = StateMachineFunction.builder(evaluationState -> TwoHandedOverrideStates.NORMAL)
+                .bindDriverToCurrentActiveState(CURRENT_TWO_HANDED_OVERRIDE_STATE)
                 .defineState(State.builder(TwoHandedOverrideStates.NORMAL, normalPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
                         .build());
@@ -199,7 +200,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.NORMAL)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
                                 .build())
                         .build())
                 .addStateAlias(StateAlias.builder(
@@ -218,7 +219,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.GENERIC_ITEM);
                                     evaluationState.driverContainer().getDriver(getRenderItemAsStaticDriver(interactionHand)).setValue(true);
                                 })
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(4), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
                                 .build())
                         .build());
     }
@@ -716,8 +717,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         Predicate<StateTransition.TransitionContext> hotbarHasChanged = context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HOTBAR_SLOT).hasValueChanged();
         Predicate<StateTransition.TransitionContext> newItemIsEmpty = context -> context.driverContainer().getDriverValue(getItemDriver(interactionHand)).isEmpty();
         Predicate<StateTransition.TransitionContext> oldItemIsEmpty = context -> context.driverContainer().getDriverValue(getRenderedItemDriver(interactionHand)).isEmpty();
+        Predicate<StateTransition.TransitionContext> noTwoHandedOverrides = context -> context.driverContainer().getDriverValue(CURRENT_TWO_HANDED_OVERRIDE_STATE) == TwoHandedOverrideStates.NORMAL;
 
-        Predicate<StateTransition.TransitionContext> hardSwitchCondition = hotbarHasChanged.and(newItemIsEmpty.and(oldItemIsEmpty).negate()).or(itemHasChanged);
+        Predicate<StateTransition.TransitionContext> hardSwitchCondition = hotbarHasChanged.and(newItemIsEmpty.and(oldItemIsEmpty).negate()).and(noTwoHandedOverrides).or(itemHasChanged);
         Predicate<StateTransition.TransitionContext> dropLastItemCondition = newItemIsEmpty.and(context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered());
         Predicate<StateTransition.TransitionContext> useLastItemCondition = itemHasChanged.and(newItemIsEmpty).and(context -> context.driverContainer().getDriver(hasUsedItemDriver).hasBeenTriggered() || (interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_ATTACKED).hasBeenTriggered()));
 
@@ -1289,6 +1291,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<GenericItemPose>> MAIN_HAND_GENERIC_ITEM_POSE = DriverKey.of("main_hand_generic_item_pose", () -> VariableDriver.ofConstant(() -> GenericItemPose.DEFAULT_2D_ITEM));
     public static final DriverKey<VariableDriver<GenericItemPose>> OFF_HAND_GENERIC_ITEM_POSE = DriverKey.of("off_hand_generic_item_pose", () -> VariableDriver.ofConstant(() -> GenericItemPose.DEFAULT_2D_ITEM));
 
+    public static final DriverKey<VariableDriver<TwoHandedOverrideStates>> CURRENT_TWO_HANDED_OVERRIDE_STATE = DriverKey.of("current_two_handed_override_state", () -> VariableDriver.ofConstant(() -> TwoHandedOverrideStates.NORMAL));
 
     public static final DriverKey<VariableDriver<Float>> HORIZONTAL_MOVEMENT_SPEED = DriverKey.of("horizontal_movement_speed", () -> VariableDriver.ofFloat(() -> 0f));
     public static final DriverKey<VariableDriver<Float>> VERTICAL_MOVEMENT_SPEED = DriverKey.of("vertical_movement_speed", () -> VariableDriver.ofFloat(() -> 0f));
