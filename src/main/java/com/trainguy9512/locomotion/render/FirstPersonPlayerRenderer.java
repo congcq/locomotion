@@ -8,14 +8,12 @@ import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJo
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.access.AlternateSingleBlockRenderer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
-import net.minecraft.client.renderer.block.model.BlockModelPart;
 import net.minecraft.client.renderer.entity.*;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
@@ -24,7 +22,6 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
@@ -229,8 +226,7 @@ public class FirstPersonPlayerRenderer implements RenderLayerParent<PlayerRender
                     } else if (block instanceof DoorBlock) {
                         this.renderDoorBlock(blockState, poseStack, bufferSource, combinedLight);
                     } else {
-                        List<BlockModelPart> blockModelPartList = this.blockRenderer.getBlockModel(blockState).collectParts(RandomSource.create(0));
-                        ((AlternateSingleBlockRenderer)(this.blockRenderer)).renderShadedSingleBlock(blockState, poseStack, bufferSource, combinedLight);
+                        ((AlternateSingleBlockRenderer)(this.blockRenderer)).locomotion$renderSingleBlockWithEmission(blockState, poseStack, bufferSource, combinedLight);
 //                        this.blockRenderer.renderSingleBlock(blockState, poseStack, bufferSource, combinedLight, OverlayTexture.NO_OVERLAY);
                     }
                 }
