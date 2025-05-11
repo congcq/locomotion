@@ -204,7 +204,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.NORMAL)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(20), Easing.LINEAR))
                                 .build())
                         .build())
                 .addStateAlias(StateAlias.builder(
@@ -225,7 +225,18 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 })
                                 .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
                                 .build())
-                        .build());
+                        .build())
+                .addStateAlias(StateAlias.builder(
+                        Set.of(
+                                bowPullState,
+                                bowReleaseState
+                        ))
+                        .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.NORMAL)
+                                .isTakenIfTrue(transitionContext -> !transitionContext.driverContainer().getDriverValue(getItemDriver(interactionHand)).is(Items.BOW))
+                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                .build())
+                        .build()
+                );
     }
 
     public enum GenericItemPose {
@@ -361,11 +372,11 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.REDSTONE,
                 Items.STRING,
                 Items.TRIPWIRE_HOOK,
-                Items.LEVER,
                 Items.RAIL,
                 Items.ACTIVATOR_RAIL,
                 Items.DETECTOR_RAIL,
                 Items.POWERED_RAIL,
+                Items.FROGSPAWN,
                 //? >= 1.21.5 {
                 Items.DRY_SHORT_GRASS,
                 Items.DRY_TALL_GRASS,
@@ -721,14 +732,18 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         Predicate<StateTransition.TransitionContext> oldItemIsEmpty = context -> context.driverContainer().getDriverValue(getRenderedItemDriver(interactionHand)).isEmpty();
         Predicate<StateTransition.TransitionContext> noTwoHandedOverrides = context -> context.driverContainer().getDriverValue(CURRENT_TWO_HANDED_OVERRIDE_STATE) == TwoHandedOverrideStates.NORMAL;
 
-        Predicate<StateTransition.TransitionContext> hardSwitchCondition = hotbarHasChanged.and(newItemIsEmpty.and(oldItemIsEmpty).negate()).and(noTwoHandedOverrides).or(itemHasChanged);
+        Predicate<StateTransition.TransitionContext> hardSwitchCondition = (hotbarHasChanged.and(newItemIsEmpty.and(oldItemIsEmpty).negate()).or(itemHasChanged)).and(noTwoHandedOverrides);
         Predicate<StateTransition.TransitionContext> dropLastItemCondition = newItemIsEmpty.and(context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered());
         Predicate<StateTransition.TransitionContext> useLastItemCondition = itemHasChanged.and(newItemIsEmpty).and(context -> context.driverContainer().getDriver(hasUsedItemDriver).hasBeenTriggered() || (interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_ATTACKED).hasBeenTriggered()));
 
 
         Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(HAS_ATTACKED)).or(StateTransition.booleanDriverPredicate(HAS_USED_MAIN_HAND_ITEM));
 
-        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> updateRenderedItem(evaluationState.driverContainer(), interactionHand);
+        Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> {
+            if (evaluationState.driverContainer().getDriverValue(CURRENT_TWO_HANDED_OVERRIDE_STATE) == TwoHandedOverrideStates.NORMAL) {
+                updateRenderedItem(evaluationState.driverContainer(), interactionHand);
+            }
+        };
         Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> {
             LOGGER.info("interrupted, {}, {}", evaluationState.driverContainer().getDriverValue(HAS_USED_MAIN_HAND_ITEM), evaluationState.currentTick());
             evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.INSTANT);

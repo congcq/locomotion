@@ -204,6 +204,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     public PoseFunction<LocalSpacePose> wrapUnique() {
         Builder<S> builder = StateMachineFunction.builder(this.initialState);
         builder.resetsUponRelevant(this.resetsUponRelevant);
+        this.driversToUpdateOnStateChanged.forEach(builder::bindDriverToCurrentActiveState);
         this.states.forEach((identifier, state) ->
                 builder.defineState(
                         State.builder(state).wrapUniquePoseFunction().build()
