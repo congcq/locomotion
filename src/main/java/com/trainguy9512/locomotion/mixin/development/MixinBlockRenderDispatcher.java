@@ -58,9 +58,9 @@ public abstract class MixinBlockRenderDispatcher implements AlternateSingleBlock
                 for (BakedQuad bakedQuad : blockModelPart.getQuads(direction)) {
                     this.locomotion$renderBakedQuad(bakedQuad, poseStack, bufferSource, r, g, b, combinedLight, blockState);
                 }
-                for (BakedQuad bakedQuad : blockModelPart.getQuads(null)) {
-                    this.locomotion$renderBakedQuad(bakedQuad, poseStack, bufferSource, r, g, b, combinedLight, blockState);
-                }
+            }
+            for (BakedQuad bakedQuad : blockModelPart.getQuads(null)) {
+                this.locomotion$renderBakedQuad(bakedQuad, poseStack, bufferSource, r, g, b, combinedLight, blockState);
             }
         }
         // Render the block through the special block renderer if it has one (skulls, beds, banners)

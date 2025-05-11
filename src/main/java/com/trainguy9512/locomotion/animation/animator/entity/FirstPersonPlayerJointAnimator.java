@@ -377,6 +377,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.DETECTOR_RAIL,
                 Items.POWERED_RAIL,
                 Items.FROGSPAWN,
+                //? >= 1.21.4 {
+                Items.PALE_HANGING_MOSS,
+                //}
                 //? >= 1.21.5 {
                 Items.DRY_SHORT_GRASS,
                 Items.DRY_TALL_GRASS,
@@ -384,10 +387,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.FIREFLY_BUSH,
                 Items.LEAF_LITTER,
                 Items.CACTUS_FLOWER,
-                Items.WILDFLOWERS,
-                //}
-                //? >= 1.21.4 {
-                Items.PALE_HANGING_MOSS
+                Items.WILDFLOWERS
                 //}
         );
 
