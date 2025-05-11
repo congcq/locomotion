@@ -45,6 +45,8 @@ public abstract class MixinBlockRenderDispatcher implements AlternateSingleBlock
         if (renderShape == RenderShape.INVISIBLE) {
             return;
         }
+        // Set the combined light integer to use the block's light emission if it is brighter than the current light level.
+        combinedLight = LightTexture.lightCoordsWithEmission(combinedLight, blockState.getLightEmission());
         BlockStateModel blockStateModel = this.getBlockModel(blockState);
         int tint = this.blockColors.getColor(blockState, null, null, 0);
         float r = (float)(tint >> 16 & 0xFF) / 255.0f;
@@ -76,12 +78,11 @@ public abstract class MixinBlockRenderDispatcher implements AlternateSingleBlock
             g = 1.0f;
             b = 1.0f;
         }
-        int emission = blockState.getLightEmission();
+        // Use the chunk render type vertex consumer for baked quad parts that don't get shaded.
         VertexConsumer vertexConsumer;
-        if (bakedQuad.shade() && emission == 0) {
+        if (bakedQuad.shade()) {
             vertexConsumer = bufferSource.getBuffer(ItemBlockRenderTypes.getRenderType(blockState));
         } else {
-            combinedLight = LightTexture.lightCoordsWithEmission(combinedLight, emission);
             vertexConsumer = bufferSource.getBuffer(ItemBlockRenderTypes.getChunkRenderType(blockState));
         }
 

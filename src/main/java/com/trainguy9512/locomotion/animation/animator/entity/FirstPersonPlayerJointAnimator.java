@@ -351,8 +351,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.SOUL_TORCH,
                 Items.REDSTONE_TORCH,
                 Items.BELL,
-                Items.CAMPFIRE,
-                Items.SOUL_CAMPFIRE,
                 Items.LADDER,
                 Items.LIGHTNING_ROD,
                 Items.DECORATED_POT,
