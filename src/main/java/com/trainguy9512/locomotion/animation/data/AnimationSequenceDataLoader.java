@@ -15,6 +15,9 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.Mth;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -27,7 +30,7 @@ import java.util.function.Function;
 
 public class AnimationSequenceDataLoader {
 
-    //<Map<ResourceLocation, JsonElement>>
+    private static final Logger LOGGER = LogManager.getLogger("Locomotion/AnimationSequenceDataLoader");
 
     private static final Integer FORMAT_VERSION_1 = 1;
     private static final Integer FORMAT_VERSION_4 = 4;
@@ -61,7 +64,7 @@ public class AnimationSequenceDataLoader {
 
     public static CompletableFuture<Void> apply(Map<ResourceLocation, JsonElement> jsonData, ResourceManager resourceManager, Executor executor) {
         return CompletableFuture.runAsync(() -> {
-            LocomotionMain.LOGGER.info("Loading {} animation sequences...", jsonData.size());
+            LOGGER.info("Loading {} animation sequences...", jsonData.size());
             AnimationSequenceData data = new AnimationSequenceData();
             jsonData.forEach((resourceLocation, sequenceElement) -> {
                 JsonObject sequenceJSON = sequenceElement.getAsJsonObject();
@@ -122,12 +125,12 @@ public class AnimationSequenceDataLoader {
 
 
                     data.put(resourceLocation, sequenceBuilder.build());
-                    LocomotionMain.LOGGER.info("Successfully loaded animation {}", resourceLocation);
+                    LOGGER.info("Successfully loaded animation {}", resourceLocation);
                 } else {
-                    LocomotionMain.LOGGER.warn("Skipping the loading of animation {} (Animation format version was {}, not up to date with {})", resourceLocation, sequenceFormatVersion, FORMAT_VERSION_4);
+                    LOGGER.warn("Skipping the loading of animation {} (Animation format version was {}, not up to date with {})", resourceLocation, sequenceFormatVersion, FORMAT_VERSION_4);
                 }
             });
-            LocomotionMain.LOGGER.info("Finished loading animations!");
+            LOGGER.info("Finished loading animations!");
             AnimationSequenceData.INSTANCE.clearAndReplace(data);
         });
     }

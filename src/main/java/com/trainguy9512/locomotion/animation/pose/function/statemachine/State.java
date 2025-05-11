@@ -3,11 +3,15 @@ package com.trainguy9512.locomotion.animation.pose.function.statemachine;
 import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class State<S extends Enum<S>> {
+
+    private static final Logger LOGGER = LogManager.getLogger("Locomotion/State");
 
     protected final S identifier;
     protected final PoseFunction<LocalSpacePose> inputFunction;
@@ -23,7 +27,7 @@ public class State<S extends Enum<S>> {
         if (!resetUponEntry) {
             for (StateTransition<S> transition : outboundTransitions) {
                 if (transition.isAutomaticTransition()) {
-                    LocomotionMain.LOGGER.warn("State transition to state {} in a state machine is set to be automatic based on the input sequence player, but the origin state is not set to reset upon entry. Automatic transitions are intended to be used with reset-upon-entry states, beware of unexpected behavior!", transition.target());
+                    LOGGER.warn("State transition to state {} in a state machine is set to be automatic based on the input sequence player, but the origin state is not set to reset upon entry. Automatic transitions are intended to be used with reset-upon-entry states, beware of unexpected behavior!", transition.target());
                 }
             }
         }
@@ -95,7 +99,7 @@ public class State<S extends Enum<S>> {
         public final Builder<S> addOutboundTransition(StateTransition<S> transition) {
             this.outboundTransitions.add(transition);
             if (transition.target() == this.identifier) {
-                LocomotionMain.LOGGER.warn("Cannot add state transition to state {} from the same state {}", transition.target(), this.identifier);
+                LOGGER.warn("Cannot add state transition to state {} from the same state {}", transition.target(), this.identifier);
             }
             return this;
         }

@@ -9,6 +9,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.AlertScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedWriter;
 import java.io.FileReader;
@@ -21,6 +23,7 @@ import java.util.function.Predicate;
 
 public class LocomotionConfig {
 
+    private static final Logger LOGGER = LogManager.getLogger("Locomotion/Config");
 
     //private static final Path CONFIG_FILE_PATH = FabricLoader.getInstance().getConfigDir().resolve(LocomotionMain.MOD_ID + ".json");
     private static final Path CONFIG_FILE_PATH = Path.of("config").resolve( LocomotionMain.MOD_ID + ".json");
@@ -60,7 +63,7 @@ public class LocomotionConfig {
             writer.write(GSON.toJson(this.configData));
 //            LocomotionMain.LOGGER.info("Saved config to path {}", CONFIG_FILE_PATH);
         } catch (Exception e) {
-            LocomotionMain.LOGGER.error("Failed to write config to path {}", CONFIG_FILE_PATH.toAbsolutePath());
+            LOGGER.error("Failed to write config to path {}", CONFIG_FILE_PATH.toAbsolutePath());
         }
         JointAnimatorDispatcher.getInstance().reInitializeData();
     }

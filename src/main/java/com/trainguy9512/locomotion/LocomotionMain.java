@@ -1,19 +1,13 @@
 package com.trainguy9512.locomotion;
 
-
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorRegistry;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import com.trainguy9512.locomotion.config.LocomotionConfig;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class LocomotionMain {
 
-
 	public static final String MOD_ID = "locomotion";
-	public static final Logger LOGGER = LogManager.getLogger();
 	public static final LocomotionConfig CONFIG = new LocomotionConfig();
-
 
 	public static void initialize() {
 		CONFIG.load();

@@ -4,6 +4,8 @@ import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.LocomotionMain;
 import net.minecraft.client.model.geom.PartPose;
 import org.apache.commons.compress.utils.Lists;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -12,6 +14,8 @@ import java.util.*;
  * Structure used for associating locator enums with data such as transform hierarchy, default offset poses, model parts, and mirrors.
  */
 public class JointSkeleton {
+
+    private static final Logger LOGGER = LogManager.getLogger("Locomotion.JointSkeleton");
 
     private final HashMap<String, JointConfiguration> joints;
     private final String rootJoint;
@@ -52,7 +56,7 @@ public class JointSkeleton {
     @SuppressWarnings("unused")
     public void printHierarchy(){
         printHierarchyChild(this.getRootJoint(), 1);
-        LocomotionMain.LOGGER.info("--".concat(this.getRootJoint()));
+        LOGGER.info("--".concat(this.getRootJoint()));
     }
 
     private void printHierarchyChild(String joint, int size){
@@ -63,7 +67,7 @@ public class JointSkeleton {
         String finalDashes = dashes;
         this.getDirectChildrenOfJoint(joint).ifPresent(
                 joints -> joints.forEach(child -> {
-                    LocomotionMain.LOGGER.info(finalDashes.concat(child));
+                    LOGGER.info(finalDashes.concat(child));
                     printHierarchyChild(child, size + 1);
                 })
         );
@@ -119,7 +123,7 @@ public class JointSkeleton {
                 this.joints.putIfAbsent(joint, JointConfiguration.Builder.of(joint, parent));
                 this.joints.get(parent).addChild(joint);
             } else {
-                LocomotionMain.LOGGER.warn("Joint {} not added due to parent joint {} not being present in the skeleton.", joint, parent);
+                LOGGER.warn("Joint {} not added due to parent joint {} not being present in the skeleton.", joint, parent);
             }
             return this;
         }
@@ -128,7 +132,7 @@ public class JointSkeleton {
             if(this.joints.containsKey(joint)){
                 this.joints.get(joint).setModelPartIdentifier(modelPartIdentifier);
             } else {
-                LocomotionMain.LOGGER.warn("Model part identifier not set during joint skeleton construction for joint {}, due to joint {} not being defined in the skeleton.", joint, joint);
+                LOGGER.warn("Model part identifier not set during joint skeleton construction for joint {}, due to joint {} not being defined in the skeleton.", joint, joint);
             }
             return this;
         }
@@ -137,7 +141,7 @@ public class JointSkeleton {
             if(this.joints.containsKey(joint)){
                 this.joints.get(joint).setModelPartOffset(modelPartOffset);
             } else {
-                LocomotionMain.LOGGER.warn("Model part offset not set during joint skeleton construction for joint {}, due to joint {} not being defined in the skeleton.", joint, joint);
+                LOGGER.warn("Model part offset not set during joint skeleton construction for joint {}, due to joint {} not being defined in the skeleton.", joint, joint);
             }
             return this;
         }
@@ -147,7 +151,7 @@ public class JointSkeleton {
                 this.joints.get(joint).setMirrorJoint(mirrorJoint);
                 this.joints.get(mirrorJoint).setMirrorJoint(joint);
             } else {
-                LocomotionMain.LOGGER.warn("Mirror joint not set during joint skeleton construction for joint {}, due to joint {} not being defined in the skeleton.", joint, joint);
+                LOGGER.warn("Mirror joint not set during joint skeleton construction for joint {}, due to joint {} not being defined in the skeleton.", joint, joint);
             }
             return this;
         }

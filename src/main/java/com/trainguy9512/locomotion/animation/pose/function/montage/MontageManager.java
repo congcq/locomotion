@@ -28,9 +28,7 @@ public class MontageManager {
         this.montageStack.removeIf(montageInstance -> montageInstance.ticksElapsed.getPreviousValue() > montageInstance.tickLength + (1 - montageInstance.configuration.transitionOutCrossfadeWeight()) * montageInstance.configuration.transitionOut().duration().inTicks());
         this.montageStack.removeIf(montageInstance -> {
             if (montageInstance.interrupted) {
-                if (montageInstance.ticksElapsed.getPreviousValue() - montageInstance.interruptTick > montageInstance.interruptTransition.duration().inTicks()) {
-                    return true;
-                }
+                return montageInstance.ticksElapsed.getPreviousValue() - montageInstance.interruptTick > montageInstance.interruptTransition.duration().inTicks();
             }
             return false;
         });

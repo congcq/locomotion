@@ -1,6 +1,8 @@
 package com.trainguy9512.locomotion.animation.pose.function.statemachine;
 
 import com.trainguy9512.locomotion.LocomotionMain;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -8,6 +10,8 @@ import java.util.List;
 import java.util.Set;
 
 public record StateAlias<S extends Enum<S>>(Set<S> originStates, List<StateTransition<S>> outboundTransitions) {
+
+    private static final Logger LOGGER = LogManager.getLogger("Locomotion/StateAlias");
 
     /**
      * Creates a new state alias builder.
@@ -53,7 +57,7 @@ public record StateAlias<S extends Enum<S>>(Set<S> originStates, List<StateTrans
          */
         public Builder<S> addOutboundTransition(StateTransition<S> transition) {
             if (this.originStates.contains(transition.target())) {
-                LocomotionMain.LOGGER.warn("Cannot add state transition to state {} from state alias that contains it already: {}", transition.target(), this.originStates);
+                LOGGER.warn("Cannot add state transition to state {} from state alias that contains it already: {}", transition.target(), this.originStates);
             }
             this.outboundTransitions.add(transition);
             return this;

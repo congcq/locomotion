@@ -11,6 +11,8 @@ import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import com.trainguy9512.locomotion.animation.pose.function.TimeBasedPoseFunction;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import com.trainguy9512.locomotion.util.Transition;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -30,6 +32,8 @@ import java.util.stream.Collectors;
  * @param <S>           Enum type used as state identifiers.
  */
 public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFunction<LocalSpacePose> {
+
+    private static final Logger LOGGER = LogManager.getLogger("Locomotion/StateMachineFunction");
 
     private final Map<S, State<S>> states;
     private final Function<FunctionEvaluationState, S> initialState;
@@ -59,7 +63,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
     public @NotNull LocalSpacePose compute(FunctionInterpolationContext context) {
         // If the list of active states is empty, throw an error because this should never be the case unless something has gone wrong.
         if(this.stateBlendLayerStack.isEmpty()){
-            LocomotionMain.LOGGER.error("State machine of enum type {}'s active states list found to be empty. Throwing error...", this.states.keySet().stream().findAny().get().getClass().getSimpleName());
+            LOGGER.error("State machine of enum type {}'s active states list found to be empty. Throwing error...", this.states.keySet().stream().findAny().get().getClass().getSimpleName());
             throw new IllegalStateException("State machine found to have no active states");
         }
         // Add all calculated poses to a map, because there can be multiple instances of the same
@@ -97,7 +101,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             this.stateBlendLayerStack.clear();
             S initialStateIdentifier = this.initialState.apply(evaluationState);
             if (this.states.containsKey(initialStateIdentifier)) {
-                this.stateBlendLayerStack.addLast(new StateBlendLayer(initialStateIdentifier, StateTransition.builder(initialStateIdentifier).setTiming(Transition.INSTANT).build()));
+                this.stateBlendLayerStack.addLast(new StateBlendLayer(initialStateIdentifier, StateTransition.builder(initialStateIdentifier).setTiming(Transition.INSTANT).isTakenIfTrue(transitionContext -> true).build()));
             } else {
                 throw new IllegalStateException("Initial state " + initialStateIdentifier + " not found to be present in the state machine");
             }
@@ -110,7 +114,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
         potentialStateTransition.ifPresent(stateTransition -> {
             stateTransition.onTransitionTakenListener().accept(evaluationState);
             this.driversToUpdateOnStateChanged.forEach(driverKey -> {
-                LocomotionMain.LOGGER.info(driverKey.getIdentifier());
+                LOGGER.info(driverKey.getIdentifier());
                 evaluationState.driverContainer().getDriver(driverKey).setValue(stateTransition.target());
             });
             this.stateBlendLayerStack.addLast(new StateBlendLayer(stateTransition.target(), stateTransition));
@@ -332,7 +336,7 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
                         State.Builder<S> stateBuilder = State.builder(this.states.get(originState));
                         this.states.put(originState, stateBuilder.addOutboundTransitions(stateAlias.outboundTransitions()).build());
                     } else {
-                        LocomotionMain.LOGGER.error("Failed to apply state alias for state {}, as it hasn't been added to the state machine builder.", originState);
+                        LOGGER.error("Failed to apply state alias for state {}, as it hasn't been added to the state machine builder.", originState);
                     }
                 }
             }
@@ -340,14 +344,14 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
             for (State<S> state : this.states.values()) {
                 for (StateTransition<S> transition : state.outboundTransitions) {
                     if (!this.states.containsKey(transition.target())) {
-                        LocomotionMain.LOGGER.error("State transition from states {} to {} not valid because state {} is not present in the state machine.", state.identifier, transition.target(), transition.target());
+                        LOGGER.error("State transition from states {} to {} not valid because state {} is not present in the state machine.", state.identifier, transition.target(), transition.target());
                     }
                 }
             }
             // Check that each state has at least one outbound transitions.
             for (State<S> state : this.states.values()) {
                 if (state.outboundTransitions.isEmpty()) {
-                    LocomotionMain.LOGGER.warn("State {} in state machine contains no outbound transitions. If this state is entered, it will have no valid path out without re-initializing the state!", state.identifier);
+                    LOGGER.warn("State {} in state machine contains no outbound transitions. If this state is entered, it will have no valid path out without re-initializing the state!", state.identifier);
                 }
             }
             return new StateMachineFunction<>(this.states, this.initialState, this.resetUponRelevant, this.driversToUpdateOnStateChanged);

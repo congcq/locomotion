@@ -10,6 +10,8 @@ import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import com.trainguy9512.locomotion.util.Transition;
 import net.minecraft.util.Tuple;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -24,6 +26,8 @@ public record StateTransition<S extends Enum<S>>(
         Consumer<PoseFunction.FunctionEvaluationState> onTransitionTakenListener,
         boolean isAutomaticTransition
 ) implements Comparable<StateTransition<S>> {
+
+    private static final Logger LOGGER = LogManager.getLogger("Locomotion/StateTransition");
 
     public static final Predicate<TransitionContext> CURRENT_TRANSITION_FINISHED = transitionContext -> transitionContext.currentStateWeight() == 1 && transitionContext.previousStateWeight() == 1;
     public static final Predicate<TransitionContext> MOST_RELEVANT_ANIMATION_PLAYER_IS_FINISHING = makeMostRelevantAnimationPlayerFinishedCondition(1f);
@@ -151,7 +155,7 @@ public record StateTransition<S extends Enum<S>>(
             if (this.conditionPredicate == null) {
                 this.conditionPredicate = context -> false;
                 if (!this.automaticTransition) {
-                    LocomotionMain.LOGGER.error("State transition to target {}.{} has no passable conditions, and will go unused.", this.target.getClass().getSimpleName(), this.target);
+                    LOGGER.warn("State transition to target {}.{} has no passable conditions, and will go unused.", this.target.getClass().getSimpleName(), this.target);
                 }
             }
             if (this.automaticTransition) {

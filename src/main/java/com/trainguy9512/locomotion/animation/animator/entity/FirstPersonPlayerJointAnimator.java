@@ -33,6 +33,8 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -42,6 +44,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator<LocalPlayer, PlayerRenderState> {
+
+    private static final Logger LOGGER = LogManager.getLogger("Locomotion/FPJointAnimator");
 
     public static final String ROOT_JOINT = "root_jnt";
     public static final String CAMERA_JOINT = "camera_jnt";
@@ -726,7 +730,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
 
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> updateRenderedItem(evaluationState.driverContainer(), interactionHand);
         Consumer<PoseFunction.FunctionEvaluationState> clearAttackMontages = evaluationState -> {
-            LocomotionMain.LOGGER.info("interrupted, {}, {}", evaluationState.driverContainer().getDriverValue(HAS_USED_MAIN_HAND_ITEM), evaluationState.currentTick());
+            LOGGER.info("interrupted, {}, {}", evaluationState.driverContainer().getDriverValue(HAS_USED_MAIN_HAND_ITEM), evaluationState.currentTick());
             evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.INSTANT);
         };
 
