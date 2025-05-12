@@ -6,7 +6,9 @@ import com.trainguy9512.locomotion.animation.joint.skeleton.BlendProfile;
 import com.trainguy9512.locomotion.animation.joint.skeleton.JointSkeleton;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.util.TimeSpan;
+import com.trainguy9512.locomotion.util.Transition;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
 
 public class LocalSpacePose extends Pose {
@@ -102,7 +104,7 @@ public class LocalSpacePose extends Pose {
      * Returns an animation pose interpolated between this pose and the provided pose.
      * @param other             Animation pose to interpolate to.
      * @param weight            Weight value, 0 is the original pose and 1 is the other pose.
-     * @param blendMask         Blend mask
+     * @param blendMask         Optional blend mask for determining which joints will interpolate.
      * @param destination       Pose to save interpolated pose onto.
      * @return                  New interpolated animation pose.
      */
@@ -133,7 +135,7 @@ public class LocalSpacePose extends Pose {
      * Returns this animation pose interpolated between this pose and the provided pose.
      * @param other             Animation pose to interpolate to.
      * @param weight            Weight value, 0 is the original pose and 1 is the other pose.
-     * @param blendMask         Blend mask
+     * @param blendMask         Optional blend mask for determining which joints will interpolate.
      * @return                  New interpolated animation pose.
      */
     public LocalSpacePose interpolated(
@@ -148,18 +150,50 @@ public class LocalSpacePose extends Pose {
      * Returns an animation pose interpolated between this pose and the provided pose using data from a transition.
      * @param other             Animation pose to interpolate to.
      * @param time              Time progress between 0 and 1
+     * @param transition        Transition to use for easing and blend profile data.
+     * @param blendMask         Optional blend mask for determining which joints will interpolate.
      * @param destination       Pose to save interpolated pose onto.
      * @return                  New interpolated animation pose.
      */
     public LocalSpacePose interpolatedByTransition(
             LocalSpacePose other,
             float time,
+            Transition transition,
+            @Nullable BlendMask blendMask,
             LocalSpacePose destination
     ) {
         if (time == 0) {
             return destination;
         }
+        for (String joint : this.jointSkeleton.getJoints()) {
+            float jointTime = time;
+            if (transition.blendProfile() != null) {
+                jointTime /= transition.blendProfile().getProperty(joint, this.jointSkeleton);
+                jointTime = Mth.clamp(jointTime, 0, 1);
+            }
+            if (blendMask != null) {
+                jointTime *= blendMask.getProperty(joint, this.jointSkeleton);
+            }
+            jointTime = transition.easement().ease(jointTime);
+            if (jointTime == 1f) {
+                destination.setJointChannel(joint, other.getJointChannel(joint));
+            } else {
+                destination.setJointChannel(joint, destination.getJointChannel(joint).interpolate(other.getJointChannel(joint), jointTime));
+            }
+        }
         return destination;
+    }
+
+    /**
+     * Returns this animation pose interpolated between this pose and the provided pose using data from a transition.
+     * @param other             Animation pose to interpolate to.
+     * @param time              Time progress between 0 and 1
+     * @param transition        Transition to use for easing and blend profile data.
+     * @param blendMask         Optional blend mask for determining which joints will interpolate.
+     * @return                  New interpolated animation pose.
+     */
+    public LocalSpacePose interpolatedByTransition(LocalSpacePose other, float time, Transition transition, @Nullable BlendMask blendMask) {
+        return this.interpolatedByTransition(other, time, transition, blendMask, this);
     }
 
     public void multiply(LocalSpacePose other, JointChannel.TransformSpace transformSpace) {

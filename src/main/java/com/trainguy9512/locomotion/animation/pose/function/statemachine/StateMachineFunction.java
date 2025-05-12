@@ -79,12 +79,18 @@ public class StateMachineFunction<S extends Enum<S>> extends TimeBasedPoseFuncti
 
         if (this.stateBlendLayerStack.size() > 1) {
             for (StateBlendLayer stateBlendLayer : this.stateBlendLayerStack.subList(1, stateBlendLayerStack.size())) {
-                pose = pose.interpolated(
+                pose.interpolatedByTransition(
                         layerStackPoses.get(stateBlendLayer.identifier),
-                        stateBlendLayer.entranceTransition.transition().applyEasement(
-                                stateBlendLayer.weight.getValueInterpolated(context.partialTicks())
-                        )
+                        stateBlendLayer.weight.getValueInterpolated(context.partialTicks()),
+                        stateBlendLayer.entranceTransition.transition(),
+                        null
                 );
+//                pose = pose.interpolated(
+//                        layerStackPoses.get(stateBlendLayer.identifier),
+//                        stateBlendLayer.entranceTransition.transition().applyEasement(
+//                                stateBlendLayer.weight.getValueInterpolated(context.partialTicks())
+//                        )
+//                );
             }
         }
         return pose;

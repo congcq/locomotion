@@ -5,6 +5,7 @@ import com.trainguy9512.locomotion.animation.data.*;
 import com.trainguy9512.locomotion.animation.driver.*;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.animation.joint.skeleton.BlendMask;
+import com.trainguy9512.locomotion.animation.joint.skeleton.BlendProfile;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.*;
 import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;
@@ -186,10 +187,19 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .build();
         PoseFunction<LocalSpacePose> releasePoseFunction = SequencePlayerFunction.builder(HAND_BOW_RELEASE)
                 .build();
+
+
         if (interactionHand == InteractionHand.OFF_HAND) {
             pullPoseFunction = MirrorFunction.of(pullPoseFunction);
             releasePoseFunction = MirrorFunction.of(releasePoseFunction);
         }
+
+
+        BlendProfile blendOffhandArrowMoreQuickly = BlendProfile.builder().defineForJoint(LEFT_HAND_JOINT, 0f).build();
+        if (interactionHand == InteractionHand.OFF_HAND) {
+            blendOffhandArrowMoreQuickly = blendOffhandArrowMoreQuickly.getMirrored();
+        }
+
 
         stateMachineBuilder.defineState(State.builder(bowPullState, pullPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
@@ -227,7 +237,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.GENERIC_ITEM);
                                     evaluationState.driverContainer().getDriver(getRenderItemAsStaticDriver(interactionHand)).setValue(true);
                                 })
-                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(12)).setEasement(Easing.SINE_IN_OUT).build())
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(12))
+                                        .setEasement(Easing.SINE_IN_OUT)
+                                        .setBlendProfile(blendOffhandArrowMoreQuickly)
+                                        .build())
                                 .build())
                         .build())
                 .addStateAlias(StateAlias.builder(

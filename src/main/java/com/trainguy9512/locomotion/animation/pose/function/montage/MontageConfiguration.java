@@ -2,10 +2,12 @@ package com.trainguy9512.locomotion.animation.pose.function.montage;
 
 import com.google.common.collect.Maps;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
+import com.trainguy9512.locomotion.animation.joint.skeleton.BlendMask;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import com.trainguy9512.locomotion.util.Transition;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,7 @@ import java.util.function.Function;
  * @param animationSequence                 Animation sequence to play
  * @param playRateFunction                  Function that provides the play rate every time a montage of this configuration is fired.
  * @param timeMarkerBindings                Bound function calls assigned to time markers.
+ * @param blendMask                         Blend mask for determining which joints the montage will play on
  * @param transitionIn                      In transition timing.
  * @param transitionOut                     Out transition timing.
  * @param startTimeOffset                   The point in time the animation starts at when the montage is fired.
@@ -36,6 +39,7 @@ public record MontageConfiguration(
         ResourceLocation animationSequence,
         Function<OnTickDriverContainer, Float> playRateFunction,
         Map<String, Consumer<PoseFunction.FunctionEvaluationState>> timeMarkerBindings,
+        @Nullable BlendMask blendMask,
         Transition transitionIn,
         Transition transitionOut,
         TimeSpan startTimeOffset,
@@ -57,6 +61,7 @@ public record MontageConfiguration(
         private final List<String> slots;
         private Function<OnTickDriverContainer, Float> playRateFunction;
         private Map<String, Consumer<PoseFunction.FunctionEvaluationState>> timeMarkerBindings;
+        private BlendMask blendMask;
         private Transition transitionIn;
         private Transition transitionOut;
         private TimeSpan startTimeOffset;
@@ -72,6 +77,7 @@ public record MontageConfiguration(
             this.slots = new ArrayList<>();
             this.playRateFunction = driverContainer -> 1f;
             this.timeMarkerBindings = Maps.newHashMap();
+            this.blendMask = null;
             this.transitionIn = Transition.SINGLE_TICK;
             this.transitionOut = Transition.SINGLE_TICK;
             this.startTimeOffset = TimeSpan.ofSeconds(0);
@@ -107,6 +113,15 @@ public record MontageConfiguration(
          */
         public Builder setPlayRate(Function<OnTickDriverContainer, Float> playRate) {
             this.playRateFunction = playRate;
+            return this;
+        }
+
+        /**
+         * Sets the blend mask of this montage. This determines the weight of each joint when the animation plays
+         * @param blendMask             Blend mask
+         */
+        public Builder setBlendMask(BlendMask blendMask) {
+            this.blendMask = blendMask;
             return this;
         }
 
@@ -200,6 +215,7 @@ public record MontageConfiguration(
                     this.animationSequence,
                     this.playRateFunction,
                     this.timeMarkerBindings,
+                    this.blendMask,
                     this.transitionIn,
                     this.transitionOut,
                     this.startTimeOffset,

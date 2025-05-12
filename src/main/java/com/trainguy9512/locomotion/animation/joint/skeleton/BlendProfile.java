@@ -18,7 +18,7 @@ public class BlendProfile extends SkeletonPropertyDefinition<Float> {
     }
 
     @Override
-    public SkeletonPropertyDefinition<Float> getMirrored() {
+    public BlendProfile getMirrored() {
         return new BlendProfile(this.jointProperties, !this.isMirrored);
     }
 
