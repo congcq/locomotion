@@ -1,7 +1,7 @@
 package com.trainguy9512.locomotion.animation.animator;
 
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
-import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.joint.skeleton.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.PoseFunction;
 import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;

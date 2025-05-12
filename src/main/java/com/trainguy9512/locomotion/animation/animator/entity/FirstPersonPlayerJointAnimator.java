@@ -4,10 +4,11 @@ import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.*;
 import com.trainguy9512.locomotion.animation.driver.*;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
+import com.trainguy9512.locomotion.animation.joint.skeleton.BlendMask;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.animation.pose.function.*;
 import com.trainguy9512.locomotion.animation.pose.function.cache.CachedPoseContainer;
-import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.joint.skeleton.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.function.montage.MontageConfiguration;
 import com.trainguy9512.locomotion.animation.pose.function.montage.MontageManager;
 import com.trainguy9512.locomotion.animation.pose.function.montage.MontageSlotFunction;
@@ -22,7 +23,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.state.PlayerRenderState;
-import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
@@ -74,6 +74,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             LEFT_ITEM_JOINT
     );
 
+    public static final BlendMask LEFT_SIDE_MASK = BlendMask.builder()
+            .defineForMultipleJoints(LEFT_SIDE_JOINTS, 1)
+            .build();
+
     @Override
     public void postProcessModelParts(EntityModel<PlayerRenderState> entityModel, PlayerRenderState entityRenderState) {
     }
@@ -112,7 +116,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> offHandPose = this.constructHandPoseFunction(cachedPoseContainer, InteractionHand.OFF_HAND);
 
         PoseFunction<LocalSpacePose> combinedHandPose = BlendPosesFunction.builder(mainHandPose)
-                .addBlendInput(MirrorFunction.of(offHandPose), evaluationState -> 1f, LEFT_SIDE_JOINTS)
+                .addBlendInput(MirrorFunction.of(offHandPose), evaluationState -> 1f, LEFT_SIDE_MASK)
                 .build();
 
         combinedHandPose = twoHandedOverridePoseFunction(combinedHandPose, cachedPoseContainer);
@@ -204,7 +208,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.NORMAL)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(20), Easing.LINEAR))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(20)).build())
                                 .build())
                         .build())
                 .addStateAlias(StateAlias.builder(
@@ -223,7 +227,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.GENERIC_ITEM);
                                     evaluationState.driverContainer().getDriver(getRenderItemAsStaticDriver(interactionHand)).setValue(true);
                                 })
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(12)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         .build())
                 .addStateAlias(StateAlias.builder(
@@ -233,7 +237,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         ))
                         .addOutboundTransition(StateTransition.builder(TwoHandedOverrideStates.NORMAL)
                                 .isTakenIfTrue(transitionContext -> !transitionContext.driverContainer().getDriverValue(getItemDriver(interactionHand)).is(Items.BOW))
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(10)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         .build()
                 );
@@ -271,7 +275,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 Items.HEAVY_CORE,
                 Items.FLOWER_POT,
                 Items.LANTERN,
-                Items.SOUL_LANTERN
+                Items.SOUL_LANTERN,
+                Items.LEVER
         );
 
         public static final List<TagKey<Item>> SMALL_BLOCK_ITEM_TAGS = List.of(
@@ -505,7 +510,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     .setPlayRate(evaluationState -> 1.15f * LocomotionMain.CONFIG.data().firstPersonPlayer.miningAnimationSpeedMultiplier)
                                     .build(),
                             SequencePlayerFunction.builder(HAND_TOOL_PICKAXE_MINE_FINISH).build(),
-                            Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT));
+                            Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build());
                     default -> ApplyAdditiveFunction.of(SequenceEvaluatorFunction.builder(this.basePoseLocation).build(), MakeDynamicAdditiveFunction.of(
                             makeMiningLoopStateMachine(
                                     cachedPoseContainer,
@@ -516,7 +521,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                             .setPlayRate(evaluationState -> 1.35f * LocomotionMain.CONFIG.data().firstPersonPlayer.miningAnimationSpeedMultiplier)
                                             .build(),
                                     SequencePlayerFunction.builder(HAND_EMPTY_MINE_FINISH).build(),
-                                    Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)),
+                                    Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build()),
                             SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build()));
                 };
                 case OFF_HAND -> SequenceEvaluatorFunction.builder(this.basePoseLocation).build();
@@ -601,8 +606,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         SequenceEvaluatorFunction.builder(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation).build(),
                         SequencePlayerFunction.builder(HAND_GENERIC_ITEM_RAISE).isAdditive(true, SequenceReferencePoint.END).build()
                 ),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT)
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build(),
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build()
         );
         this.addStatesForHandPose(
                 handPoseStateMachineBuilder,
@@ -612,8 +617,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 HandPose.TOOL.getMiningStateMachine(cachedPoseContainer, interactionHand),
                 SequencePlayerFunction.builder(HAND_TOOL_LOWER).build(),
                 SequencePlayerFunction.builder(HAND_TOOL_RAISE).build(),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT)
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build(),
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build()
         );
         this.addStatesForHandPose(
                 handPoseStateMachineBuilder,
@@ -623,8 +628,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 handSwordPoseFunction(cachedPoseContainer, interactionHand),
                 SequencePlayerFunction.builder(HAND_TOOL_LOWER).build(),
                 SequencePlayerFunction.builder(HAND_TOOL_RAISE).build(),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT)
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build(),
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build()
         );
         this.addStatesForHandPose(
                 handPoseStateMachineBuilder,
@@ -640,8 +645,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         SequenceEvaluatorFunction.builder(HAND_SHIELD_POSE).build(),
                         SequencePlayerFunction.builder(HAND_TOOL_RAISE).isAdditive(true, SequenceReferencePoint.END).build()
                 ),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT)
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build(),
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build()
         );
         this.addStatesForHandPose(
                 handPoseStateMachineBuilder,
@@ -657,8 +662,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         SequenceEvaluatorFunction.builder(HAND_BOW_POSE).build(),
                         SequencePlayerFunction.builder(HAND_TOOL_RAISE).isAdditive(true, SequenceReferencePoint.END).build()
                 ),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT),
-                Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT)
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build(),
+                Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build()
         );
         this.addStatesForHandPose(
                 handPoseStateMachineBuilder,
@@ -678,11 +683,11 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                     case OFF_HAND -> SequencePlayerFunction.builder(HAND_EMPTY_LOWERED).build();
                 },
                 switch (interactionHand) {
-                    case MAIN_HAND -> Transition.of(TimeSpan.of60FramesPerSecond(7), Easing.SINE_IN_OUT);
+                    case MAIN_HAND -> Transition.builder(TimeSpan.of60FramesPerSecond(7)).setEasement(Easing.SINE_IN_OUT).build();
                     case OFF_HAND -> Transition.INSTANT;
                 },
                 switch (interactionHand) {
-                    case MAIN_HAND -> Transition.of(TimeSpan.of60FramesPerSecond(18), Easing.SINE_IN_OUT);
+                    case MAIN_HAND -> Transition.builder(TimeSpan.of60FramesPerSecond(18)).setEasement(Easing.SINE_IN_OUT).build();
                     case OFF_HAND -> Transition.INSTANT;
                 }
         );
@@ -693,7 +698,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.ofSeconds(0.2f)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         .build())
                 .defineState(State.builder(HandPoseStates.USING_LAST_ITEM,
@@ -702,7 +707,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.EMPTY)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.ofSeconds(0.2f)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         .build());
 
@@ -783,14 +788,14 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.DROPPING_LAST_ITEM)
                                 .isTakenIfTrue(dropLastItemCondition)
                                 .setPriority(60)
-                                .setTiming(Transition.of(TimeSpan.ofTicks(2)))
+                                .setTiming(Transition.builder(TimeSpan.ofTicks(2)).build())
                                 .bindToOnTransitionTaken(updateRenderedItem)
                                 .bindToOnTransitionTaken(clearAttackMontages)
                                 .build())
                         .addOutboundTransition(StateTransition.builder(HandPoseStates.USING_LAST_ITEM)
                                 .isTakenIfTrue(useLastItemCondition)
                                 .setPriority(60)
-                                .setTiming(Transition.of(TimeSpan.ofTicks(2)))
+                                .setTiming(Transition.builder(TimeSpan.ofTicks(2)).build())
                                 .bindToOnTransitionTaken(updateRenderedItem)
                                 .bindToOnTransitionTaken(clearAttackMontages)
                                 .build())
@@ -819,7 +824,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     .setPlayRate(evaluationState -> 1.35f * LocomotionMain.CONFIG.data().firstPersonPlayer.miningAnimationSpeedMultiplier)
                                     .build(),
                             SequencePlayerFunction.builder(HAND_EMPTY_MINE_FINISH).build(),
-                            Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_OUT)),
+                            Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_OUT).build()),
                     SequenceEvaluatorFunction.builder(HAND_EMPTY_POSE).build()));
             case OFF_HAND -> SequenceEvaluatorFunction.builder(context -> context.driverContainer().getDriverValue(getGenericItemPoseDriver(interactionHand), 1).basePoseLocation).build();
         };
@@ -844,21 +849,21 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                             .resetsPoseFunctionUponEntry(true)
                             .addOutboundTransition(StateTransition.builder(SwordSwingStates.SWING_LEFT)
                                     .isTakenIfTrue(StateTransition.booleanDriverPredicate(HAS_ATTACKED))
-                                    .setTiming(Transition.of(TimeSpan.ofTicks(2)))
+                                    .setTiming(Transition.builder(TimeSpan.ofTicks(2)).build())
                                     .build())
                             .build())
                     .defineState(State.builder(SwordSwingStates.SWING_LEFT, SequencePlayerFunction.builder(HAND_TOOL_SWORD_SWING_LEFT).build())
                             .resetsPoseFunctionUponEntry(true)
                             .addOutboundTransition(StateTransition.builder(SwordSwingStates.SWING_RIGHT)
                                     .isTakenIfTrue(StateTransition.booleanDriverPredicate(HAS_ATTACKED))
-                                    .setTiming(Transition.of(TimeSpan.ofTicks(2)))
+                                    .setTiming(Transition.builder(TimeSpan.ofTicks(2)).build())
                                     .build())
                             .build())
                     .defineState(State.builder(SwordSwingStates.SWING_RIGHT, SequencePlayerFunction.builder(HAND_TOOL_SWORD_SWING_RIGHT).build())
                             .resetsPoseFunctionUponEntry(true)
                             .addOutboundTransition(StateTransition.builder(SwordSwingStates.SWING_LEFT)
                                     .isTakenIfTrue(StateTransition.booleanDriverPredicate(HAS_ATTACKED))
-                                    .setTiming(Transition.of(TimeSpan.ofTicks(2)))
+                                    .setTiming(Transition.builder(TimeSpan.ofTicks(2)).build())
                                     .build())
                             .build())
                     .addStateAlias(StateAlias.builder(
@@ -868,11 +873,11 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                     ))
                             .addOutboundTransition(StateTransition.builder(SwordSwingStates.IDLE)
                                     .isTakenIfMostRelevantAnimationPlayerFinishing(0)
-                                    .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(10), Easing.SINE_IN_OUT))
+                                    .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(10)).setEasement(Easing.SINE_IN_OUT).build())
                                     .build())
                             .addOutboundTransition(StateTransition.builder(SwordSwingStates.IDLE)
                                     .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_MINING))
-                                    .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6), Easing.SINE_IN_OUT))
+                                    .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(6)).setEasement(Easing.SINE_IN_OUT).build())
                                     .build())
                             .build())
                     .build();
@@ -914,7 +919,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(5)))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(5)).build())
                                 .build())
                         .build())
                 .defineState(State.builder(ShieldStates.BLOCKING, MontageSlotFunction.of(SequenceEvaluatorFunction.builder(HAND_SHIELD_BLOCK_OUT).build(), SHIELD_BLOCK_SLOT))
@@ -924,7 +929,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERED)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(15)))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(15)).build())
                                 .build())
                         .build())
                 .defineState(State.builder(ShieldStates.DISABLED_IN, SequencePlayerFunction.builder(HAND_SHIELD_DISABLE_IN).build())
@@ -945,7 +950,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(ShieldStates.LOWERED)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(20)))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(20)).build())
                                 .build())
                         .build())
                 .addStateAlias(StateAlias.builder(
@@ -970,7 +975,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey).negate()
                                         .and(StateTransition.CURRENT_TRANSITION_FINISHED)
                                 )
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6)))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(6)).build())
                                 .setPriority(50)
                                 .build())
                         .build())
@@ -985,7 +990,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                         .and(StateTransition.CURRENT_TRANSITION_FINISHED)
                                         .and(StateTransition.booleanDriverPredicate(IS_MINING))
                                 )
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(6)))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(6)).build())
                                 .setPriority(60)
                                 .build())
                         .build())
@@ -997,7 +1002,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_IN)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey)
                                         .and(StateTransition.CURRENT_TRANSITION_FINISHED))
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(13), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(13)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         .build())
                 .addStateAlias(StateAlias.builder(
@@ -1006,7 +1011,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         ))
                         .addOutboundTransition(StateTransition.builder(ShieldStates.BLOCKING_IN)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(usingItemDriverKey))
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(13), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(13)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         .build())
                 .build();
@@ -1114,7 +1119,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         // Begin walking if the player is moving horizontally
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
                                 .isTakenIfTrue(walkingCondition)
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_OUT))
+                                .setTiming(Transition.builder(TimeSpan.ofSeconds(0.2f)).setEasement(Easing.SINE_OUT).build())
                                 .build())
                         .build())
                 .defineState(State.builder(GroundMovementStates.WALKING, walkingPoseFunction)
@@ -1122,24 +1127,24 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.STOPPING)
                                 .isTakenIfTrue(walkingCondition.negate()
                                         .and(StateTransition.CURRENT_TRANSITION_FINISHED))
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.ofSeconds(0.2f)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         // Stop walking directly into the idle animation if the player only just began walking.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
                                 .isTakenIfTrue(walkingCondition.negate()
                                         .and(StateTransition.CURRENT_TRANSITION_FINISHED.negate()))
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.ofSeconds(0.3f)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         .build())
                 .defineState(State.builder(GroundMovementStates.STOPPING, walkToStopPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(0f)
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(1f), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.ofSeconds(1f)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
                                 .isTakenIfTrue(walkingCondition.and(StateTransition.CURRENT_TRANSITION_FINISHED))
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.3f), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.ofSeconds(0.3f)).setEasement(Easing.SINE_IN_OUT).build())
                                 .build())
                         .build())
                 .defineState(State.builder(GroundMovementStates.JUMP, jumpPoseFunction)
@@ -1147,7 +1152,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         // Automatically move into the falling animation player
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.FALLING)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(19), Easing.CUBIC_OUT))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(19)).setEasement(Easing.CUBIC_OUT).build())
                                 .build())
                         // If the player lands before it can move into the falling animation, go straight to the landing animation as long as the jump state is fully transitioned.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.LAND)
@@ -1207,7 +1212,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         // Transition to the jumping animation if the player is falling.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.FALLING)
                                 .isTakenIfTrue(StateTransition.booleanDriverPredicate(IS_GROUNDED).negate())
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(0.2f), Easing.SINE_OUT))
+                                .setTiming(Transition.builder(TimeSpan.ofSeconds(0.2f)).setEasement(Easing.SINE_OUT).build())
                                 .setPriority(50)
                                 .build())
                         .build())
@@ -1219,13 +1224,13 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                         // If the falling animation is finishing and the player is not walking, play the idle animation.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.IDLE)
                                 .isTakenIfTrue(walkingCondition.negate().and(StateTransition.MOST_RELEVANT_ANIMATION_PLAYER_HAS_FINISHED))
-                                .setTiming(Transition.of(TimeSpan.ofSeconds(1), Easing.SINE_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.ofSeconds(1)).setEasement(Easing.SINE_IN_OUT).build())
                                 .setPriority(50)
                                 .build())
                         // If the falling animation is finishing and the player is walking, play the walking animation.
                         .addOutboundTransition(StateTransition.builder(GroundMovementStates.WALKING)
                                 .isTakenIfTrue(walkingCondition)
-                                .setTiming(Transition.of(TimeSpan.of60FramesPerSecond(40), Easing.CUBIC_IN_OUT))
+                                .setTiming(Transition.builder(TimeSpan.of60FramesPerSecond(40)).setEasement(Easing.CUBIC_IN_OUT).build())
                                 .setPriority(60)
                                 .build())
                         .build())
@@ -1335,8 +1340,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final MontageConfiguration HAND_TOOL_ATTACK_PICKAXE_MONTAGE = MontageConfiguration.builder("hand_tool_attack_pickaxe", HAND_TOOL_ATTACK)
             .playsInSlot(MAIN_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(8))
-            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(1), Easing.SINE_OUT))
-            .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(12), Easing.SINE_IN_OUT))
+            .setTransitionIn(Transition.builder(TimeSpan.of60FramesPerSecond(1)).setEasement(Easing.SINE_OUT).build())
+            .setTransitionOut(Transition.builder(TimeSpan.of60FramesPerSecond(12)).setEasement(Easing.SINE_IN_OUT).build())
             .makeAdditive(driverContainer -> {
                 HandPose handPose = driverContainer.getDriverValue(MAIN_HAND_POSE);
                 if (handPose == HandPose.GENERIC_ITEM) {
@@ -1348,8 +1353,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final MontageConfiguration USE_MAIN_HAND_MONTAGE = MontageConfiguration.builder("hand_use_main_hand", HAND_TOOL_USE)
             .playsInSlot(MAIN_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
-            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
-            .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(16), Easing.SINE_IN_OUT))
+            .setTransitionIn(Transition.builder(TimeSpan.of60FramesPerSecond(3)).setEasement(Easing.SINE_OUT).build())
+            .setTransitionOut(Transition.builder(TimeSpan.of60FramesPerSecond(16)).setEasement(Easing.SINE_IN_OUT).build())
             .makeAdditive(driverContainer -> {
                 HandPose handPose = driverContainer.getDriverValue(MAIN_HAND_POSE);
                 if (handPose == HandPose.GENERIC_ITEM) {
@@ -1361,8 +1366,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final MontageConfiguration USE_OFF_HAND_MONTAGE = MontageConfiguration.builder("hand_use_off_hand", HAND_TOOL_USE)
             .playsInSlot(OFF_HAND_ATTACK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
-            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(3), Easing.SINE_OUT))
-            .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(16), Easing.SINE_IN_OUT))
+            .setTransitionIn(Transition.builder(TimeSpan.of60FramesPerSecond(3)).setEasement(Easing.SINE_OUT).build())
+            .setTransitionOut(Transition.builder(TimeSpan.of60FramesPerSecond(16)).setEasement(Easing.SINE_IN_OUT).build())
             .makeAdditive(driverContainer -> {
                 HandPose handPose = driverContainer.getDriverValue(OFF_HAND_POSE);
                 if (handPose == HandPose.GENERIC_ITEM) {
@@ -1374,8 +1379,8 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final MontageConfiguration SHIELD_BLOCK_IMPACT_MONTAGE = MontageConfiguration.builder("shield_block_impact", HAND_SHIELD_IMPACT)
             .playsInSlot(SHIELD_BLOCK_SLOT)
             .setCooldownDuration(TimeSpan.of60FramesPerSecond(5))
-            .setTransitionIn(Transition.of(TimeSpan.of60FramesPerSecond(2), Easing.SINE_IN_OUT))
-            .setTransitionOut(Transition.of(TimeSpan.of60FramesPerSecond(8), Easing.SINE_IN_OUT))
+            .setTransitionIn(Transition.builder(TimeSpan.of60FramesPerSecond(2)).setEasement(Easing.SINE_IN_OUT).build())
+            .setTransitionOut(Transition.builder(TimeSpan.of60FramesPerSecond(8)).setEasement(Easing.SINE_IN_OUT).build())
             .build();
 
     @Override
@@ -1429,7 +1434,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         driverContainer.getDriver(IS_OFF_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_OFF_HAND_ITEM)));
 
         if (driverContainer.getDriver(IS_MINING).getCurrentValue()) {
-            montageManager.interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.of(TimeSpan.ofTicks(2)));
+            montageManager.interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.builder(TimeSpan.ofTicks(2)).build());
         }
 
         driverContainer.getDriver(IS_MOVING).setValue(dataReference.input.keyPresses.forward() || dataReference.input.keyPresses.backward() || dataReference.input.keyPresses.left() || dataReference.input.keyPresses.right());

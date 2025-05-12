@@ -52,7 +52,7 @@ public class JointTransformerFunction<P extends Pose> implements PoseFunction<P>
             if(weight == 1){
                 pose.setJointChannel(this.joint, jointChannel);
             } else {
-                pose.setJointChannel(this.joint, pose.getJointChannel(this.joint).interpolated(jointChannel, weight));
+                pose.setJointChannel(this.joint, pose.getJointChannel(this.joint).interpolate(jointChannel, weight));
             }
         }
         return pose;

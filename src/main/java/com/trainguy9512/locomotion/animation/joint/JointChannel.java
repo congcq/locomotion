@@ -1,10 +1,8 @@
 package com.trainguy9512.locomotion.animation.joint;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.util.Interpolator;
-import com.trainguy9512.locomotion.util.Timeline;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.resources.ResourceLocation;
@@ -173,7 +171,13 @@ public final class JointChannel {
         return JointChannel.ofTranslationRotationScaleEuler(mirroredTranslation, mirroredRotation, this.getScale(), this.visibility);
     }
 
-    public JointChannel interpolated(JointChannel other, float weight) {
+    /**
+     * Returns a joint channel interpolated between this pose and the provided pose.
+     * @param other             Joint channel to interpolate to
+     * @param weight            Weight value, 0 is the original channel and 1 is the other channel.
+     * @param destination       Channel to save interpolated channel onto.
+     */
+    public JointChannel interpolate(JointChannel other, float weight, JointChannel destination) {
         Vector3f translation = this.transform.getTranslation(new Vector3f());
         Quaternionf rotation = this.transform.getUnnormalizedRotation(new Quaternionf());
         Vector3f scale = this.transform.getScale(new Vector3f());
@@ -185,10 +189,20 @@ public final class JointChannel {
         translation.lerp(otherTranslation, weight);
         rotation.slerp(otherRotation, weight);
         scale.lerp(otherScale, weight);
-
         boolean visibility = Interpolator.BOOLEAN_BLEND.interpolate(this.visibility, other.visibility, weight);
 
-        return JointChannel.of(new Matrix4f().translationRotateScale(translation, rotation, scale), visibility);
+        destination.transform.translationRotateScale(translation, rotation, scale);
+        destination.visibility = visibility;
+        return destination;
+    }
+
+    /**
+     * Returns this joint channel interpolated between this pose and the provided pose.
+     * @param other             Joint channel to interpolate to
+     * @param weight            Weight value, 0 is the original channel and 1 is the other channel.
+     */
+    public JointChannel interpolate(JointChannel other, float weight) {
+        return this.interpolate(other, weight, this);
     }
 
     public void transformPoseStack(PoseStack poseStack, float transformMultiplier) {

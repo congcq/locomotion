@@ -2,7 +2,7 @@ package com.trainguy9512.locomotion.animation.data;
 
 import com.trainguy9512.locomotion.animation.driver.DriverKey;
 import com.trainguy9512.locomotion.animation.driver.Driver;
-import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.joint.skeleton.JointSkeleton;
 
 /**
  * Interface for retrieving the interpolated value of a driver during the sampling stage.

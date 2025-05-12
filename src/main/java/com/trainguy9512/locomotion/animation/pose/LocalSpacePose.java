@@ -1,12 +1,13 @@
 package com.trainguy9512.locomotion.animation.pose;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.joint.skeleton.BlendMask;
+import com.trainguy9512.locomotion.animation.joint.skeleton.BlendProfile;
+import com.trainguy9512.locomotion.animation.joint.skeleton.JointSkeleton;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import net.minecraft.resources.ResourceLocation;
-
-import java.util.Set;
+import org.jetbrains.annotations.Nullable;
 
 public class LocalSpacePose extends Pose {
 
@@ -70,46 +71,81 @@ public class LocalSpacePose extends Pose {
     }
 
     /**
-     * Returns a new animation pose interpolated between this pose and the provided pose.
+     * Returns an animation pose interpolated between this pose and the provided pose.
      * @param other     Animation pose to interpolate to.
      * @param weight    Weight value, 0 is the original pose and 1 is the other pose.
+     * @param destination       Pose to save interpolated pose onto.
      * @return          New interpolated animation pose.
      */
-    public LocalSpacePose interpolated(LocalSpacePose other, float weight) {
-        return interpolatedFilteredByJoints(other, weight, this.jointSkeleton.getJoints());
+    public LocalSpacePose interpolated(
+            LocalSpacePose other,
+            float weight,
+            LocalSpacePose destination
+    ) {
+        return this.interpolated(other, weight, null, null, destination);
     }
 
     /**
-     * Returns a new animation pose interpolated between this pose and the provided pose, only on the specified joints.
+     * Returns this animation pose interpolated between this pose and the provided pose.
      * @param other     Animation pose to interpolate to.
      * @param weight    Weight value, 0 is the original pose and 1 is the other pose.
-     * @param joints    Set of joints to interpolate.
      * @return          New interpolated animation pose.
      */
-    public LocalSpacePose interpolatedFilteredByJoints(LocalSpacePose other, float weight, Set<String> joints) {
-        LocalSpacePose pose = LocalSpacePose.of(this);
-        // If the weight is 0, don't interpolate anything and just return this.
+    public LocalSpacePose interpolated(
+            LocalSpacePose other,
+            float weight
+    ) {
+        return this.interpolated(other, weight, null, null, this);
+    }
+
+    /**
+     * Returns an animation pose interpolated between this pose and the provided pose.
+     * @param other             Animation pose to interpolate to.
+     * @param weight            Weight value, 0 is the original pose and 1 is the other pose.
+     * @param blendMask         Blend mask
+     * @param blendProfile      Blend profile
+     * @param destination       Pose to save interpolated pose onto.
+     * @return                  New interpolated animation pose.
+     */
+    public LocalSpacePose interpolated(
+            LocalSpacePose other,
+            float weight,
+            @Nullable BlendMask blendMask,
+            @Nullable BlendProfile blendProfile,
+            LocalSpacePose destination
+    ) {
         if (weight == 0) {
-            return pose;
+            return destination;
         }
-
-        joints.forEach(joint -> {
-            if (this.getJointSkeleton().containsJoint(joint)) {
-                pose.setJointChannel(joint, weight == 1 ? other.getJointChannel(joint) :
-                        pose.getJointChannel(joint).interpolated(other.getJointChannel(joint), weight));
+        for (String joint : this.jointSkeleton.getJoints()) {
+            float jointWeight = weight;
+            if (blendMask != null) {
+                jointWeight *= blendMask.getProperty(joint, this.jointSkeleton);
             }
-        });
-        return pose;
+            if (jointWeight == 1f) {
+                destination.setJointChannel(joint, other.getJointChannel(joint));
+            } else {
+                destination.setJointChannel(joint, destination.getJointChannel(joint).interpolate(other.getJointChannel(joint), jointWeight));
+            }
+        }
+        return destination;
     }
 
     /**
-     * Returns a new animation pose with the other pose filtered by the selected joints.
-     * @param other     Animation pose to filter.
-     * @param joints    Set of joints to filter by.
-     * @return          New filtered animation pose.
+     * Returns this animation pose interpolated between this pose and the provided pose.
+     * @param other             Animation pose to interpolate to.
+     * @param weight            Weight value, 0 is the original pose and 1 is the other pose.
+     * @param blendMask         Blend mask
+     * @param blendProfile      Blend profile
+     * @return                  New interpolated animation pose.
      */
-    public LocalSpacePose filteredByJoints(LocalSpacePose other, Set<String> joints) {
-        return interpolatedFilteredByJoints(other, 1, joints);
+    public LocalSpacePose interpolated(
+            LocalSpacePose other,
+            float weight,
+            @Nullable BlendMask blendMask,
+            @Nullable BlendProfile blendProfile
+    ) {
+        return this.interpolated(other, weight, blendMask, blendProfile, this);
     }
 
     public void multiply(LocalSpacePose other, JointChannel.TransformSpace transformSpace) {

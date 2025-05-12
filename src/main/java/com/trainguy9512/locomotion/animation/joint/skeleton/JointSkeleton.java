@@ -1,7 +1,6 @@
-package com.trainguy9512.locomotion.animation.joint;
+package com.trainguy9512.locomotion.animation.joint.skeleton;
 
 import com.google.common.collect.Maps;
-import com.trainguy9512.locomotion.LocomotionMain;
 import net.minecraft.client.model.geom.PartPose;
 import org.apache.commons.compress.utils.Lists;
 import org.apache.logging.log4j.LogManager;

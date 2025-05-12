@@ -5,7 +5,7 @@ import com.trainguy9512.locomotion.access.MatrixModelPart;
 import com.trainguy9512.locomotion.animation.animator.entity.EntityJointAnimator;
 import com.trainguy9512.locomotion.animation.data.AnimationDataContainer;
 import com.trainguy9512.locomotion.animation.pose.Pose;
-import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.joint.skeleton.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.ComponentSpacePose;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;

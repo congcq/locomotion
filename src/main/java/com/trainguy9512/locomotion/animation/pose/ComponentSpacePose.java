@@ -1,6 +1,6 @@
 package com.trainguy9512.locomotion.animation.pose;
 
-import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.joint.skeleton.JointSkeleton;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import org.joml.Matrix4f;
 

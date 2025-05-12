@@ -2,7 +2,7 @@ package com.trainguy9512.locomotion.animation.pose;
 
 import com.google.common.collect.Maps;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.joint.skeleton.JointSkeleton;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
 import org.joml.*;
 

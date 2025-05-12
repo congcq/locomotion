@@ -102,6 +102,6 @@ public class Timeline<T> {
     }
 
     public static Timeline<JointChannel> ofJointTransform(float length) {
-        return Timeline.of(JointChannel::interpolated, length);
+        return Timeline.of(JointChannel::interpolate, length);
     }
 }

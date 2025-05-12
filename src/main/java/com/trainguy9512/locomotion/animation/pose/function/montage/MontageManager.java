@@ -1,11 +1,10 @@
 package com.trainguy9512.locomotion.animation.pose.function.montage;
 
-import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.data.AnimationSequenceData;
 import com.trainguy9512.locomotion.animation.data.OnTickDriverContainer;
 import com.trainguy9512.locomotion.animation.driver.VariableDriver;
 import com.trainguy9512.locomotion.animation.joint.JointChannel;
-import com.trainguy9512.locomotion.animation.joint.JointSkeleton;
+import com.trainguy9512.locomotion.animation.joint.skeleton.JointSkeleton;
 import com.trainguy9512.locomotion.animation.pose.LocalSpacePose;
 import com.trainguy9512.locomotion.util.TimeSpan;
 import com.trainguy9512.locomotion.util.Transition;
@@ -96,7 +95,7 @@ public class MontageManager {
         LocalSpacePose slotPose = LocalSpacePose.of(basePose);
         for (MontageInstance montageInstance : this.montageStack) {
             if (montageInstance.configuration.slots().contains(slot)) {
-                slotPose = slotPose.interpolated(montageInstance.getPose(jointSkeleton, partialTicks), montageInstance.getWeight(partialTicks));
+                slotPose = slotPose.interpolated(montageInstance.getPose(jointSkeleton, partialTicks), montageInstance.getWeight(partialTicks), null, null);
             }
         }
         return slotPose;

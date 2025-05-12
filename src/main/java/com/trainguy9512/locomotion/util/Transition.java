@@ -16,27 +16,41 @@ package com.trainguy9512.locomotion.util;
  */
 public record Transition(TimeSpan duration, Easing easement) {
 
-    public static final Transition INSTANT = Transition.of(TimeSpan.ofTicks(1), Easing.CONSTANT);
-    public static final Transition SINGLE_TICK = Transition.of(TimeSpan.ofTicks(1), Easing.LINEAR);
+    public static final Transition INSTANT = Transition.builder(TimeSpan.ofTicks(1)).setEasement(Easing.CONSTANT).build();
+    public static final Transition SINGLE_TICK = Transition.builder(TimeSpan.ofTicks(1)).setEasement(Easing.LINEAR).build();
 
     /**
-     * Creates a new {@link Transition} with the provided duration and easement.
-     * @param duration      The duration of the transition
-     * @param easement      The type of {@link Easing} function to apply to the transition.
-     */
-    public static Transition of(TimeSpan duration, Easing easement) {
-        return new Transition(duration, easement);
-    }
-
-    /**
-     * Creates a new {@link Transition} with the provided duration with a linear easing function.
+     * Creates a new {@link Transition.Builder} with the provided duration.
      * @param duration      The duration of the transition
      */
-    public static Transition of(TimeSpan duration) {
-        return new Transition(duration, Easing.LINEAR);
+    public static Builder builder(TimeSpan duration) {
+        return new Builder(duration);
     }
 
     public float applyEasement(float input) {
         return this.easement.ease(input);
+    }
+
+    public static class Builder {
+
+        private final TimeSpan duration;
+        private Easing easement;
+
+        private Builder(TimeSpan duration) {
+            this.duration = duration;
+            this.easement = Easing.LINEAR;
+        }
+
+        public Builder setEasement(Easing easement) {
+            this.easement = easement;
+            return this;
+        }
+
+        public Transition build() {
+            return new Transition(
+                    this.duration,
+                    this.easement
+            );
+        }
     }
 }
