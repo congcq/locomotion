@@ -82,7 +82,7 @@ public class LocalSpacePose extends Pose {
             float weight,
             LocalSpacePose destination
     ) {
-        return this.interpolated(other, weight, null, null, destination);
+        return this.interpolated(other, weight, null, destination);
     }
 
     /**
@@ -95,7 +95,7 @@ public class LocalSpacePose extends Pose {
             LocalSpacePose other,
             float weight
     ) {
-        return this.interpolated(other, weight, null, null, this);
+        return this.interpolated(other, weight, this);
     }
 
     /**
@@ -103,7 +103,6 @@ public class LocalSpacePose extends Pose {
      * @param other             Animation pose to interpolate to.
      * @param weight            Weight value, 0 is the original pose and 1 is the other pose.
      * @param blendMask         Blend mask
-     * @param blendProfile      Blend profile
      * @param destination       Pose to save interpolated pose onto.
      * @return                  New interpolated animation pose.
      */
@@ -111,7 +110,6 @@ public class LocalSpacePose extends Pose {
             LocalSpacePose other,
             float weight,
             @Nullable BlendMask blendMask,
-            @Nullable BlendProfile blendProfile,
             LocalSpacePose destination
     ) {
         if (weight == 0) {
@@ -136,16 +134,32 @@ public class LocalSpacePose extends Pose {
      * @param other             Animation pose to interpolate to.
      * @param weight            Weight value, 0 is the original pose and 1 is the other pose.
      * @param blendMask         Blend mask
-     * @param blendProfile      Blend profile
      * @return                  New interpolated animation pose.
      */
     public LocalSpacePose interpolated(
             LocalSpacePose other,
             float weight,
-            @Nullable BlendMask blendMask,
-            @Nullable BlendProfile blendProfile
+            @Nullable BlendMask blendMask
     ) {
-        return this.interpolated(other, weight, blendMask, blendProfile, this);
+        return this.interpolated(other, weight, blendMask, this);
+    }
+
+    /**
+     * Returns an animation pose interpolated between this pose and the provided pose using data from a transition.
+     * @param other             Animation pose to interpolate to.
+     * @param time              Time progress between 0 and 1
+     * @param destination       Pose to save interpolated pose onto.
+     * @return                  New interpolated animation pose.
+     */
+    public LocalSpacePose interpolatedByTransition(
+            LocalSpacePose other,
+            float time,
+            LocalSpacePose destination
+    ) {
+        if (time == 0) {
+            return destination;
+        }
+        return destination;
     }
 
     public void multiply(LocalSpacePose other, JointChannel.TransformSpace transformSpace) {

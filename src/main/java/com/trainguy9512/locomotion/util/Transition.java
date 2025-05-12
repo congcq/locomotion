@@ -1,5 +1,7 @@
 package com.trainguy9512.locomotion.util;
 
+import com.trainguy9512.locomotion.animation.joint.skeleton.BlendProfile;
+
 /**
  * Represents the properties of a transition, including the duration and easing function used to
  * blend between animation poses.
@@ -13,8 +15,9 @@ package com.trainguy9512.locomotion.util;
  *
  * @param duration          The duration of the transition.
  * @param easement          The type of {@link Easing} function to apply to the transition.
+ * @param blendProfile      Blend profile for the adjusting how quickly certain joints transition.
  */
-public record Transition(TimeSpan duration, Easing easement) {
+public record Transition(TimeSpan duration, Easing easement, BlendProfile blendProfile) {
 
     public static final Transition INSTANT = Transition.builder(TimeSpan.ofTicks(1)).setEasement(Easing.CONSTANT).build();
     public static final Transition SINGLE_TICK = Transition.builder(TimeSpan.ofTicks(1)).setEasement(Easing.LINEAR).build();
@@ -35,10 +38,12 @@ public record Transition(TimeSpan duration, Easing easement) {
 
         private final TimeSpan duration;
         private Easing easement;
+        private BlendProfile blendProfile;
 
         private Builder(TimeSpan duration) {
             this.duration = duration;
             this.easement = Easing.LINEAR;
+            this.blendProfile = null;
         }
 
         public Builder setEasement(Easing easement) {
@@ -46,10 +51,16 @@ public record Transition(TimeSpan duration, Easing easement) {
             return this;
         }
 
+        public Builder setBlendProfile(BlendProfile blendProfile) {
+            this.blendProfile = blendProfile;
+            return this;
+        }
+
         public Transition build() {
             return new Transition(
                     this.duration,
-                    this.easement
+                    this.easement,
+                    this.blendProfile
             );
         }
     }
