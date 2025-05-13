@@ -772,7 +772,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .defineState(State.builder(handPose.loweringState, loweringPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
                         .build())
-                .defineState(State.builder(handPose.raisingState, raisingPoseFunction)
+                .defineState(State.builder(handPose.raisingState, MontageSlotFunction.of(raisingPoseFunction, interactionHand == InteractionHand.MAIN_HAND ? MAIN_HAND_ATTACK_SLOT : OFF_HAND_ATTACK_SLOT))
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(handPose.poseState)
                                 .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
