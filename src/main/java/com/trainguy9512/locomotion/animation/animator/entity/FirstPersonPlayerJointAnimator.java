@@ -225,6 +225,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                 .isTakenIfTrue(
                                         StateTransition.booleanDriverPredicate(getUsingItemDriver(interactionHand))
                                                 .and(transitionContext -> transitionContext.driverContainer().getDriverValue(getHandPoseDriver(interactionHand)) == HandPose.BOW)
+                                                .and(transitionContext -> transitionContext.driverContainer().getDriverValue(getItemDriver(interactionHand)).is(Items.BOW))
                                 )
                                 .bindToOnTransitionTaken(evaluationState -> {
                                     ItemStack projectileStack = evaluationState.driverContainer().getDriverValue(PROJECTILE_ITEM);
@@ -740,7 +741,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case OFF_HAND -> HAS_USED_OFF_HAND_ITEM;
         };
 
-        Predicate<StateTransition.TransitionContext> itemHasChanged = context -> context.driverContainer().getDriverValue(getItemDriver(interactionHand)).getItem() != context.driverContainer().getDriverValue(getRenderedItemDriver(interactionHand)).getItem();
+        Predicate<StateTransition.TransitionContext> itemHasChanged = context -> !ItemStack.isSameItemSameComponents(context.driverContainer().getDriverValue(getItemDriver(interactionHand)), context.driverContainer().getDriverValue(getRenderedItemDriver(interactionHand)));
         Predicate<StateTransition.TransitionContext> hotbarHasChanged = context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HOTBAR_SLOT).hasValueChanged();
         Predicate<StateTransition.TransitionContext> newItemIsEmpty = context -> context.driverContainer().getDriverValue(getItemDriver(interactionHand)).isEmpty();
         Predicate<StateTransition.TransitionContext> oldItemIsEmpty = context -> context.driverContainer().getDriverValue(getRenderedItemDriver(interactionHand)).isEmpty();
@@ -750,9 +751,10 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         Predicate<StateTransition.TransitionContext> dropLastItemCondition = newItemIsEmpty.and(context -> interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_DROPPED_ITEM).hasBeenTriggered());
         Predicate<StateTransition.TransitionContext> useLastItemCondition = itemHasChanged.and(newItemIsEmpty).and(context -> context.driverContainer().getDriver(hasUsedItemDriver).hasBeenTriggered() || (interactionHand == InteractionHand.MAIN_HAND && context.driverContainer().getDriver(HAS_ATTACKED).hasBeenTriggered()));
 
-
-        Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(IS_MINING).or(StateTransition.booleanDriverPredicate(HAS_ATTACKED)).or(StateTransition.booleanDriverPredicate(HAS_USED_MAIN_HAND_ITEM));
-
+        Predicate<StateTransition.TransitionContext> skipRaiseAnimationCondition = StateTransition.booleanDriverPredicate(getUsingItemDriver(interactionHand));
+        if (interactionHand == InteractionHand.MAIN_HAND) {
+            skipRaiseAnimationCondition = skipRaiseAnimationCondition.or(StateTransition.booleanDriverPredicate(IS_MINING)).or(StateTransition.booleanDriverPredicate(HAS_ATTACKED)).or(StateTransition.booleanDriverPredicate(HAS_USED_MAIN_HAND_ITEM));
+        }
         Consumer<PoseFunction.FunctionEvaluationState> updateRenderedItem = evaluationState -> {
             if (evaluationState.driverContainer().getDriverValue(CURRENT_TWO_HANDED_OVERRIDE_STATE) == TwoHandedOverrideStates.NORMAL) {
                 updateRenderedItem(evaluationState.driverContainer(), interactionHand);
@@ -763,19 +765,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             evaluationState.montageManager().interruptMontagesInSlot(MAIN_HAND_ATTACK_SLOT, Transition.INSTANT);
         };
 
-        State.Builder<HandPoseStates> raisingStateBuilder = State.builder(handPose.raisingState, raisingPoseFunction)
-                .resetsPoseFunctionUponEntry(true)
-                .addOutboundTransition(StateTransition.builder(handPose.poseState)
-                        .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
-                        .setTiming(raisingToPoseTiming)
-                        .build());
-        if (interactionHand == InteractionHand.MAIN_HAND) {
-            raisingStateBuilder.addOutboundTransition(StateTransition.builder(handPose.poseState)
-                    .isTakenIfTrue(skipRaiseAnimationCondition)
-                    .setTiming(Transition.SINGLE_TICK)
-                    .build()
-            );
-        }
         stateMachineBuilder
                 .defineState(State.builder(handPose.poseState, MontageSlotFunction.of(posePoseFunction, interactionHand == InteractionHand.MAIN_HAND ? MAIN_HAND_ATTACK_SLOT : OFF_HAND_ATTACK_SLOT))
                         .resetsPoseFunctionUponEntry(true)
@@ -783,7 +772,17 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                 .defineState(State.builder(handPose.loweringState, loweringPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
                         .build())
-                .defineState(raisingStateBuilder.build())
+                .defineState(State.builder(handPose.raisingState, raisingPoseFunction)
+                        .resetsPoseFunctionUponEntry(true)
+                        .addOutboundTransition(StateTransition.builder(handPose.poseState)
+                                .isTakenIfMostRelevantAnimationPlayerFinishing(1f)
+                                .setTiming(raisingToPoseTiming)
+                                .build())
+                        .addOutboundTransition(StateTransition.builder(handPose.poseState)
+                                .isTakenIfTrue(skipRaiseAnimationCondition)
+                                .setTiming(Transition.builder(TimeSpan.ofTicks(3)).build())
+                                .build())
+                        .build())
                 .addStateAlias(StateAlias.builder(
                         Set.of(
                                 handPose.poseState,
