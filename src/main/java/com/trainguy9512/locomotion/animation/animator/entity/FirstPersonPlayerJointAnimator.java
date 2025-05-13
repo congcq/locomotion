@@ -173,8 +173,6 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
             case MAIN_HAND -> TwoHandedOverrideStates.BOW_RELEASE_MAIN_HAND;
             case OFF_HAND -> TwoHandedOverrideStates.BOW_RELEASE_OFF_HAND;
         };
-        Consumer<PoseFunction.FunctionEvaluationState> onArrowLoadedIntoBow = evaluationState -> {};
-
         PoseFunction<LocalSpacePose> pullPoseFunction = SequencePlayerFunction.builder(HAND_BOW_PULL)
                 .bindToTimeMarker("arrow_placed_in_bow", evaluationState -> {
                     evaluationState.driverContainer().getDriver(getRenderedItemDriver(oppositeHand)).setValue(ItemStack.EMPTY);
@@ -188,23 +186,20 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         PoseFunction<LocalSpacePose> releasePoseFunction = SequencePlayerFunction.builder(HAND_BOW_RELEASE)
                 .build();
 
-
         if (interactionHand == InteractionHand.OFF_HAND) {
             pullPoseFunction = MirrorFunction.of(pullPoseFunction);
             releasePoseFunction = MirrorFunction.of(releasePoseFunction);
         }
 
-
-        BlendProfile blendOffhandArrowMoreQuickly = BlendProfile.builder().defineForJoint(LEFT_HAND_JOINT, 0f).build();
+        BlendProfile blendOffhandArrowMoreQuickly = BlendProfile.builder().defineForJoint(LEFT_HAND_JOINT, 0.2f).build();
         if (interactionHand == InteractionHand.OFF_HAND) {
             blendOffhandArrowMoreQuickly = blendOffhandArrowMoreQuickly.getMirrored();
         }
 
-
         stateMachineBuilder.defineState(State.builder(bowPullState, pullPoseFunction)
                         .resetsPoseFunctionUponEntry(true)
                         .addOutboundTransition(StateTransition.builder(bowReleaseState)
-                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(getUsingItemDriver(interactionHand)).negate())
+                                .isTakenIfTrue(StateTransition.booleanDriverPredicate(getUsingItemDriver(interactionHand)).negate().and(StateTransition.CURRENT_TRANSITION_FINISHED))
                                 .bindToOnTransitionTaken(evaluationState -> {
                                     evaluationState.driverContainer().getDriver(getRenderedItemDriver(oppositeHand)).setValue(ItemStack.EMPTY);
                                     evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.EMPTY);
@@ -232,8 +227,9 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
                                                 .and(transitionContext -> transitionContext.driverContainer().getDriverValue(getHandPoseDriver(interactionHand)) == HandPose.BOW)
                                 )
                                 .bindToOnTransitionTaken(evaluationState -> {
-                                    evaluationState.driverContainer().getDriver(getRenderedItemDriver(oppositeHand)).setValue(Items.ARROW.getDefaultInstance());
-                                    evaluationState.driverContainer().getDriver(getGenericItemPoseDriver(oppositeHand)).setValue(GenericItemPose.ARROW);
+                                    ItemStack projectileStack = evaluationState.driverContainer().getDriverValue(PROJECTILE_ITEM);
+                                    evaluationState.driverContainer().getDriver(getRenderedItemDriver(oppositeHand)).setValue(projectileStack);
+                                    evaluationState.driverContainer().getDriver(getGenericItemPoseDriver(oppositeHand)).setValue(GenericItemPose.fromItemStack(projectileStack));
                                     evaluationState.driverContainer().getDriver(getHandPoseDriver(oppositeHand)).setValue(HandPose.GENERIC_ITEM);
                                     evaluationState.driverContainer().getDriver(getRenderItemAsStaticDriver(interactionHand)).setValue(true);
                                 })
@@ -1325,6 +1321,7 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
     public static final DriverKey<VariableDriver<HandPose>> OFF_HAND_POSE = DriverKey.of("off_hand_pose", () -> VariableDriver.ofConstant(() -> HandPose.EMPTY));
     public static final DriverKey<VariableDriver<GenericItemPose>> MAIN_HAND_GENERIC_ITEM_POSE = DriverKey.of("main_hand_generic_item_pose", () -> VariableDriver.ofConstant(() -> GenericItemPose.DEFAULT_2D_ITEM));
     public static final DriverKey<VariableDriver<GenericItemPose>> OFF_HAND_GENERIC_ITEM_POSE = DriverKey.of("off_hand_generic_item_pose", () -> VariableDriver.ofConstant(() -> GenericItemPose.DEFAULT_2D_ITEM));
+    public static final DriverKey<VariableDriver<ItemStack>> PROJECTILE_ITEM = DriverKey.of("projectile_item", () -> VariableDriver.ofConstant(() -> ItemStack.EMPTY));
 
     public static final DriverKey<VariableDriver<TwoHandedOverrideStates>> CURRENT_TWO_HANDED_OVERRIDE_STATE = DriverKey.of("current_two_handed_override_state", () -> VariableDriver.ofConstant(() -> TwoHandedOverrideStates.NORMAL));
 
@@ -1441,8 +1438,18 @@ public class FirstPersonPlayerJointAnimator implements LivingEntityJointAnimator
         });
         driverContainer.getDriver(HAS_BLOCKED_ATTACK).runIfTriggered(() -> montageManager.playMontage(SHIELD_BLOCK_IMPACT_MONTAGE, driverContainer));
 
-        driverContainer.getDriver(IS_USING_MAIN_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.MAIN_HAND);
-        driverContainer.getDriver(IS_USING_OFF_HAND_ITEM).setValue(dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.OFF_HAND);
+        driverContainer.getDriver(IS_USING_MAIN_HAND_ITEM).setValue(false);
+        driverContainer.getDriver(IS_USING_OFF_HAND_ITEM).setValue(false);
+        if (dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.MAIN_HAND) {
+            driverContainer.getDriver(IS_USING_MAIN_HAND_ITEM).setValue(true);
+            driverContainer.getDriver(PROJECTILE_ITEM).setValue(dataReference.getProjectile(dataReference.getMainHandItem()));
+        }
+        if (dataReference.isUsingItem() && dataReference.getUsedItemHand() == InteractionHand.OFF_HAND) {
+            driverContainer.getDriver(IS_USING_OFF_HAND_ITEM).setValue(true);
+            driverContainer.getDriver(PROJECTILE_ITEM).setValue(dataReference.getProjectile(dataReference.getOffhandItem()));
+        }
+
+
         driverContainer.getDriver(IS_MAIN_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_MAIN_HAND_ITEM)));
         driverContainer.getDriver(IS_OFF_HAND_ON_COOLDOWN).setValue(dataReference.getCooldowns().isOnCooldown(driverContainer.getDriverValue(RENDERED_OFF_HAND_ITEM)));
 
