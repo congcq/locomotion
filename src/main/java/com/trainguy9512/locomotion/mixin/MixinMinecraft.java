@@ -1,15 +1,12 @@
 package com.trainguy9512.locomotion.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
-import com.trainguy9512.locomotion.LocomotionMain;
 import com.trainguy9512.locomotion.animation.animator.JointAnimatorDispatcher;
 import com.trainguy9512.locomotion.animation.animator.entity.FirstPersonPlayerJointAnimator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.BlockPos;
-import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.InteractionHand;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
@@ -76,6 +73,17 @@ public abstract class MixinMinecraft {
                 case OFF_HAND -> dataContainer.getDriver(FirstPersonPlayerJointAnimator.HAS_USED_OFF_HAND_ITEM).trigger();
             }
         });
+    }
+
+    @Inject(
+            method = "tick",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientLevel;animateTick(III)V")
+    )
+    private void locomotionTick(CallbackInfo ci) {
+        assert this.level != null;
+        JointAnimatorDispatcher jointAnimatorDispatcher = JointAnimatorDispatcher.getInstance();
+        jointAnimatorDispatcher.tickEntityJointAnimators(this.level.entitiesForRendering());
+        jointAnimatorDispatcher.tickFirstPersonPlayerJointAnimator();
     }
 
     /**

@@ -71,15 +71,4 @@ public abstract class MixinGameRenderer {
             ci.cancel();
         }
     }
-
-    @Inject(
-            method = "tick",
-            at = @At("TAIL")
-    )
-    private void tickJointAnimators(CallbackInfo ci) {
-        assert this.minecraft.level != null;
-        JointAnimatorDispatcher jointAnimatorDispatcher = JointAnimatorDispatcher.getInstance();
-        jointAnimatorDispatcher.tickEntityJointAnimators(this.minecraft.level.entitiesForRendering());
-        jointAnimatorDispatcher.tickFirstPersonPlayerJointAnimator();
-    }
 }
